@@ -6,11 +6,16 @@
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": ["stock", "dashboard"],
+  "keywords": [
+    "stock",
+    "dashboard"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^17.3.1",
     "node-cron": "^3.0.3",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "pg": "^8.20.0"
   }
 }

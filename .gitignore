@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Configuration with sensitive data
+config.json
+
+# Logs
+logs
+*.log
+server.log
+error.log
+
+# Temporary files
+tmp/
+temp/
+
+# Backup files
+*.bak
+
+# Optional REPL history
+.node_repl_history
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Linux
+*~
+
+# Package lock (keep in repository for consistency)
+# package-lock.json is tracked
+
+# Application data files (uncomment if you don't want to track personal data)
+# data.json
+# daily-profit.json
+# pending-trades.json
+# trade-history.json

@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>资产看板专业版 - Ultimate v2.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        :root {
+            --bg-main: #0f172a; --bg-card: #1e293b; --bg-table-header: #1e293b;
+            --text-main: #f1f5f9; --text-muted: #94a3b8; --border-color: #334155;
+            --up-color: #ff5252; --down-color: #00e676; --table-hover: #1e293b;
+            --indigo-accent: #6366f1;
+        }
+        body.light-mode {
+            --bg-main: #f8fafc; --bg-card: #ffffff; --bg-table-header: #f1f5f9;
+            --text-main: #1e293b; --text-muted: #64748b; --border-color: #e2e8f0;
+            --up-color: #dc2626; --down-color: #059669; --table-hover: #f1f5f9;
+        }
+        body { font-family: 'PingFang SC', sans-serif; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .up { color: var(--up-color) !important; font-weight: bold; } 
+        .down { color: var(--down-color) !important; font-weight: bold; } 
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 1rem; }
+        .refresh-spin { animation: spin 0.8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .input-box { background: transparent; border-bottom: 1px solid var(--border-color); text-align: right; outline: none; transition: 0.2s; }
+        .input-box:focus { border-color: var(--indigo-accent); }
+        #refreshProgress { transition: width 1s linear; }
+        /* 自定义 tooltip */
+        .tooltip-btn {
+            position: relative;
+        }
+        .tooltip-btn:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            z-index: 100;
+            border: 1px solid #334155;
+        }
+        .tooltip-btn:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+            z-index: 100;
+        }
+        body.light-mode .tooltip-btn:hover::after {
+            background: #ffffff;
+            color: #1e293b;
+            border-color: #e2e8f0;
+        }
+        body.light-mode .tooltip-btn:hover::before {
+            border-top-color: #ffffff;
+        }
+        /* 自动消失提示框 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+            border: 1px solid #334155;
+            animation: slideDown 0.3s ease;
+        }
+        body.light-mode .toast {
+            background: #ffffff;
+            color: #1e293b;
+            border-color: #e2e8f0;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .profit-type-btn:hover:not(.bg-indigo-600) {
+            background-color: var(--table-hover) !important;
+        }
+    </style>
+</head>
+<body class="py-6 light-mode">
+    <div class="max-w-[1650px] mx-auto px-6">
+        
+        <div class="flex items-center justify-between mb-8 gap-6">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-black italic tracking-tighter uppercase">资产看板 <span class="text-indigo-500">PRO</span></h1>
+                <div class="flex items-center bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-1 gap-1">
+                    <button onclick="refreshAllPrices()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition" title="立即刷新">
+                        <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    </button>
+                    <select id="autoRefreshSelect" onchange="setupAutoRefresh()" class="bg-transparent text-[10px] font-black px-2 outline-none cursor-pointer text-[var(--text-muted)]">
+                        <option value="0">手动刷新</option>
+                        <option value="60">1 分钟自动</option>
+                        <option value="300">5 分钟自动</option>
+                        <option value="600">10 分钟自动</option>
+                    </select>
+                </div>
+                <button onclick="document.body.classList.toggle('light-mode')" class="p-2 border border-[var(--border-color)] rounded-lg text-xs" title="切换模式">🌓主题</button>
+            </div>
+
+            <div class="flex-grow relative flex items-center justify-center gap-10 border-x border-[var(--border-color)] px-8 h-16">
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] font-black text-[var(--text-muted)] uppercase mb-1">总投入本金</span>
+                    <div class="flex items-center text-sm font-black mono italic">
+                        <span class="text-indigo-500 mr-1">¥</span>
+                        <input type="number" id="baseCashInput" class="input-box w-28" oninput="saveAndCalculate()">
+                    </div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] font-black text-[var(--text-muted)] uppercase mb-1">HKD 汇率</span>
+                    <div class="flex items-center text-sm font-black mono italic">
+                        <span class="text-indigo-500 mr-1">@</span>
+                        <input type="number" id="fxRateInput" step="0.001" class="input-box w-20" oninput="saveAndCalculate()">
+                    </div>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-[9px] font-black text-indigo-500 uppercase mb-1 italic">可用现金 (总本金 - 拟加仓)</span>
+                    <div id="availCashDisplay" class="text-base font-black mono text-indigo-500 italic">¥ 0</div>
+                </div>
+                <div class="absolute bottom-0 left-0 h-[2px] bg-indigo-500/30 w-full overflow-hidden">
+                    <div id="refreshProgress" class="h-full bg-indigo-500 w-0"></div>
+                </div>
+            </div>
+            
+            <div class="flex gap-8 text-right">
+                <div><div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">总市值 <span id="statLabel1" class="text-indigo-500">(全部)</span></div><div id="totalMktDisplay" class="text-2xl font-black mono italic">¥ 0</div></div>
+                <div><div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">今日盈亏 <span id="statLabel2" class="text-indigo-500">(全部)</span></div><div id="todayProfitDisplay" class="text-2xl font-black mono">¥ 0</div></div>
+                <div><div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">累计盈亏 <span id="statLabel3" class="text-indigo-500">(全部)</span></div><div id="overallProfitDisplay" class="text-2xl font-black mono">¥ 0</div></div>
+            </div>
+        </div>
+
+        <!-- 待确认交易提示 -->
+        <div id="pendingTradeBanner" class="hidden mb-6 bg-amber-500/20 border border-amber-500/30 rounded-xl p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-amber-400 text-lg">⏰</span>
+                    <div>
+                        <div class="font-black text-amber-400 text-sm">有待确认的基金加仓交易</div>
+                        <div id="pendingTradeCount" class="text-[10px] text-[var(--text-muted)]">请在次日确认交易</div>
+                    </div>
+                </div>
+                <button onclick="openPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-black text-[10px]">查看待确认</button>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-4">
+                <div class="flex p-1 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+                    <button onclick="switchTab('all')" id="tab-all" class="px-6 py-1.5 rounded-lg font-black text-[10px] bg-indigo-600 text-white">全部</button>
+                    <button onclick="switchTab('stock')" id="tab-stock" class="px-6 py-1.5 rounded-lg font-black text-[10px]">股票</button>
+                    <button onclick="switchTab('fund')" id="tab-fund" class="px-6 py-1.5 rounded-lg font-black text-[10px]">基金</button>
+                </div>
+                <div class="text-[10px] text-[var(--text-muted)] font-black">
+                    净值更新: <span id="netValueUpdateStatus" class="text-emerald-400">--</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="addStockBtn" onclick="addRow({code:'', name:'新股票', shares:0, cost:0, isFund:false})" class="bg-slate-800 text-white px-5 py-2 rounded-xl font-black text-[10px] hover:bg-slate-700 transition">+ 添加股票</button>
+                <button id="addFundBtn" onclick="addRow({code:'', name:'新基金', shares:0, cost:0, isFund:true})" class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-black text-[10px] hover:bg-indigo-500 transition">+ 添加基金</button>
+                <button id="saveAllFundsBtn" onclick="saveAllFunds()" class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-black text-[10px] hover:bg-indigo-500 transition">💾 一键保存全部基金</button>
+                <div class="h-8 w-[1px] bg-[var(--border-color)] mx-1"></div>
+                <button onclick="document.getElementById('importFile').click()" class="p-2 border border-[var(--border-color)] rounded-xl text-[10px] font-black hover:bg-[var(--table-hover)]">导入 CSV</button>
+                <button onclick="exportCSV()" class="p-2 border border-[var(--border-color)] rounded-xl text-[10px] font-black hover:bg-[var(--table-hover)]">导出数据</button>
+                <button onclick="saveDailyProfit()" class="p-2 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-black hover:bg-emerald-500/10">保存今日收益</button>
+                <button onclick="openProfitCalendarModal()" class="p-2 border border-indigo-500/30 text-indigo-400 rounded-xl text-[10px] font-black hover:bg-indigo-500/10">收益看板</button>
+                <button onclick="clearLocalData()" class="p-2 border border-rose-500/30 text-rose-400 rounded-xl text-[10px] font-black hover:bg-rose-500/10">清除本地数据</button>
+                <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
+            </div>
+        </div>
+
+        <div class="card overflow-hidden shadow-xl">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-[var(--bg-table-header)] text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest">
+                        <th class="px-8 py-5">标的信息 (代码/名称)</th>
+                        <th class="px-4 text-center">持仓数量</th>
+                        <th class="px-4 text-center">成本均价</th>
+                        <th class="px-4 text-center">当前价格</th>
+                        <th class="px-4 text-center">今日盈亏 / 涨跌幅</th>
+                        <th class="px-4 text-center">累计盈亏 / 收益率</th>
+                        <th class="px-4 text-center cursor-pointer hover:text-indigo-400" onclick="toggleSort()">当前市值 ↕</th>
+                        <th class="px-4 text-center">目标价格</th>
+                        <th class="px-4 text-center">卖出收益 / 收益率</th>
+                        <th class="px-4 text-center bg-indigo-500/5 text-indigo-400 border-l border-indigo-500/10">拟加仓金额 (CNY)</th>
+                        <th class="px-4 text-center">涨跌提醒</th>
+                        <th class="w-44"></th>
+                    </tr>
+                </thead>
+                <tbody id="stockBody" class="font-bold text-[var(--text-main)]"></tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="flex items-center justify-between mt-4">
+            <div class="text-[10px] text-[var(--text-muted)] font-black">
+                共 <span id="totalCount" class="text-indigo-400">0</span> 条
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="changePage('prev')" class="px-3 py-1 border border-[var(--border-color)] rounded-lg text-[10px] font-black hover:bg-[var(--table-hover)]" id="prevBtn">上一页</button>
+                <span class="text-[10px] text-[var(--text-muted)] font-black px-2">
+                    第 <span id="currentPage" class="text-indigo-400">1</span> / <span id="totalPages" class="text-indigo-400">1</span> 页
+                </span>
+                <button onclick="changePage('next')" class="px-3 py-1 border border-[var(--border-color)] rounded-lg text-[10px] font-black hover:bg-[var(--table-hover)]" id="nextBtn">下一页</button>
+                <select onchange="changePageSize(this.value)" class="bg-transparent border border-[var(--border-color)] rounded-lg px-2 py-1 text-[10px] font-black outline-none">
+                    <option value="10">10条/页</option>
+                    <option value="20">20条/页</option>
+                    <option value="50">50条/页</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 加仓弹窗 -->
+        <div id="addFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-black">基金加仓</h3>
+                    <button onclick="closeAddFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-sm text-[var(--text-muted)]">
+                        <span class="text-indigo-400 font-black" id="modalFundName"></span>
+                        <span class="mono ml-2" id="modalFundCode"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前持仓</div>
+                            <div class="mono font-black" id="modalCurrentShares">0 份</div>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前成本</div>
+                            <div class="mono font-black" id="modalCurrentCost">¥0.000</div>
+                        </div>
+                    </div>
+                    <div class="bg-[var(--bg-main)] p-4 rounded-lg">
+                        <div class="text-[var(--text-muted)] text-[10px] uppercase mb-1">当前净值</div>
+                        <div class="mono font-black text-xl text-indigo-400" id="modalNetValue">¥0.000</div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase mb-2 block">交易时间</label>
+                        <div class="flex gap-2 mb-4">
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="tradeTime" id="tradeTimeBefore" value="before" checked class="accent-indigo-500">
+                                <span class="text-sm font-black">15:00前</span>
+                            </label>
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="tradeTime" id="tradeTimeAfter" value="after" class="accent-indigo-500">
+                                <span class="text-sm font-black">15:00后</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">加仓金额 (CNY)</label>
+                        <input type="number" id="modalAddAmount" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-indigo-500 outline-none" placeholder="输入加仓金额" oninput="previewAddFund()">
+                    </div>
+                    <div class="bg-indigo-500/10 p-4 rounded-lg border border-indigo-500/20">
+                        <div class="text-[10px] font-black text-indigo-400 uppercase mb-2">加仓预览</div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">新增份额</div>
+                                <div class="mono font-black" id="modalNewShares">+0 份</div>
+                            </div>
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">总份额</div>
+                                <div class="mono font-black" id="modalTotalShares">0 份</div>
+                            </div>
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">新成本</div>
+                                <div class="mono font-black" id="modalNewCost">¥0.000</div>
+                            </div>
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">总成本</div>
+                                <div class="mono font-black" id="modalTotalCost">¥0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="closeAddFundModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button onclick="confirmAddFund()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white">确认加仓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 减仓弹窗 -->
+        <div id="reduceFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-black">基金减仓</h3>
+                    <button onclick="closeReduceFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-sm text-[var(--text-muted)]">
+                        <span class="text-rose-400 font-black" id="reduceModalFundName"></span>
+                        <span class="mono ml-2" id="reduceModalFundCode"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前持仓</div>
+                            <div class="mono font-black" id="reduceModalCurrentShares">0 份</div>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="text-[var(--text-muted)] text-[10px] uppercase">成本价</div>
+                            <div class="mono font-black" id="reduceModalCurrentCost">¥0.0000</div>
+                        </div>
+                    </div>
+                    <div class="bg-[var(--bg-main)] p-4 rounded-lg">
+                        <div class="text-[var(--text-muted)] text-[10px] uppercase mb-1">当前净值</div>
+                        <div class="mono font-black text-xl text-rose-400" id="reduceModalNetValue">¥0.000</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">减仓份额</label>
+                            <input type="number" id="reduceModalShares" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-rose-500 outline-none" placeholder="输入份额" oninput="previewReduceFund()">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">减仓比例</label>
+                            <select id="reduceModalPercent" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-rose-500 outline-none" onchange="applyReducePercent()">
+                                <option value="">选择</option>
+                                <option value="25">1/4 (25%)</option>
+                                <option value="33.33">1/3 (33%)</option>
+                                <option value="50">1/2 (50%)</option>
+                                <option value="66.67">2/3 (67%)</option>
+                                <option value="75">3/4 (75%)</option>
+                                <option value="100">全部 (100%)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-rose-500/10 p-4 rounded-lg border border-rose-500/20">
+                        <div class="text-[10px] font-black text-rose-400 uppercase mb-2">减仓预览</div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">剩余份额</div>
+                                <div class="mono font-black" id="reduceModalRemainShares">0.00 份</div>
+                            </div>
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">赎回金额</div>
+                                <div class="mono font-black" id="reduceModalRedeemAmount">¥0</div>
+                            </div>
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">持仓成本</div>
+                                <div class="mono font-black" id="reduceModalRemainCost">¥0.0000</div>
+                            </div>
+                            <div>
+                                <div class="text-[var(--text-muted)] text-[10px]">实现盈亏</div>
+                                <div class="mono font-black" id="reduceModalRealizedPL">¥0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="closeReduceFundModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button onclick="confirmReduceFund()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-rose-600 hover:bg-rose-500 text-white">确认减仓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 待确认交易弹窗 -->
+        <div id="pendingTradesModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[600px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-black">待确认交易</h3>
+                    <button onclick="closePendingTradesModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div id="pendingTradesList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closePendingTradesModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                    <button onclick="confirmAllPendingTrades()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">全部确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 交易记录弹窗 -->
+        <div id="tradeHistoryModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[650px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-black">交易记录</h3>
+                        <div class="text-[10px] text-[var(--text-muted)]" id="tradeHistoryFundName"></div>
+                    </div>
+                    <button onclick="closeTradeHistoryModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div id="tradeHistoryList" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
+                <div class="mt-4 flex gap-3">
+                    <button onclick="closeTradeHistoryModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 收益看板弹窗 -->
+        <div id="profitCalendarModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 w-[700px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-lg font-black">收益看板</h3>
+                    </div>
+                    <button onclick="closeProfitCalendarModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+
+                <!-- 切换按钮 -->
+                <div class="flex p-1 bg-[var(--bg-main)] rounded-lg mb-4 gap-1">
+                    <button onclick="switchProfitType('total')" id="profit-type-total" class="flex-1 py-2 rounded-lg font-black text-xs bg-indigo-600 text-white profit-type-btn">总收益</button>
+                    <button onclick="switchProfitType('stock')" id="profit-type-stock" class="flex-1 py-2 rounded-lg font-black text-xs text-[var(--text-muted)] profit-type-btn">股票收益</button>
+                    <button onclick="switchProfitType('fund')" id="profit-type-fund" class="flex-1 py-2 rounded-lg font-black text-xs text-[var(--text-muted)] profit-type-btn">基金收益</button>
+                </div>
+
+                <!-- 月份切换 -->
+                <div class="flex items-center justify-between mb-4">
+                    <button onclick="changeMonth(-1)" class="p-2 border border-[var(--border-color)] rounded-lg text-xs font-black hover:bg-[var(--table-hover)]">◀ 上月</button>
+                    <span id="currentMonthDisplay" class="font-black text-sm"></span>
+                    <button onclick="changeMonth(1)" class="p-2 border border-[var(--border-color)] rounded-lg text-xs font-black hover:bg-[var(--table-hover)]">下月 ▶</button>
+                </div>
+
+                <!-- 日历 -->
+                <div id="profitCalendar" class="grid grid-cols-7 gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置 ====================
+        // const API_BASE_URL = 'https://unfilial-constrictingly-maddie.ngrok-free.dev';
+        const API_BASE_URL = 'https://finance-app-production-3a22.up.railway.app/'
+        // const API_BASE_URL = 'http://localhost:3000';
+
+        let currentTab = 'all';
+        let sortDir = -1;
+        let refreshTimer = null;
+        let progressInterval = null;
+        let remainingSeconds = 0;
+
+        // 分页相关
+        let currentPageNum = 1;
+        let pageSize = 10;
+
+        function clearZero(input) {
+            if (parseFloat(input.value) === 0) {
+                input.value = '';
+            }
+        }
+
+        // 切换境外基金标记
+        function toggleOverseas(row) {
+            const starBtn = row.querySelector('.star-btn');
+            const isOverseas = starBtn.classList.contains('text-yellow-400');
+            if (isOverseas) {
+                starBtn.classList.remove('text-yellow-400');
+                starBtn.classList.add('text-slate-500', 'opacity-0', 'group-hover:opacity-100');
+                row.dataset.isOverseas = '0';
+            } else {
+                starBtn.classList.remove('text-slate-500', 'opacity-0', 'group-hover:opacity-100');
+                starBtn.classList.add('text-yellow-400');
+                row.dataset.isOverseas = '1';
+            }
+            saveAndCalculate();
+        }
+
+        // 添加行
+        function addRow(item, prepend = true) {
+            const tr = document.createElement('tr');
+            tr.dataset.isFund = item.isFund;
+            tr.dataset.id = item.id || Date.now() + Math.random().toString(36).substr(2, 9);
+            tr.dataset.isOverseas = item.isOverseas ? '1' : '0';
+            tr.className = "hover:bg-[var(--table-hover)] transition group border-b border-[var(--border-color)]";
+
+            const fundBtns = item.isFund
+                ? `<button onclick="openTradeHistoryModal(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="交易记录">📋</button>
+                   <button onclick="openAddFundModal(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="加仓">➕</button>
+                   <button onclick="openReduceFundModal(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="减仓">➖</button>`
+                : '';
+
+            tr.innerHTML = `
+                <td class="px-8 py-5">
+                    <div class="flex items-center gap-2">
+                        <div class="stock-name text-sm mb-0.5">${item.name || '正在获取...'}</div>
+                        <span class="star-btn cursor-pointer select-none ${item.isOverseas ? 'text-yellow-400' : 'text-slate-500 opacity-0 group-hover:opacity-100'}" onclick="toggleOverseas(this.closest('tr'))" title="境外基金" style="font-size: 12px; transition: opacity 0.2s;">★</span>
+                    </div>
+                    <div class="flex items-center gap-1 text-[10px] mono text-[var(--text-muted)]">
+                        <span class="text-indigo-500 font-black italic">#</span>
+                        <input type="text" class="code-input bg-transparent border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
+                    </div>
+                </td>
+                <td class="px-4 text-center"><input type="number" class="shares-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.shares || 0}" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
+                <td class="px-4 text-center"><input type="number" class="cost-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
+                <td class="px-4 text-center mono text-sm price-cell italic">¥0.000</td>
+                <td class="px-4 text-center">
+                    <div class="today-profit-cell mono text-sm italic">¥0</div>
+                    <div class="chg-pct-cell text-[10px] font-black opacity-80">0.00%</div>
+                </td>
+                <td class="px-4 text-center">
+                    <div class="overall-profit-cell mono text-sm italic">¥0</div>
+                    <div class="ratio-cell text-[10px] font-black opacity-80">0.00%</div>
+                </td>
+                <td class="px-4 text-center"><div class="mkt-val-cell mono text-sm italic">¥0</div></td>
+                <td class="px-4 text-center"><input type="number" class="target-price-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="saveAndCalculate()"></td>
+                <td class="px-4 text-center">
+                    <div class="target-profit-cell mono text-sm italic">--</div>
+                    <div class="target-ratio-cell text-[10px] font-black opacity-80">--</div>
+                </td>
+                <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input bg-transparent border-b border-indigo-500/20 text-center mono text-sm text-indigo-400 w-full outline-none focus:border-indigo-500" value="${item.planBuy || 0}" oninput="saveAndCalculate()"></td>
+                <td class="px-4 text-center"><input type="number" class="alert-input bg-transparent text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="saveAndCalculate()"></td>
+                <td class="px-2 text-center">
+                    ${fundBtns}
+                    <button onclick="saveRow(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="保存本行">💾</button>
+                    <button onclick="deleteRow(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition" data-tip="删除">✕</button>
+                </td>
+            `;
+            const stockBody = document.getElementById('stockBody');
+            if (prepend && stockBody.firstChild) {
+                stockBody.insertBefore(tr, stockBody.firstChild);
+            } else {
+                stockBody.appendChild(tr);
+            }
+            if(item.code) fetchPrice(tr, item.code);
+            updatePagination();
+
+            // 如果是新添加的行（没有code），自动聚焦到代码输入框
+            if (!item.code) {
+                setTimeout(() => {
+                    tr.querySelector('.code-input')?.focus();
+                }, 50);
+            }
+        }
+
+        // 更新分页显示
+        function updatePagination() {
+            // 先显示所有行
+            document.querySelectorAll('#stockBody tr').forEach(row => {
+                row.style.display = '';
+            });
+
+            // 获取所有行，按 tab 筛选
+            const allRows = Array.from(document.querySelectorAll('#stockBody tr'));
+            let filteredRows = allRows.filter(row => {
+                const isF = row.dataset.isFund === 'true';
+                if (currentTab === 'all') return true;
+                if (currentTab === 'stock') return !isF;
+                if (currentTab === 'fund') return isF;
+                return true;
+            });
+
+            const totalCount = filteredRows.length;
+            const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+            if (currentPageNum > totalPages) currentPageNum = totalPages;
+
+            const startIndex = (currentPageNum - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+
+            // 控制哪些行显示
+            allRows.forEach(row => {
+                const isF = row.dataset.isFund === 'true';
+                const inTab = (currentTab === 'all') ||
+                             (currentTab === 'stock' && !isF) ||
+                             (currentTab === 'fund' && isF);
+
+                if (!inTab) {
+                    row.style.display = 'none';
+                } else {
+                    const idx = filteredRows.indexOf(row);
+                    if (idx >= startIndex && idx < endIndex) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+
+            // 更新分页控件
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('currentPage').textContent = currentPageNum;
+            document.getElementById('totalPages').textContent = totalPages;
+            document.getElementById('prevBtn').disabled = currentPageNum <= 1;
+            document.getElementById('nextBtn').disabled = currentPageNum >= totalPages;
+        }
+
+        // 切换页
+        function changePage(direction) {
+            const allRows = Array.from(document.querySelectorAll('#stockBody tr'));
+            let filteredRows = allRows.filter(row => {
+                const isF = row.dataset.isFund === 'true';
+                if (currentTab === 'all') return true;
+                if (currentTab === 'stock') return !isF;
+                if (currentTab === 'fund') return isF;
+                return true;
+            });
+
+            const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+
+            if (direction === 'prev' && currentPageNum > 1) {
+                currentPageNum--;
+            } else if (direction === 'next' && currentPageNum < totalPages) {
+                currentPageNum++;
+            }
+            updatePagination();
+        }
+
+        // 改变每页条数
+        function changePageSize(size) {
+            pageSize = parseInt(size);
+            currentPageNum = 1;
+            updatePagination();
+        }
+
+        function handleCodeInput(el) {
+            const code = el.value.trim();
+            const row = el.closest('tr');
+            const rowId = row.dataset.id;
+            const isF = row.dataset.isFund === 'true';
+
+            if (code.length >= 5) {
+                // 检查是否重复
+                const existingRows = Array.from(document.querySelectorAll('#stockBody tr'));
+                const duplicate = existingRows.find(r => {
+                    if (r.dataset.id === rowId) return false; // 排除自己
+                    const rCode = r.querySelector('.code-input')?.value?.trim();
+                    const rIsF = r.dataset.isFund === 'true';
+                    return rCode === code && rIsF === isF;
+                });
+
+                if (duplicate) {
+                    const dupName = duplicate.querySelector('.stock-name')?.innerText || '该标的';
+                    showToast(`⚠️ ${dupName} (#${code}) 已存在！`);
+                }
+
+                fetchPrice(row, code);
+            }
+        }
+
+        function fetchPrice(row, code) {
+            const isF = row.dataset.isFund === 'true';
+            let sym = code.length === 5 ? 'hk' + code : (isF ? 'jj' + code : ((/^[569]/.test(code)) ? 'sh' + code : 'sz' + code));
+
+            const apiType = isF ? 's_' : 's_';
+            const vn = "v_" + apiType + sym;
+            const s = document.createElement('script');
+            s.src = `https://qt.gtimg.cn/q=${apiType}${sym}&_=${Math.random()}`;
+            s.onload = function() {
+                if (window[vn]) {
+                    const d = window[vn].split('~');
+                    row.querySelector('.stock-name').innerText = d[1].replace('[基金] ', '');
+
+                    let priceText = '¥' + parseFloat(d[3]).toFixed(3);
+                    let priceDate = '';
+
+                    if (isF) {
+                        // 搜索所有字段查找日期格式 (YYYYMMDD 或 YYYY-MM-DD)
+                        for (let i = 0; i < d.length; i++) {
+                            if (d[i] && /^\d{4}[-]?\d{2}[-]?\d{2}$/.test(d[i])) {
+                                priceDate = d[i].replace(/-/g, '');
+                                break;
+                            }
+                        }
+
+                        // QDII 境外基金特殊处理：日期 +1 天
+                        const isOverseas = row.dataset.isOverseas === '1';
+                        if (isOverseas) {
+                            if (priceDate && priceDate.length === 8) {
+                                const year = parseInt(priceDate.substr(0, 4));
+                                const month = parseInt(priceDate.substr(4, 2)) - 1;
+                                const day = parseInt(priceDate.substr(6, 2));
+                                const date = new Date(year, month, day);
+                                date.setDate(date.getDate() + 1);
+                                const y = date.getFullYear();
+                                const m = (date.getMonth() + 1).toString().padStart(2, '0');
+                                const d = date.getDate().toString().padStart(2, '0');
+                                priceDate = `${y}${m}${d}`;
+                            }
+                        }
+
+                        const now = new Date();
+                        const todayStr = now.getFullYear().toString() +
+                                         (now.getMonth() + 1).toString().padStart(2, '0') +
+                                         now.getDate().toString().padStart(2, '0');
+
+                        const yesterday = new Date(now);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        const yesterdayStr = yesterday.getFullYear().toString() +
+                                              (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+                                              yesterday.getDate().toString().padStart(2, '0');
+
+                        const dayBefore = new Date(now);
+                        dayBefore.setDate(dayBefore.getDate() - 2);
+                        const dayBeforeStr = dayBefore.getFullYear().toString() +
+                                              (dayBefore.getMonth() + 1).toString().padStart(2, '0') +
+                                              dayBefore.getDate().toString().padStart(2, '0');
+
+                        const hour = now.getHours();
+                        const minute = now.getMinutes();
+                        let showUpdated = false;
+                        let labelText = '已更新';
+
+                        // 判断是否是交易日的上午（9:30-15:00）
+                        const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
+
+                        if (priceDate) {
+                            if (priceDate === todayStr) {
+                                // 今天的数据
+                                showUpdated = true;
+                                labelText = '已更新';
+                            } else if (priceDate === yesterdayStr) {
+                                // 昨天的数据
+                                if (isTradingMorning) {
+                                    // 交易日上午（9:30-15:00）：昨天的数据算未更新
+                                    showUpdated = false;
+                                    labelText = '待更新';
+                                } else {
+                                    // 其他时间：15点前算已更新，15点后显示昨日净值
+                                    showUpdated = hour < 15;
+                                    labelText = hour < 15 ? '已更新' : '昨日净值';
+                                }
+                            } else if (priceDate === dayBeforeStr) {
+                                // 前天的数据（周末或节假日）
+                                showUpdated = true;
+                                labelText = '已更新';
+                            }
+                        }
+
+                        if (showUpdated) {
+                            priceText += `<span class="text-emerald-400 text-[10px] font-black ml-1">${labelText}</span>`;
+                        } else if (priceDate) {
+                            priceText += `<span class="text-amber-400 text-[10px] font-black ml-1">待更新</span>`;
+                        }
+                        row.dataset.isTodayUpdated = showUpdated ? '1' : '0';
+                    }
+
+                    row.querySelector('.price-cell').innerHTML = priceText;
+                    row.dataset.price = d[3]; row.dataset.change = d[5] || 0;
+                    row.dataset.priceDate = priceDate || '';
+                    saveAndCalculate();
+                    updateNetValueStatus();
+                }
+                document.body.removeChild(s); delete window[vn];
+            };
+            document.body.appendChild(s);
+        }
+
+        function updateNetValueStatus() {
+            const allRows = Array.from(document.querySelectorAll('#stockBody tr'));
+            const fundRows = allRows.filter(r => r.dataset.isFund === 'true');
+
+            if (fundRows.length === 0) {
+                document.getElementById('netValueUpdateStatus').textContent = '--';
+                return;
+            }
+
+            let updatedCount = 0;
+            fundRows.forEach(row => {
+                if (row.dataset.isTodayUpdated === '1') {
+                    updatedCount++;
+                }
+            });
+
+            const statusEl = document.getElementById('netValueUpdateStatus');
+            if (updatedCount === fundRows.length) {
+                statusEl.textContent = '已全部更新';
+                statusEl.className = 'text-emerald-400';
+            } else {
+                statusEl.textContent = `${updatedCount}/${fundRows.length}`;
+                statusEl.className = 'text-amber-400';
+            }
+        }
+
+        function saveAndCalculate() {
+            const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+            const baseInput = parseFloat(document.getElementById('baseCashInput').value) || 0;
+            const fx = parseFloat(document.getElementById('fxRateInput').value) || 0.91;
+            const refreshVal = document.getElementById('autoRefreshSelect').value;
+            
+            let totalMkt = 0, totalToday = 0, totalOverall = 0, totalPlan = 0;
+            let stockMkt = 0, stockToday = 0, stockOverall = 0;
+            let fundMkt = 0, fundToday = 0, fundOverall = 0;
+
+            const items = rows.map(row => {
+                const code = row.querySelector('.code-input').value;
+                const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+                const price = parseFloat(row.dataset.price) || 0;
+                const change = parseFloat(row.dataset.change) || 0;
+                const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
+                const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
+                const isF = row.dataset.isFund === 'true';
+
+                const rate = (code.length === 5) ? fx : 1;
+                const mkt = shares * price * rate;
+                const profit = (price - cost) * shares * rate;
+
+                // 判断今日净值是否已更新
+                let today = 0;
+                let displayChange = 0;
+
+                if (!isF) {
+                    // 股票 → 正常计算
+                    today = mkt * (change / 100);
+                    displayChange = change;
+                } else {
+                    // 基金：判断净值日期
+                    const priceDate = row.dataset.priceDate || '';
+                    const now = new Date();
+                    const todayStr = now.getFullYear().toString() +
+                                     (now.getMonth() + 1).toString().padStart(2, '0') +
+                                     now.getDate().toString().padStart(2, '0');
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.getFullYear().toString() +
+                                         (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+                                         yesterday.getDate().toString().padStart(2, '0');
+                    const hour = now.getHours();
+                    const minute = now.getMinutes();
+
+                    // 判断是否是交易日的上午（9:30-15:00）
+                    const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
+
+                    let isTodayUpdated = false;
+                    if (priceDate === todayStr) {
+                        isTodayUpdated = true;
+                    } else if (priceDate === yesterdayStr) {
+                        if (isTradingMorning) {
+                            // 交易日上午（9:30-15:00）：昨天的数据算未更新
+                            isTodayUpdated = false;
+                        } else {
+                            // 其他时间：15点前算已更新
+                            isTodayUpdated = hour < 15;
+                        }
+                    }
+
+                    if (isTodayUpdated) {
+                        today = mkt * (change / 100);
+                        displayChange = change;
+                    } else {
+                        today = 0;
+                        displayChange = 0;
+                    }
+                }
+
+                if (isF) {
+                    fundMkt += mkt;
+                    fundToday += today;
+                    fundOverall += profit;
+                } else {
+                    stockMkt += mkt;
+                    stockToday += today;
+                    stockOverall += profit;
+                }
+
+                totalMkt += mkt; totalToday += today; totalOverall += profit; totalPlan += planBuy;
+                row.dataset.mktVal = mkt;
+
+                row.querySelector('.mkt-val-cell').innerText = '¥' + Math.round(mkt).toLocaleString();
+                row.querySelector('.today-profit-cell').innerText = (today>=0?'+':'') + Math.round(today).toLocaleString();
+                row.querySelector('.today-profit-cell').className = 'today-profit-cell mono text-sm italic ' + (today>=0?'up':'down');
+                row.querySelector('.chg-pct-cell').innerText = (displayChange>=0?'+':'') + displayChange.toFixed(2) + '%';
+                row.querySelector('.chg-pct-cell').className = 'chg-pct-cell text-[10px] font-black ' + (displayChange>=0?'up':'down');
+                row.querySelector('.overall-profit-cell').innerText = (profit>=0?'+':'') + Math.round(profit).toLocaleString();
+                row.querySelector('.overall-profit-cell').className = 'overall-profit-cell mono text-sm italic ' + (profit>=0?'up':'down');
+                const ratio = cost > 0 ? ((price-cost)/cost*100).toFixed(2) : 0;
+                row.querySelector('.ratio-cell').innerText = (ratio>=0?'+':'') + ratio + '%';
+                row.querySelector('.ratio-cell').className = 'ratio-cell text-[10px] font-black ' + (ratio>=0?'up':'down');
+
+                // 目标价格收益计算
+                const targetProfitEl = row.querySelector('.target-profit-cell');
+                const targetRatioEl = row.querySelector('.target-ratio-cell');
+                if (targetPrice && targetPrice > 0 && shares > 0 && cost > 0) {
+                    const targetProfit = (targetPrice - cost) * shares * rate;
+                    const targetRatio = cost > 0 ? ((targetPrice - cost) / cost * 100).toFixed(2) : 0;
+                    targetProfitEl.innerText = (targetProfit >= 0 ? '+' : '') + Math.round(targetProfit).toLocaleString();
+                    targetProfitEl.className = 'target-profit-cell mono text-sm italic ' + (targetProfit >= 0 ? 'up' : 'down');
+                    targetRatioEl.innerText = (targetRatio >= 0 ? '+' : '') + targetRatio + '%';
+                    targetRatioEl.className = 'target-ratio-cell text-[10px] font-black opacity-80 ' + (targetRatio >= 0 ? 'up' : 'down');
+                } else {
+                    targetProfitEl.innerText = '--';
+                    targetProfitEl.className = 'target-profit-cell mono text-sm italic';
+                    targetRatioEl.innerText = '--';
+                    targetRatioEl.className = 'target-ratio-cell text-[10px] font-black opacity-80';
+                }
+
+                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const isOverseas = row.dataset.isOverseas === '1';
+                return { id: row.dataset.id, code, name: row.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, alert, isOverseas, targetPrice };
+            });
+
+            // 决定顶部显示哪一组数据
+            let dMkt = totalMkt, dToday = totalToday, dOverall = totalOverall, label = "(全部)";
+            if (currentTab === 'stock') { dMkt = stockMkt; dToday = stockToday; dOverall = stockOverall; label = "(股票)"; }
+            if (currentTab === 'fund') { dMkt = fundMkt; dToday = fundToday; dOverall = fundOverall; label = "(基金)"; }
+
+            document.getElementById('statLabel1').innerText = label;
+            document.getElementById('statLabel2').innerText = label;
+            document.getElementById('statLabel3').innerText = label;
+
+            const availCash = baseInput - totalPlan;
+            document.getElementById('availCashDisplay').innerText = '¥' + Math.round(availCash).toLocaleString();
+            document.getElementById('availCashDisplay').className = `text-base font-black mono italic ${availCash < 0 ? 'text-rose-500' : 'text-indigo-500'}`;
+            
+            document.getElementById('totalMktDisplay').innerText = '¥' + Math.round(dMkt).toLocaleString();
+            document.getElementById('todayProfitDisplay').innerText = (dToday>=0?'+':'') + Math.round(dToday).toLocaleString();
+            document.getElementById('todayProfitDisplay').className = 'text-2xl font-black mono ' + (dToday>=0?'up':'down');
+            document.getElementById('overallProfitDisplay').innerText = (dOverall>=0?'+':'') + Math.round(dOverall).toLocaleString();
+            document.getElementById('overallProfitDisplay').className = 'text-2xl font-black mono ' + (dOverall>=0?'up':'down');
+
+            localStorage.setItem('vDashboard_Final_Stable', JSON.stringify({ baseInput, fx, items, refreshVal }));
+            updateNetValueStatus();
+        }
+
+        async function saveRow(row) {
+            const code = row.querySelector('.code-input').value;
+            const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+            const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
+            const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+            const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
+            const isFund = row.dataset.isFund === 'true';
+            const isOverseas = row.dataset.isOverseas === '1';
+            const name = row.querySelector('.stock-name').innerText;
+            const id = row.dataset.id;
+
+            const rowData = { id, code, name, shares, cost, isFund, planBuy, alert, isOverseas, targetPrice };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-row`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rowData)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    row.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    setTimeout(() => row.style.backgroundColor = '', 500);
+                }
+            } catch (e) {
+                console.error('保存失败:', e);
+                row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                setTimeout(() => row.style.backgroundColor = '', 500);
+            }
+        }
+
+        async function deleteRow(row) {
+            if (!confirm('确定要删除这条记录吗？')) {
+                return;
+            }
+
+            const id = row.dataset.id;
+            const code = row.querySelector('.code-input')?.value || '';
+            const isFund = row.dataset.isFund === 'true';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/delete-row`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, code, isFund })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 从 DOM 移除
+                    row.remove();
+
+                    // 同步更新本地 localStorage
+                    const localData = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+                    if (localData && localData.items) {
+                        localData.items = localData.items.filter(item => {
+                            if (code && item.code === code && item.isFund === isFund) {
+                                return false;
+                            }
+                            if (item.id === id) {
+                                return false;
+                            }
+                            return true;
+                        });
+                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(localData));
+                    }
+
+                    updatePagination();
+                    saveAndCalculate();
+                    showToast('删除成功');
+                }
+            } catch (e) {
+                console.error('删除失败:', e);
+                row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                setTimeout(() => row.style.backgroundColor = '', 500);
+            }
+        }
+
+        async function saveAllFunds() {
+            const btn = document.getElementById('saveAllFundsBtn');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = '保存中...';
+
+            const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+            const fundRows = rows.filter(r => r.dataset.isFund === 'true');
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const row of fundRows) {
+                const code = row.querySelector('.code-input').value;
+                if (!code) continue;
+
+                const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+                const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
+                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const name = row.querySelector('.stock-name').innerText;
+                const id = row.dataset.id;
+
+                const rowData = { id, code, name, shares, cost, isFund: true, planBuy, alert };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/save-row`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(rowData)
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        successCount++;
+                        row.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    } else {
+                        failCount++;
+                        row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                    }
+                } catch (e) {
+                    failCount++;
+                    row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                }
+            }
+
+            setTimeout(() => {
+                fundRows.forEach(row => row.style.backgroundColor = '');
+            }, 800);
+
+            btn.disabled = false;
+            btn.innerText = originalText;
+            showToast(`保存完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+        }
+
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        function setupAutoRefresh() {
+            const seconds = parseInt(document.getElementById('autoRefreshSelect').value);
+            clearInterval(refreshTimer);
+            clearInterval(progressInterval);
+            document.getElementById('refreshProgress').style.width = '0%';
+            
+            if (seconds > 0) {
+                remainingSeconds = seconds;
+                progressInterval = setInterval(() => {
+                    remainingSeconds--;
+                    const width = ((seconds - remainingSeconds) / seconds) * 100;
+                    document.getElementById('refreshProgress').style.width = width + '%';
+                    if (remainingSeconds <= 0) {
+                        refreshAllPrices();
+                        remainingSeconds = seconds;
+                    }
+                }, 1000);
+            }
+            saveAndCalculate();
+        }
+
+        function refreshAllPrices() {
+            document.getElementById('refreshIcon').classList.add('refresh-spin');
+            // 刷新当前页的行
+            document.querySelectorAll('#stockBody tr').forEach(r => {
+                const code = r.querySelector('.code-input').value;
+                if(code) fetchPrice(r, code);
+            });
+            setTimeout(() => {
+                document.getElementById('refreshIcon').classList.remove('refresh-spin');
+                const seconds = parseInt(document.getElementById('autoRefreshSelect').value);
+                if(seconds > 0) remainingSeconds = seconds;
+            }, 1000);
+        }
+
+        function switchTab(t) {
+            currentTab = t;
+            document.querySelectorAll('[id^="tab-"]').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white');
+            });
+            document.getElementById('tab-'+t).classList.add('bg-indigo-600', 'text-white');
+
+            document.getElementById('addStockBtn').style.display = (t === 'all' || t === 'stock') ? '' : 'none';
+            document.getElementById('addFundBtn').style.display = (t === 'all' || t === 'fund') ? '' : 'none';
+            document.getElementById('saveAllFundsBtn').style.display = (t === 'fund') ? '' : 'none';
+
+            currentPageNum = 1;
+            updatePagination();
+            saveAndCalculate();
+        }
+
+        function exportCSV() {
+            const s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+            let csv = "\uFEFF代码,名称,数量,成本,类型,拟加仓,涨跌提醒,目标价格\n";
+            s.items.forEach(d => csv += `${d.code},${d.name},${d.shares},${d.cost},${d.isFund?1:0},${d.planBuy},${d.alert || ''},${d.targetPrice || ''}\n`);
+            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '我的资产配置.csv'; a.click();
+        }
+
+        function clearLocalData() {
+            if (!confirm('确定要清除浏览器本地数据吗？刷新后会从后端重新加载数据。')) {
+                return;
+            }
+            localStorage.removeItem('vDashboard_Final_Stable');
+            localStorage.removeItem('vDashboard_pendingTrades');
+            localStorage.removeItem('vDashboard_tradeHistory');
+            showToast('本地数据已清除，正在刷新...');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+
+        function importCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const rows = e.target.result.split('\n').slice(1);
+                document.getElementById('stockBody').innerHTML = '';
+                rows.forEach(row => {
+                    const cols = row.split(',');
+                    if (cols.length >= 5) {
+                        addRow({
+                            code: cols[0].trim(), name: cols[1].trim(), shares: parseFloat(cols[2]) || 0,
+                            cost: parseFloat(cols[3]) || 0, isFund: cols[4].trim() === '1',
+                            planBuy: parseFloat(cols[5]) || 0, alert: parseFloat(cols[6]) || '',
+                            targetPrice: parseFloat(cols[7]) || ''
+                        }, false);
+                    }
+                });
+                currentPageNum = 1;
+                updatePagination();
+                saveAndCalculate();
+            };
+            reader.readAsText(file);
+        }
+
+        function toggleSort() {
+            sortDir *= -1;
+            const body = document.getElementById('stockBody');
+            const rows = Array.from(body.querySelectorAll('tr'));
+            rows.sort((a, b) => sortDir * (parseFloat(b.dataset.mktVal) - parseFloat(a.dataset.mktVal)));
+            rows.forEach(r => body.appendChild(r));
+            updatePagination();
+        }
+
+        async function saveDailyProfit() {
+            // 计算股票和基金的今日收益
+            const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+            let stockToday = 0, fundToday = 0;
+
+            rows.forEach(row => {
+                const isF = row.dataset.isFund === 'true';
+                const price = parseFloat(row.dataset.price) || 0;
+                const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                const change = parseFloat(row.dataset.change) || 0;
+                const mkt = shares * price;
+
+                if (isF) {
+                    // 基金：判断净值是否已更新
+                    const priceDate = row.dataset.priceDate || '';
+                    const now = new Date();
+                    const todayStr = now.getFullYear().toString() +
+                                     (now.getMonth() + 1).toString().padStart(2, '0') +
+                                     now.getDate().toString().padStart(2, '0');
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.getFullYear().toString() +
+                                         (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+                                         yesterday.getDate().toString().padStart(2, '0');
+                    const hour = now.getHours();
+                    const minute = now.getMinutes();
+                    const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
+
+                    let isTodayUpdated = false;
+                    if (priceDate === todayStr) {
+                        isTodayUpdated = true;
+                    } else if (priceDate === yesterdayStr) {
+                        if (isTradingMorning) {
+                            isTodayUpdated = false;
+                        } else {
+                            isTodayUpdated = hour < 15;
+                        }
+                    }
+
+                    if (isTodayUpdated) {
+                        fundToday += mkt * (change / 100);
+                    }
+                } else {
+                    stockToday += mkt * (change / 100);
+                }
+            });
+
+            // 获取今天的日期字符串 YYYY-MM-DD
+            const now = new Date();
+            const dateStr = now.getFullYear().toString() + '-' +
+                           (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                           now.getDate().toString().padStart(2, '0');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-daily-profit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        date: dateStr,
+                        stockToday: Math.round(stockToday),
+                        fundToday: Math.round(fundToday),
+                        totalToday: Math.round(stockToday + fundToday)
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast(`今日收益已保存！股票: ¥${Math.round(stockToday).toLocaleString()}，基金: ¥${Math.round(fundToday).toLocaleString()}`);
+                } else {
+                    showToast('保存失败: ' + (result.message || '未知错误'));
+                }
+            } catch (e) {
+                console.error('保存今日收益失败:', e);
+                showToast('保存今日收益失败');
+            }
+        }
+
+        // ========== 收益看板功能 ==========
+        let profitCalendarData = [];
+        let profitCurrentMonth = new Date();
+        let profitDisplayType = 'total'; // 'total', 'stock', 'fund'
+
+        async function openProfitCalendarModal() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/daily-profit`);
+                const result = await response.json();
+                profitCalendarData = result.records || [];
+            } catch (e) {
+                console.error('获取收益数据失败:', e);
+                profitCalendarData = [];
+            }
+            document.getElementById('profitCalendarModal').classList.remove('hidden');
+            renderProfitCalendar();
+        }
+
+        function closeProfitCalendarModal() {
+            document.getElementById('profitCalendarModal').classList.add('hidden');
+        }
+
+        function switchProfitType(type) {
+            profitDisplayType = type;
+            document.querySelectorAll('[id^="profit-type-"]').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('text-[var(--text-muted)]');
+            });
+            document.getElementById('profit-type-' + type).classList.remove('text-[var(--text-muted)]');
+            document.getElementById('profit-type-' + type).classList.add('bg-indigo-600', 'text-white');
+            renderProfitCalendar();
+        }
+
+        function changeMonth(delta) {
+            profitCurrentMonth.setMonth(profitCurrentMonth.getMonth() + delta);
+            renderProfitCalendar();
+        }
+
+        function renderProfitCalendar() {
+            const calendarEl = document.getElementById('profitCalendar');
+            const monthDisplayEl = document.getElementById('currentMonthDisplay');
+
+            const year = profitCurrentMonth.getFullYear();
+            const month = profitCurrentMonth.getMonth();
+
+            monthDisplayEl.textContent = `${year}年${month + 1}月`;
+
+            // 创建日期到收益的映射
+            const profitMap = {};
+            profitCalendarData.forEach(record => {
+                profitMap[record.date] = record;
+            });
+
+            // 计算当月第一天和最后一天
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDayOfWeek = firstDay.getDay(); // 0 = 周日
+
+            let html = '';
+
+            // 星期标题
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+            weekDays.forEach(day => {
+                html += `<div class="text-center text-[10px] font-black text-[var(--text-muted)] py-1">${day}</div>`;
+            });
+
+            // 填充前面的空白
+            for (let i = 0; i < startDayOfWeek; i++) {
+                html += `<div></div>`;
+            }
+
+            // 填充日期
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const profitRecord = profitMap[dateStr];
+
+                let profitValue = null;
+                if (profitRecord) {
+                    if (profitDisplayType === 'total') {
+                        profitValue = profitRecord.totalToday;
+                    } else if (profitDisplayType === 'stock') {
+                        profitValue = profitRecord.stockToday;
+                    } else if (profitDisplayType === 'fund') {
+                        profitValue = profitRecord.fundToday;
+                    }
+                }
+
+                const hasData = profitValue !== null;
+                const isUp = hasData && profitValue >= 0;
+                const profitClass = hasData ? (isUp ? 'up' : 'down') : '';
+                const bgClass = hasData ? (isUp ? 'bg-rose-500/10' : 'bg-emerald-500/10') : 'bg-[var(--bg-main)]';
+
+                html += `
+                    <div class="${bgClass} rounded-lg p-2 text-center border border-[var(--border-color)] min-h-[60px] hover:bg-[var(--table-hover)] cursor-default transition">
+                        <div class="text-[10px] font-black text-[var(--text-muted)] mb-1">${day}</div>
+                        ${hasData ? `
+                            <div class="mono text-xs font-black ${profitClass}">
+                                ${isUp ? '+' : ''}¥${Math.round(profitValue).toLocaleString()}
+                            </div>
+                        ` : `
+                            <div class="text-[10px] text-[var(--text-muted)]">--</div>
+                        `}
+                    </div>
+                `;
+            }
+
+            calendarEl.innerHTML = html;
+        }
+
+        window.onload = async () => {
+            let s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+
+            // 如果本地没有数据，尝试从后端获取
+            if (!s || !s.items || s.items.length === 0) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/data`);
+                    const serverData = await response.json();
+                    if (serverData && serverData.rows && serverData.rows.length > 0) {
+                        s = {
+                            baseInput: 300000,
+                            fx: 0.91,
+                            items: serverData.rows,
+                            refreshVal: "0"
+                        };
+                        // 保存到本地
+                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(s));
+                    }
+                } catch (e) {
+                    console.log('从后端获取数据失败:', e);
+                }
+            }
+
+            // 如果还是没有数据，用默认值
+            if (!s) {
+                s = {baseInput:300000, fx:0.91, items:[], refreshVal:"0"};
+            }
+
+            document.getElementById('baseCashInput').value = s.baseInput;
+            // document.getElementById('fxRateInput').value = s.fx;
+            document.getElementById('autoRefreshSelect').value = s.refreshVal || "0";
+            document.getElementById('saveAllFundsBtn').style.display = 'none';
+            if (s.items && s.items.length) {
+                s.items.forEach(i => {
+                    // 给 017145 和 017437 默认设置境外标记
+                    if ((i.code === '017145' || i.code === '017437') && i.isOverseas === undefined) {
+                        i.isOverseas = true;
+                    }
+                    addRow(i, false);
+                });
+            } else {
+                addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
+            }
+            switchTab('all');
+            setupAutoRefresh();
+            updatePendingTradeBanner();
+            // 等净值获取完成后更新状态
+            setTimeout(updateNetValueStatus, 2000);
+        };
+		async function getHKDToCNY() {
+		  const res = await fetch("https://open.er-api.com/v6/latest/HKD");
+		  const data = await res.json();
+		
+		  const rate = data.rates.CNY;
+		  document.getElementById('fxRateInput').value = rate.toFixed(2);
+		  console.log("1 HKD ≈", rate, "CNY");
+		  return rate;
+		}
+		getHKDToCNY();
+
+        // ========== 基金加仓功能 ==========
+        let currentAddFundRow = null;
+        let currentAddFundData = {};
+
+        function openAddFundModal(row) {
+            if (row.dataset.isFund !== 'true') return;
+
+            currentAddFundRow = row;
+            const code = row.querySelector('.code-input').value;
+            const name = row.querySelector('.stock-name').innerText;
+            const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+            const price = parseFloat(row.dataset.price) || 0;
+            const rowId = row.dataset.id;
+
+            currentAddFundData = { code, name, shares, cost, price, rowId };
+
+            document.getElementById('modalFundName').innerText = name;
+            document.getElementById('modalFundCode').innerText = '#' + code;
+            document.getElementById('modalCurrentShares').innerText = shares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('modalCurrentCost').innerText = '¥' + cost.toFixed(4);
+            document.getElementById('modalNetValue').innerText = '¥' + price.toFixed(3);
+            document.getElementById('modalAddAmount').value = '';
+
+            // 清空预览
+            document.getElementById('modalNewShares').innerText = '+0.00 份';
+            document.getElementById('modalTotalShares').innerText = '0.00 份';
+            document.getElementById('modalNewCost').innerText = '¥0.0000';
+            document.getElementById('modalTotalCost').innerText = '¥0';
+
+            document.getElementById('addFundModal').classList.remove('hidden');
+        }
+
+        function closeAddFundModal() {
+            document.getElementById('addFundModal').classList.add('hidden');
+            currentAddFundRow = null;
+            currentAddFundData = {};
+        }
+
+        function previewAddFund() {
+            const amount = parseFloat(document.getElementById('modalAddAmount').value) || 0;
+            const { shares, cost, price } = currentAddFundData;
+
+            if (amount <= 0 || price <= 0) {
+                document.getElementById('modalNewShares').innerText = '+0.00 份';
+                document.getElementById('modalTotalShares').innerText = '0.00 份';
+                document.getElementById('modalNewCost').innerText = '¥0.0000';
+                document.getElementById('modalTotalCost').innerText = '¥0';
+                return;
+            }
+
+            const newShares = amount / price;
+            const totalShares = shares + newShares;
+            const totalCost = (shares * cost) + amount;
+            const newCost = totalCost / totalShares;
+
+            document.getElementById('modalNewShares').innerText = '+' + newShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('modalTotalShares').innerText = totalShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('modalNewCost').innerText = '¥' + newCost.toFixed(4);
+            document.getElementById('modalTotalCost').innerText = '¥' + Math.round(totalCost).toLocaleString();
+        }
+
+        async function confirmAddFund() {
+            const amount = parseFloat(document.getElementById('modalAddAmount').value) || 0;
+            if (!currentAddFundRow || amount <= 0) return;
+
+            const { shares, cost, price, code, name, rowId } = currentAddFundData;
+            if (price <= 0) {
+                alert('无法获取当前净值，请稍后重试');
+                return;
+            }
+
+            const isBefore15 = document.getElementById('tradeTimeBefore').checked;
+            const now = new Date();
+            const priceDate = currentAddFundRow.dataset.priceDate || '';
+
+            // 获取今天的日期字符串 YYYYMMDD
+            const todayStr = now.getFullYear().toString() +
+                            (now.getMonth() + 1).toString().padStart(2, '0') +
+                            now.getDate().toString().padStart(2, '0');
+
+            const isTodayNetValue = priceDate === todayStr;
+
+            if (!isBefore15) {
+                // 选择15点后：总是保存为待确认交易
+                const pendingTrades = getPendingTrades();
+                pendingTrades.push({
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    rowId: rowId,
+                    code: code,
+                    name: name,
+                    amount: amount,
+                    createdAt: now.toISOString()
+                });
+                savePendingTrades(pendingTrades);
+                updatePendingTradeBanner();
+                closeAddFundModal();
+                alert('已提交待确认交易，请在合适的时间确认！');
+            } else if (isTodayNetValue) {
+                // 选择15点前 + 当日净值已更新 → 直接确认
+                const newShares = amount / price;
+                const totalShares = shares + newShares;
+                const totalCost = (shares * cost) + amount;
+                const newCost = totalCost / totalShares;
+
+                currentAddFundRow.querySelector('.shares-input').value = totalShares.toFixed(2);
+                currentAddFundRow.querySelector('.cost-input').value = newCost.toFixed(4);
+
+                // 扣除拟加仓金额
+                const planBuyInput = currentAddFundRow.querySelector('.plan-buy-input');
+                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                planBuyInput.value = Math.max(0, currentPlanBuy - amount);
+
+                await saveRow(currentAddFundRow);
+                saveAndCalculate();
+
+                addTradeRecord(rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    type: 'add',
+                    amount: amount,
+                    shares: newShares,
+                    netValue: price,
+                    createdAt: now.toISOString()
+                });
+
+                closeAddFundModal();
+            } else {
+                // 选择15点前 + 当日净值未更新 → 存为待确认
+                const pendingTrades = getPendingTrades();
+                pendingTrades.push({
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    rowId: rowId,
+                    code: code,
+                    name: name,
+                    amount: amount,
+                    createdAt: now.toISOString()
+                });
+                savePendingTrades(pendingTrades);
+                updatePendingTradeBanner();
+                closeAddFundModal();
+                alert('当日净值尚未更新，已保存为待确认交易！');
+            }
+        }
+
+        // ========== 基金减仓功能 ==========
+        let currentReduceFundRow = null;
+        let currentReduceFundData = {};
+
+        function openReduceFundModal(row) {
+            if (row.dataset.isFund !== 'true') return;
+
+            currentReduceFundRow = row;
+            const code = row.querySelector('.code-input').value;
+            const name = row.querySelector('.stock-name').innerText;
+            const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+            const price = parseFloat(row.dataset.price) || 0;
+
+            currentReduceFundData = { code, name, shares, cost, price };
+
+            document.getElementById('reduceModalFundName').innerText = name;
+            document.getElementById('reduceModalFundCode').innerText = '#' + code;
+            document.getElementById('reduceModalCurrentShares').innerText = shares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('reduceModalCurrentCost').innerText = '¥' + cost.toFixed(4);
+            document.getElementById('reduceModalNetValue').innerText = '¥' + price.toFixed(3);
+            document.getElementById('reduceModalShares').value = '';
+            document.getElementById('reduceModalPercent').value = '';
+
+            // 清空预览
+            document.getElementById('reduceModalRemainShares').innerText = '0.00 份';
+            document.getElementById('reduceModalRedeemAmount').innerText = '¥0';
+            document.getElementById('reduceModalRemainCost').innerText = '¥0.0000';
+            document.getElementById('reduceModalRealizedPL').innerText = '¥0';
+
+            document.getElementById('reduceFundModal').classList.remove('hidden');
+        }
+
+        function closeReduceFundModal() {
+            document.getElementById('reduceFundModal').classList.add('hidden');
+            currentReduceFundRow = null;
+            currentReduceFundData = {};
+        }
+
+        function applyReducePercent() {
+            const percent = parseFloat(document.getElementById('reduceModalPercent').value) || 0;
+            if (percent <= 0) return;
+
+            const { shares } = currentReduceFundData;
+            const reduceShares = shares * (percent / 100);
+            document.getElementById('reduceModalShares').value = reduceShares.toFixed(2);
+            previewReduceFund();
+        }
+
+        function previewReduceFund() {
+            const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
+            const { shares, cost, price } = currentReduceFundData;
+
+            if (reduceShares <= 0 || reduceShares > shares) {
+                document.getElementById('reduceModalRemainShares').innerText = '0.00 份';
+                document.getElementById('reduceModalRedeemAmount').innerText = '¥0';
+                document.getElementById('reduceModalRemainCost').innerText = '¥0.0000';
+                document.getElementById('reduceModalRealizedPL').innerText = '¥0';
+                return;
+            }
+
+            const remainShares = shares - reduceShares;
+            const redeemAmount = reduceShares * price;
+            const realizedPL = (price - cost) * reduceShares;
+
+            document.getElementById('reduceModalRemainShares').innerText = remainShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('reduceModalRedeemAmount').innerText = '¥' + Math.round(redeemAmount).toLocaleString();
+            document.getElementById('reduceModalRemainCost').innerText = '¥' + cost.toFixed(4);
+
+            const plEl = document.getElementById('reduceModalRealizedPL');
+            plEl.innerText = (realizedPL >= 0 ? '+' : '') + '¥' + Math.round(realizedPL).toLocaleString();
+            plEl.className = 'mono font-black ' + (realizedPL >= 0 ? 'up' : 'down');
+        }
+
+        async function confirmReduceFund() {
+            const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
+            if (!currentReduceFundRow || reduceShares <= 0) return;
+
+            const { shares, cost, price } = currentReduceFundData;
+            if (reduceShares > shares) {
+                alert('减仓份额不能超过当前持仓');
+                return;
+            }
+
+            const remainShares = shares - reduceShares;
+            const redeemAmount = reduceShares * price;
+
+            // 更新该行数据（成本价保持不变）
+            currentReduceFundRow.querySelector('.shares-input').value = remainShares.toFixed(2);
+
+            // 保存到后端
+            await saveRow(currentReduceFundRow);
+            saveAndCalculate();
+
+            // 记录交易历史
+            const rowId = currentReduceFundRow.dataset.id;
+            addTradeRecord(rowId, {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                type: 'reduce',
+                amount: redeemAmount,
+                shares: reduceShares,
+                netValue: price,
+                createdAt: new Date().toISOString()
+            });
+
+            closeReduceFundModal();
+        }
+
+        // ========== 待确认交易功能 ==========
+        const PENDING_TRADES_KEY = 'vDashboard_pendingTrades';
+
+        function getPendingTrades() {
+            try {
+                return JSON.parse(localStorage.getItem(PENDING_TRADES_KEY)) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function savePendingTrades(trades) {
+            localStorage.setItem(PENDING_TRADES_KEY, JSON.stringify(trades));
+        }
+
+        function updatePendingTradeBanner() {
+            const trades = getPendingTrades();
+            const banner = document.getElementById('pendingTradeBanner');
+            const countEl = document.getElementById('pendingTradeCount');
+
+            if (trades.length > 0) {
+                banner.classList.remove('hidden');
+                countEl.innerText = `共 ${trades.length} 笔待确认`;
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function openPendingTradesModal() {
+            const trades = getPendingTrades();
+            const listEl = document.getElementById('pendingTradesList');
+
+            if (trades.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-[var(--text-muted)] py-8">暂无待确认交易</div>';
+            } else {
+                listEl.innerHTML = trades.map(trade => {
+                    const date = new Date(trade.createdAt);
+                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+                    // 查找对应的行，检查净值更新状态
+                    const row = document.querySelector(`tr[data-id="${trade.rowId}"]`);
+                    const isNetValueUpdated = row && row.dataset.isTodayUpdated === '1';
+                    const netValueStatusText = isNetValueUpdated ? '净值已更新 ✓' : '净值待更新';
+                    const netValueStatusClass = isNetValueUpdated ? 'text-emerald-400' : 'text-amber-400';
+
+                    return `
+                        <div class="bg-[var(--bg-main)] p-4 rounded-lg border border-[var(--border-color)]">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-black">${trade.name}</div>
+                                    <div class="text-[10px] text-[var(--text-muted)] mono">#${trade.code}</div>
+                                    <div class="text-[10px] font-black ${netValueStatusClass} mt-1">${netValueStatusText}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="text-[10px] text-[var(--text-muted)]">${dateStr}</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="confirmPendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-[10px] ${isNetValueUpdated ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-600 hover:bg-slate-500'} text-white">确认</button>
+                                <button onclick="deletePendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('pendingTradesModal').classList.remove('hidden');
+        }
+
+        function closePendingTradesModal() {
+            document.getElementById('pendingTradesModal').classList.add('hidden');
+        }
+
+        async function confirmPendingTrade(tradeId) {
+            const trades = getPendingTrades();
+            const tradeIndex = trades.findIndex(t => t.id === tradeId);
+            if (tradeIndex < 0) return;
+
+            const trade = trades[tradeIndex];
+
+            // 找到对应的行
+            const row = document.querySelector(`tr[data-id="${trade.rowId}"]`);
+            if (!row) {
+                alert('找不到对应的基金，请先刷新页面');
+                return;
+            }
+
+            // 获取最新净值
+            const price = parseFloat(row.dataset.price) || 0;
+            if (price <= 0) {
+                alert('无法获取最新净值，请稍后重试');
+                return;
+            }
+
+            const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+
+            const newShares = trade.amount / price;
+            const totalShares = shares + newShares;
+            const totalCost = (shares * cost) + trade.amount;
+            const newCost = totalCost / totalShares;
+
+            row.querySelector('.shares-input').value = totalShares.toFixed(2);
+            row.querySelector('.cost-input').value = newCost.toFixed(4);
+
+            // 扣除拟加仓金额
+            const planBuyInput = row.querySelector('.plan-buy-input');
+            const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+            planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+
+            await saveRow(row);
+            saveAndCalculate();
+
+            // 记录交易历史
+            addTradeRecord(trade.rowId, {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                type: 'add',
+                amount: trade.amount,
+                shares: newShares,
+                netValue: price,
+                createdAt: new Date().toISOString()
+            });
+
+            // 删除待确认交易
+            trades.splice(tradeIndex, 1);
+            savePendingTrades(trades);
+            updatePendingTradeBanner();
+            // 重新打开弹窗刷新列表
+            openPendingTradesModal();
+        }
+
+        function deletePendingTrade(tradeId) {
+            if (!confirm('确定要删除这笔待确认交易吗？')) return;
+
+            const trades = getPendingTrades();
+            const filtered = trades.filter(t => t.id !== tradeId);
+            savePendingTrades(filtered);
+            updatePendingTradeBanner();
+            openPendingTradesModal();
+        }
+
+        async function confirmAllPendingTrades() {
+            const trades = getPendingTrades();
+            if (trades.length === 0) return;
+
+            let successCount = 0;
+            const now = new Date();
+
+            for (const trade of trades) {
+                const row = document.querySelector(`tr[data-id="${trade.rowId}"]`);
+                if (!row) continue;
+
+                const price = parseFloat(row.dataset.price) || 0;
+                if (price <= 0) continue;
+
+                const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+
+                const newShares = trade.amount / price;
+                const totalShares = shares + newShares;
+                const totalCost = (shares * cost) + trade.amount;
+                const newCost = totalCost / totalShares;
+
+                row.querySelector('.shares-input').value = totalShares.toFixed(2);
+                row.querySelector('.cost-input').value = newCost.toFixed(4);
+
+                // 扣除拟加仓金额
+                const planBuyInput = row.querySelector('.plan-buy-input');
+                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+
+                await saveRow(row);
+
+                // 记录交易历史
+                addTradeRecord(trade.rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
+                    type: 'add',
+                    amount: trade.amount,
+                    shares: newShares,
+                    netValue: price,
+                    createdAt: now.toISOString()
+                });
+
+                successCount++;
+            }
+
+            saveAndCalculate();
+            savePendingTrades([]);
+            updatePendingTradeBanner();
+            closePendingTradesModal();
+            alert(`已确认 ${successCount} 笔交易！`);
+        }
+
+        // ========== 交易记录功能 ==========
+        const TRADE_HISTORY_KEY = 'vDashboard_tradeHistory';
+        let currentTradeHistoryRowId = null;
+
+        function getTradeHistory() {
+            try {
+                return JSON.parse(localStorage.getItem(TRADE_HISTORY_KEY)) || {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function saveTradeHistory(history) {
+            localStorage.setItem(TRADE_HISTORY_KEY, JSON.stringify(history));
+        }
+
+        function addTradeRecord(rowId, record) {
+            const history = getTradeHistory();
+            if (!history[rowId]) history[rowId] = [];
+            history[rowId].unshift(record);
+            saveTradeHistory(history);
+        }
+
+        function openTradeHistoryModal(row) {
+            if (row.dataset.isFund !== 'true') return;
+
+            currentTradeHistoryRowId = row.dataset.id;
+            const name = row.querySelector('.stock-name').innerText;
+            const code = row.querySelector('.code-input').value;
+
+            document.getElementById('tradeHistoryFundName').innerText = `${name} (#${code})`;
+
+            const history = getTradeHistory();
+            const pendingTrades = getPendingTrades().filter(t => t.rowId === currentTradeHistoryRowId);
+            const records = history[currentTradeHistoryRowId] || [];
+
+            const listEl = document.getElementById('tradeHistoryList');
+
+            if (records.length === 0 && pendingTrades.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-[var(--text-muted)] py-8">暂无交易记录</div>';
+            } else {
+                let html = '';
+
+                // 先显示待确认交易
+                pendingTrades.forEach(trade => {
+                    const date = new Date(trade.createdAt);
+                    const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    html += `
+                        <div class="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-amber-400 font-black">加仓</span>
+                                        <span class="bg-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black">待确认</span>
+                                    </div>
+                                    <div class="text-[10px] text-[var(--text-muted)] mt-1">${dateStr}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mono font-black text-amber-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button onclick="confirmPendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
+                                <button onclick="deletePendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // 再显示已确认交易
+                records.forEach(record => {
+                    const date = new Date(record.createdAt);
+                    const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    const isAdd = record.type === 'add';
+                    const colorClass = isAdd ? 'text-indigo-400' : 'text-rose-400';
+                    const bgClass = isAdd ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-rose-500/10 border-rose-500/20';
+
+                    html += `
+                        <div class="p-4 rounded-lg border ${bgClass}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-black ${colorClass}">${isAdd ? '加仓' : '减仓'}</span>
+                                        <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">已确认</span>
+                                    </div>
+                                    <div class="text-[10px] text-[var(--text-muted)] mt-1">成交时间: ${dateStr}</div>
+                                    <div class="text-[10px] text-[var(--text-muted)]">成交净值: ¥${record.netValue?.toFixed(3) || '-'}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mono font-black ${colorClass}">${isAdd ? '+' : '-'}${record.shares?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '-'} 份</div>
+                                    <div class="text-[10px] text-[var(--text-muted)]">${isAdd ? '+' : '-'}¥${Math.round(record.amount || 0).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                listEl.innerHTML = html;
+            }
+
+            document.getElementById('tradeHistoryModal').classList.remove('hidden');
+        }
+
+        function closeTradeHistoryModal() {
+            document.getElementById('tradeHistoryModal').classList.add('hidden');
+            currentTradeHistoryRowId = null;
+        }
+
+        async function confirmPendingTradeFromHistory(tradeId) {
+            await confirmPendingTrade(tradeId);
+            if (currentTradeHistoryRowId) {
+                const row = document.querySelector(`tr[data-id="${currentTradeHistoryRowId}"]`);
+                if (row) openTradeHistoryModal(row);
+            }
+        }
+
+        function deletePendingTradeFromHistory(tradeId) {
+            deletePendingTrade(tradeId);
+            if (currentTradeHistoryRowId) {
+                const row = document.querySelector(`tr[data-id="${currentTradeHistoryRowId}"]`);
+                if (row) openTradeHistoryModal(row);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "history": {
+    "17744893434675b6b3hs5d": [
+      {
+        "id": "1774489541550wlr4atp08",
+        "type": "add",
+        "amount": 1000,
+        "shares": 904.24,
+        "netValue": 1.1059,
+        "isBefore15": true,
+        "createdAt": "2026-03-25T01:45:41.550Z",
+        "localDate": "2026-03-25"
+      },
+      {
+        "id": "1774490197750zqdota7ar",
+        "type": "add",
+        "amount": 1000,
+        "shares": 904.24,
+        "netValue": 1.1059,
+        "isBefore15": true,
+        "createdAt": "2026-03-25T01:56:37.750Z",
+        "localDate": "2026-03-25"
+      },
+      {
+        "id": "1774492877845baiag3akd",
+        "type": "reduce",
+        "amount": 3264.7495080000003,
+        "shares": 2952.12,
+        "netValue": 1.1059,
+        "createdAt": "2026-03-26T02:41:17.845Z",
+        "localDate": "2026-03-26"
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "serverchanKey": "YOUR_SERVERCHAN_SEND_KEY_HERE",
+  "alertTime": "0 31 23 * * *"
+}

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>资产看板专业版 - Ultimate v2.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -93,7 +94,7 @@
         }
     </style>
 </head>
-<body class="py-6 light-mode">
+<body class="py-6 light-mode text-base">
     <div class="max-w-full mx-auto px-3">
 
         <!-- 顶部标题和快捷操作 -->
@@ -114,15 +115,15 @@
         <div class="card p-4 mb-4">
             <div class="grid grid-cols-3 gap-4 text-center">
                 <div>
-                    <div class="text-[10px] text-[var(--text-muted)] font-black uppercase mb-1">总市值</div>
+                    <div class="text-xs text-[var(--text-muted)] font-black uppercase mb-1">总市值</div>
                     <div id="totalMktDisplay" class="text-lg font-black mono italic">¥ 0</div>
                 </div>
                 <div>
-                    <div class="text-[10px] text-[var(--text-muted)] font-black uppercase mb-1">今日盈亏</div>
+                    <div class="text-xs text-[var(--text-muted)] font-black uppercase mb-1">今日盈亏</div>
                     <div id="todayProfitDisplay" class="text-lg font-black mono">¥ 0</div>
                 </div>
                 <div>
-                    <div class="text-[10px] text-[var(--text-muted)] font-black uppercase mb-1">累计盈亏</div>
+                    <div class="text-xs text-[var(--text-muted)] font-black uppercase mb-1">累计盈亏</div>
                     <div id="overallProfitDisplay" class="text-lg font-black mono">¥ 0</div>
                 </div>
             </div>
@@ -135,28 +136,28 @@
                     <span class="text-amber-400">⏰</span>
                     <div class="text-xs">
                         <div class="font-black text-amber-400">有待确认交易</div>
-                        <div id="pendingTradeCount" class="text-[10px] text-[var(--text-muted)]">共 <span class="text-amber-400">0</span> 笔</div>
+                        <div id="pendingTradeCount" class="text-xs text-[var(--text-muted)]">共 <span class="text-amber-400">0</span> 笔</div>
                     </div>
                 </div>
-                <button onclick="openPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-black text-xs">查看</button>
+                <button onclick="openPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-black text-sm">查看</button>
             </div>
         </div>
 
         <!-- Tab 和操作 -->
         <div class="flex items-center justify-between mb-4">
             <div class="flex p-1 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
-                <button onclick="switchTab('all')" id="tab-all" class="px-4 py-1.5 rounded-lg font-black text-xs bg-indigo-600 text-white">全部</button>
-                <button onclick="switchTab('stock')" id="tab-stock" class="px-4 py-1.5 rounded-lg font-black text-xs">股票</button>
-                <button onclick="switchTab('fund')" id="tab-fund" class="px-4 py-1.5 rounded-lg font-black text-xs">基金</button>
+                <button onclick="switchTab('all')" id="tab-all" class="px-4 py-1.5 rounded-lg font-black text-sm bg-indigo-600 text-white">全部</button>
+                <button onclick="switchTab('stock')" id="tab-stock" class="px-4 py-1.5 rounded-lg font-black text-sm">股票</button>
+                <button onclick="switchTab('fund')" id="tab-fund" class="px-4 py-1.5 rounded-lg font-black text-sm">基金</button>
             </div>
             <div class="flex items-center gap-2">
-                <button id="addStockBtn" onclick="addRow({code:'', name:'新股票', shares:0, cost:0, isFund:false})" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg font-black text-xs hover:bg-slate-700 transition">+股</button>
-                <button id="addFundBtn" onclick="addRow({code:'', name:'新基金', shares:0, cost:0, isFund:true})" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-black text-xs hover:bg-indigo-500 transition">+基</button>
+                <button id="addStockBtn" onclick="addRow({code:'', name:'新股票', shares:0, cost:0, isFund:false})" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg font-black text-sm hover:bg-slate-700 transition">+股</button>
+                <button id="addFundBtn" onclick="addRow({code:'', name:'新基金', shares:0, cost:0, isFund:true})" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-black text-sm hover:bg-indigo-500 transition">+基</button>
             </div>
         </div>
 
         <!-- 净值更新状态 -->
-        <div class="text-[10px] text-[var(--text-muted)] font-black mb-3">
+        <div class="text-xs text-[var(--text-muted)] font-black mb-3">
             净值更新: <span id="netValueUpdateStatus" class="text-emerald-400">--</span>
         </div>
 
@@ -165,15 +166,15 @@
 
         <!-- 更多操作按钮 -->
         <div class="flex items-center justify-between mt-4 gap-2">
-            <button onclick="document.getElementById('importFile').click()" class="flex-1 py-2 border border-[var(--border-color)] rounded-lg text-[10px] font-black hover:bg-[var(--table-hover)]">导入</button>
-            <button onclick="exportCSV()" class="flex-1 py-2 border border-[var(--border-color)] rounded-lg text-[10px] font-black hover:bg-[var(--table-hover)]">导出</button>
-            <button onclick="clearLocalData()" class="flex-1 py-2 border border-rose-500/30 text-rose-400 rounded-lg text-[10px] font-black hover:bg-rose-500/10">清除数据</button>
+            <button onclick="document.getElementById('importFile').click()" class="flex-1 py-2 border border-[var(--border-color)] rounded-lg text-xs font-black hover:bg-[var(--table-hover)]">导入</button>
+            <button onclick="exportCSV()" class="flex-1 py-2 border border-[var(--border-color)] rounded-lg text-xs font-black hover:bg-[var(--table-hover)]">导出</button>
+            <button onclick="clearLocalData()" class="flex-1 py-2 border border-rose-500/30 text-rose-400 rounded-lg text-xs font-black hover:bg-rose-500/10">清除数据</button>
             <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
         </div>
 
         <!-- 分页控件 -->
         <div class="flex items-center justify-between mt-3 pb-20">
-            <div class="text-[10px] text-[var(--text-muted)] font-black">
+            <div class="text-xs text-[var(--text-muted)] font-black">
                 共 <span id="totalCount" class="text-indigo-400">0</span> 条
             </div>
             <div class="flex items-center gap-2">
@@ -187,7 +188,7 @@
 
         <!-- 加仓弹窗 -->
         <div id="addFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-black">基金加仓</h3>
                     <button onclick="closeAddFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
@@ -199,20 +200,20 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前持仓</div>
+                            <div class="text-[var(--text-muted)] text-xs uppercase">当前持仓</div>
                             <div class="mono font-black" id="modalCurrentShares">0 份</div>
                         </div>
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前成本</div>
+                            <div class="text-[var(--text-muted)] text-xs uppercase">当前成本</div>
                             <div class="mono font-black" id="modalCurrentCost">¥0.000</div>
                         </div>
                     </div>
                     <div class="bg-[var(--bg-main)] p-4 rounded-lg">
-                        <div class="text-[var(--text-muted)] text-[10px] uppercase mb-1">当前净值</div>
+                        <div class="text-[var(--text-muted)] text-xs uppercase mb-1">当前净值</div>
                         <div class="mono font-black text-xl text-indigo-400" id="modalNetValue">¥0.000</div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase mb-2 block">交易时间</label>
+                        <label class="text-xs font-black text-[var(--text-muted)] uppercase mb-2 block">交易时间</label>
                         <div class="flex gap-2 mb-4">
                             <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
                                 <input type="radio" name="tradeTime" id="tradeTimeBefore" value="before" checked class="accent-indigo-500">
@@ -225,33 +226,33 @@
                         </div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">加仓金额 (CNY)</label>
+                        <label class="text-xs font-black text-[var(--text-muted)] uppercase">加仓金额 (CNY)</label>
                         <input type="number" id="modalAddAmount" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-indigo-500 outline-none" placeholder="输入加仓金额" oninput="previewAddFund()">
                     </div>
                     <div class="bg-indigo-500/10 p-4 rounded-lg border border-indigo-500/20">
-                        <div class="text-[10px] font-black text-indigo-400 uppercase mb-2">加仓预览</div>
+                        <div class="text-xs font-black text-indigo-400 uppercase mb-2">加仓预览</div>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">新增份额</div>
+                                <div class="text-[var(--text-muted)] text-xs">新增份额</div>
                                 <div class="mono font-black" id="modalNewShares">+0 份</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">总份额</div>
+                                <div class="text-[var(--text-muted)] text-xs">总份额</div>
                                 <div class="mono font-black" id="modalTotalShares">0 份</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">新成本</div>
+                                <div class="text-[var(--text-muted)] text-xs">新成本</div>
                                 <div class="mono font-black" id="modalNewCost">¥0.000</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">总成本</div>
+                                <div class="text-[var(--text-muted)] text-xs">总成本</div>
                                 <div class="mono font-black" id="modalTotalCost">¥0</div>
                             </div>
                         </div>
                     </div>
                     <div class="flex gap-3 mt-6">
-                        <button onclick="closeAddFundModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
-                        <button onclick="confirmAddFund()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white">确认加仓</button>
+                        <button onclick="closeAddFundModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button onclick="confirmAddFund()" class="flex-1 py-3 rounded-xl font-black text-sm bg-indigo-600 hover:bg-indigo-500 text-white">确认加仓</button>
                     </div>
                 </div>
             </div>
@@ -259,7 +260,7 @@
 
         <!-- 减仓弹窗 -->
         <div id="reduceFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-black">基金减仓</h3>
                     <button onclick="closeReduceFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
@@ -271,25 +272,25 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前持仓</div>
+                            <div class="text-[var(--text-muted)] text-xs uppercase">当前持仓</div>
                             <div class="mono font-black" id="reduceModalCurrentShares">0 份</div>
                         </div>
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">成本价</div>
+                            <div class="text-[var(--text-muted)] text-xs uppercase">成本价</div>
                             <div class="mono font-black" id="reduceModalCurrentCost">¥0.0000</div>
                         </div>
                     </div>
                     <div class="bg-[var(--bg-main)] p-4 rounded-lg">
-                        <div class="text-[var(--text-muted)] text-[10px] uppercase mb-1">当前净值</div>
+                        <div class="text-[var(--text-muted)] text-xs uppercase mb-1">当前净值</div>
                         <div class="mono font-black text-xl text-rose-400" id="reduceModalNetValue">¥0.000</div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">减仓份额</label>
+                            <label class="text-xs font-black text-[var(--text-muted)] uppercase">减仓份额</label>
                             <input type="number" id="reduceModalShares" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-rose-500 outline-none" placeholder="输入份额" oninput="previewReduceFund()">
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">减仓比例</label>
+                            <label class="text-xs font-black text-[var(--text-muted)] uppercase">减仓比例</label>
                             <select id="reduceModalPercent" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-rose-500 outline-none" onchange="applyReducePercent()">
                                 <option value="">选择</option>
                                 <option value="25">1/4 (25%)</option>
@@ -302,29 +303,29 @@
                         </div>
                     </div>
                     <div class="bg-rose-500/10 p-4 rounded-lg border border-rose-500/20">
-                        <div class="text-[10px] font-black text-rose-400 uppercase mb-2">减仓预览</div>
+                        <div class="text-xs font-black text-rose-400 uppercase mb-2">减仓预览</div>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">剩余份额</div>
+                                <div class="text-[var(--text-muted)] text-xs">剩余份额</div>
                                 <div class="mono font-black" id="reduceModalRemainShares">0.00 份</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">赎回金额</div>
+                                <div class="text-[var(--text-muted)] text-xs">赎回金额</div>
                                 <div class="mono font-black" id="reduceModalRedeemAmount">¥0</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">持仓成本</div>
+                                <div class="text-[var(--text-muted)] text-xs">持仓成本</div>
                                 <div class="mono font-black" id="reduceModalRemainCost">¥0.0000</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">实现盈亏</div>
+                                <div class="text-[var(--text-muted)] text-xs">实现盈亏</div>
                                 <div class="mono font-black" id="reduceModalRealizedPL">¥0</div>
                             </div>
                         </div>
                     </div>
                     <div class="flex gap-3 mt-6">
-                        <button onclick="closeReduceFundModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
-                        <button onclick="confirmReduceFund()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-rose-600 hover:bg-rose-500 text-white">确认减仓</button>
+                        <button onclick="closeReduceFundModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button onclick="confirmReduceFund()" class="flex-1 py-3 rounded-xl font-black text-sm bg-rose-600 hover:bg-rose-500 text-white">确认减仓</button>
                     </div>
                 </div>
             </div>
@@ -332,32 +333,32 @@
 
         <!-- 待确认交易弹窗 -->
         <div id="pendingTradesModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[600px] border border-[var(--border-color)]">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-black">待确认交易</h3>
                     <button onclick="closePendingTradesModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
                 </div>
                 <div id="pendingTradesList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
                 <div class="flex gap-3 mt-6">
-                    <button onclick="closePendingTradesModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
-                    <button onclick="confirmAllPendingTrades()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">全部确认</button>
+                    <button onclick="closePendingTradesModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                    <button onclick="confirmAllPendingTrades()" class="flex-1 py-3 rounded-xl font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white">全部确认</button>
                 </div>
             </div>
         </div>
 
         <!-- 交易记录弹窗 -->
         <div id="tradeHistoryModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[650px] border border-[var(--border-color)]">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
                     <div>
                         <h3 class="text-lg font-black">交易记录</h3>
-                        <div class="text-[10px] text-[var(--text-muted)]" id="tradeHistoryFundName"></div>
+                        <div class="text-xs text-[var(--text-muted)]" id="tradeHistoryFundName"></div>
                     </div>
                     <button onclick="closeTradeHistoryModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
                 </div>
                 <div id="tradeHistoryList" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
                 <div class="mt-4 flex gap-3">
-                    <button onclick="closeTradeHistoryModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                    <button onclick="closeTradeHistoryModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
                 </div>
             </div>
         </div>
@@ -419,7 +420,7 @@
                     <div class="text-right">
                         <div class="price-cell mono text-lg font-bold text-indigo-400 mb-1">¥0.000</div>
                         <div class="today-profit-cell mono text-sm">¥0</div>
-                        <div class="chg-pct-cell text-[10px] font-bold opacity-80">0.00%</div>
+                        <div class="chg-pct-cell text-xs font-bold opacity-80">0.00%</div>
                     </div>
                 </div>
                 <div class="flex justify-between items-center mt-2 pt-2 border-t border-[var(--border-color)]">
@@ -428,7 +429,7 @@
                         <span class="mkt-val-cell mono font-bold">¥0</span>
                         <span class="text-[var(--text-muted)] ml-2">累计:</span>
                         <span class="overall-profit-cell mono font-bold">¥0</span>
-                        <span class="ratio-cell text-[10px] font-bold opacity-80 ml-1">0.00%</span>
+                        <span class="ratio-cell text-xs font-bold opacity-80 ml-1">0.00%</span>
                     </div>
                     <div class="flex items-center gap-1">
                         ${fundBtns}
@@ -653,9 +654,9 @@
                         }
 
                         if (showUpdated) {
-                            priceText += `<span class="text-emerald-400 text-[10px] font-black ml-1">${labelText}</span>`;
+                            priceText += `<span class="text-emerald-400 text-xs font-black ml-1">${labelText}</span>`;
                         } else if (priceDate) {
-                            priceText += `<span class="text-amber-400 text-[10px] font-black ml-1">待更新</span>`;
+                            priceText += `<span class="text-amber-400 text-xs font-black ml-1">待更新</span>`;
                         }
                         card.dataset.isTodayUpdated = showUpdated ? '1' : '0';
                     }
@@ -786,12 +787,12 @@
                 card.querySelector('.today-profit-cell').innerText = (today>=0?'+':'') + Math.round(today).toLocaleString();
                 card.querySelector('.today-profit-cell').className = 'today-profit-cell mono text-sm ' + (today>=0?'up':'down');
                 card.querySelector('.chg-pct-cell').innerText = (displayChange>=0?'+':'') + displayChange.toFixed(2) + '%';
-                card.querySelector('.chg-pct-cell').className = 'chg-pct-cell text-[10px] font-bold ' + (displayChange>=0?'up':'down');
+                card.querySelector('.chg-pct-cell').className = 'chg-pct-cell text-xs font-bold ' + (displayChange>=0?'up':'down');
                 card.querySelector('.overall-profit-cell').innerText = (profit>=0?'+':'') + Math.round(profit).toLocaleString();
                 card.querySelector('.overall-profit-cell').className = 'overall-profit-cell mono text-sm ' + (profit>=0?'up':'down');
                 const ratio = cost > 0 ? ((price-cost)/cost*100).toFixed(2) : 0;
                 card.querySelector('.ratio-cell').innerText = (ratio>=0?'+':'') + ratio + '%';
-                card.querySelector('.ratio-cell').className = 'ratio-cell text-[10px] font-bold ' + (ratio>=0?'up':'down');
+                card.querySelector('.ratio-cell').className = 'ratio-cell text-xs font-bold ' + (ratio>=0?'up':'down');
 
                 const alert = parseFloat(card.querySelector('.alert-input').value) || '';
                 return { id: card.dataset.id, code, name: card.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, alert };
@@ -1433,16 +1434,16 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="font-black">${trade.name}</div>
-                                    <div class="text-[10px] text-[var(--text-muted)] mono">#${trade.code}</div>
+                                    <div class="text-xs text-[var(--text-muted)] mono">#${trade.code}</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
-                                    <div class="text-[10px] text-[var(--text-muted)]">${dateStr}</div>
+                                    <div class="text-xs text-[var(--text-muted)]">${dateStr}</div>
                                 </div>
                             </div>
                             <div class="flex gap-2 mt-3">
-                                <button onclick="confirmPendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
-                                <button onclick="deletePendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
+                                <button onclick="confirmPendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
+                                <button onclick="deletePendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
                             </div>
                         </div>
                     `;
@@ -1627,17 +1628,17 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <span class="text-amber-400 font-black">加仓</span>
-                                        <span class="bg-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black">待确认</span>
+                                        <span class="bg-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-xs font-black">待确认</span>
                                     </div>
-                                    <div class="text-[10px] text-[var(--text-muted)] mt-1">${dateStr}</div>
+                                    <div class="text-xs text-[var(--text-muted)] mt-1">${dateStr}</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="mono font-black text-amber-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
                                 </div>
                             </div>
                             <div class="mt-2 flex gap-2">
-                                <button onclick="confirmPendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
-                                <button onclick="deletePendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
+                                <button onclick="confirmPendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
+                                <button onclick="deletePendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
                             </div>
                         </div>
                     `;
@@ -1657,14 +1658,14 @@
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <span class="font-black ${colorClass}">${isAdd ? '加仓' : '减仓'}</span>
-                                        <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-black">已确认</span>
+                                        <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs font-black">已确认</span>
                                     </div>
-                                    <div class="text-[10px] text-[var(--text-muted)] mt-1">成交时间: ${dateStr}</div>
-                                    <div class="text-[10px] text-[var(--text-muted)]">成交净值: ¥${record.netValue?.toFixed(3) || '-'}</div>
+                                    <div class="text-xs text-[var(--text-muted)] mt-1">成交时间: ${dateStr}</div>
+                                    <div class="text-xs text-[var(--text-muted)]">成交净值: ¥${record.netValue?.toFixed(3) || '-'}</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="mono font-black ${colorClass}">${isAdd ? '+' : '-'}${record.shares?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '-'} 份</div>
-                                    <div class="text-[10px] text-[var(--text-muted)]">${isAdd ? '+' : '-'}¥${Math.round(record.amount || 0).toLocaleString()}</div>
+                                    <div class="text-xs text-[var(--text-muted)]">${isAdd ? '+' : '-'}¥${Math.round(record.amount || 0).toLocaleString()}</div>
                                 </div>
                             </div>
                         </div>

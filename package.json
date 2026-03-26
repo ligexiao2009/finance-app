@@ -1,0 +1,16 @@
+{
+  "name": "stock-dashboard",
+  "version": "1.0.0",
+  "description": "股票资产看板 - 带后端保存功能",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["stock", "dashboard"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0"
+  }
+}

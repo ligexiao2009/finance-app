@@ -1,0 +1,188 @@
+{
+  "rows": [
+    {
+      "id": "1774198708865v00xywl0e",
+      "code": "09988",
+      "name": "阿里巴巴-W",
+      "shares": 700,
+      "cost": 141.638,
+      "isFund": false,
+      "planBuy": 10000,
+      "alert": 9,
+      "isOverseas": false,
+      "targetPrice": 170
+    },
+    {
+      "id": "1774200020851nj0pmxz8s",
+      "code": "011861",
+      "name": "南方中证1000ETF发起联接C",
+      "shares": 30275,
+      "cost": 1.0999,
+      "isFund": true,
+      "planBuy": 50000,
+      "alert": 10
+    },
+    {
+      "id": "17742708955447v85htgpo",
+      "code": "013309",
+      "name": "易方达恒生科技ETF联接(QDII)C",
+      "shares": 87742,
+      "cost": 1.31,
+      "isFund": true,
+      "planBuy": 50000,
+      "alert": 10
+    },
+    {
+      "id": "1774270895544w05c6cr36",
+      "code": "021458",
+      "name": "易方达恒生红利低波ETF联接C",
+      "shares": 15352.46,
+      "cost": 1.3028,
+      "isFund": true,
+      "planBuy": 0,
+      "alert": 5
+    },
+    {
+      "id": "17742708955448a6tud72l",
+      "code": "023754",
+      "name": "永赢信息产业智选混合发起C",
+      "shares": 13870,
+      "cost": 1.0814,
+      "isFund": true,
+      "planBuy": 10000,
+      "alert": 20
+    },
+    {
+      "id": "17742708955449tahbb040",
+      "code": "018125",
+      "name": "永赢先进制造智选混合发起C",
+      "shares": 3167,
+      "cost": 2.5259,
+      "isFund": true,
+      "planBuy": 5000,
+      "alert": 15
+    },
+    {
+      "id": "1774270895544lgga0vhjp",
+      "code": "009052",
+      "name": "易方达中证红利ETF联接C",
+      "shares": 19481.73,
+      "cost": 1.2672,
+      "isFund": true,
+      "planBuy": 7000,
+      "alert": 5
+    },
+    {
+      "id": "1774270895544vq2i00gn9",
+      "code": "019671",
+      "name": "广发中证香港创新药ETF发起式联接(QDII)C",
+      "shares": 8572,
+      "cost": 1.313,
+      "isFund": true,
+      "planBuy": 10000,
+      "alert": 10
+    },
+    {
+      "id": "1774356762203j6edrqb2p",
+      "code": "020501",
+      "name": "广发中证港股通非银ETF发起式联接C",
+      "shares": 6339.95,
+      "cost": 1.5773,
+      "isFund": true,
+      "planBuy": 10000,
+      "alert": 10
+    },
+    {
+      "id": "1774356861438ykugv03ln",
+      "code": "025209",
+      "name": "永赢先锋半导体智选混合发起C",
+      "shares": 3081.09,
+      "cost": 1.6228,
+      "isFund": true,
+      "planBuy": 10000,
+      "alert": 10
+    },
+    {
+      "id": "1774356978871gohpbk0uv",
+      "code": "016531",
+      "name": "鹏华碳中和主题混合C",
+      "shares": 3612.5,
+      "cost": 1.8639,
+      "isFund": true,
+      "planBuy": 5000,
+      "alert": 15
+    },
+    {
+      "id": "1774357048504pxdsm5rf1",
+      "code": "017437",
+      "name": "华宝纳斯达克精选股票(QDII)C",
+      "shares": 3624.53,
+      "cost": 2.1243,
+      "isFund": true,
+      "planBuy": 0,
+      "alert": 10,
+      "isOverseas": true,
+      "targetPrice": ""
+    },
+    {
+      "id": "17743570908215j8aiqrve",
+      "code": "017145",
+      "name": "华宝海外新能源汽车股票发起式(QDII)C",
+      "shares": 3705.65,
+      "cost": 1.6191,
+      "isFund": true,
+      "planBuy": 0,
+      "alert": 10,
+      "isOverseas": true,
+      "targetPrice": ""
+    },
+    {
+      "id": "1774432392200ul5es8ctm",
+      "code": "01810",
+      "name": "小米集团-W",
+      "shares": 200,
+      "cost": 39.024,
+      "isFund": false,
+      "planBuy": 0,
+      "alert": "",
+      "isOverseas": false,
+      "targetPrice": 50
+    },
+    {
+      "id": "1774447063409e24n6vvrn",
+      "code": "023918",
+      "name": "华夏国证自由现金流ETF发起式联接C",
+      "shares": 15401.58,
+      "cost": 1.2913,
+      "isFund": true,
+      "planBuy": 0,
+      "alert": "",
+      "isOverseas": false,
+      "targetPrice": ""
+    },
+    {
+      "id": "1774454602802jc2nkmngg",
+      "code": "015968",
+      "name": "永赢半导体产业智选混合发起C",
+      "shares": 628.92,
+      "cost": 1.6195,
+      "isFund": true,
+      "planBuy": 0,
+      "alert": "",
+      "isOverseas": false,
+      "targetPrice": ""
+    },
+    {
+      "id": "17744893434675b6b3hs5d",
+      "code": "020741",
+      "name": "华泰保兴安悦债券C",
+      "shares": 8856.36,
+      "cost": 1.0162,
+      "isFund": true,
+      "planBuy": 0,
+      "alert": "",
+      "isOverseas": false,
+      "targetPrice": ""
+    }
+  ]
+}

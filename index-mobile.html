@@ -139,7 +139,7 @@
                         <div id="pendingTradeCount" class="text-xs text-[var(--text-muted)]">共 <span class="text-amber-400">0</span> 笔</div>
                     </div>
                 </div>
-                <button onclick="openPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-black text-sm">查看</button>
+                <button onclick="showPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-black text-sm">查看</button>
             </div>
         </div>
 
@@ -366,8 +366,8 @@
 
     <script>
         // ==================== 配置 ====================
-        // const API_BASE_URL = 'https://unfilial-constrictingly-maddie.ngrok-free.dev';
-        const API_BASE_URL = 'http://localhost:3000';
+        const API_BASE_URL = 'https://finance-app-kanh.onrender.com';
+        // const API_BASE_URL = 'http://localhost:3000';
 
         let currentTab = 'all';
         let sortDir = -1;
@@ -378,6 +378,10 @@
         // 分页相关
         let currentPageNum = 1;
         let pageSize = 10;
+
+        // 数据缓存
+        let pendingTradesCache = [];
+        let localTradeHistory = null;
 
         function clearZero(input) {
             if (parseFloat(input.value) === 0) {
@@ -440,7 +444,15 @@
                 <div class="mt-2 pt-2 border-t border-[var(--border-color)]">
                     <div class="flex items-center gap-2">
                         <input type="number" class="plan-buy-input bg-transparent border-b border-indigo-500/20 text-center mono text-sm text-indigo-400 w-24 outline-none focus:border-indigo-500" value="${item.planBuy || 0}" placeholder="拟加仓" oninput="saveAndCalculate()">
+                        <input type="number" class="target-price-input bg-transparent border-b border-emerald-500/20 text-center mono text-sm text-emerald-400 w-24 outline-none focus:border-emerald-500" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="saveAndCalculate()">
                         <input type="number" class="alert-input bg-transparent border-b border-[var(--border-color)] text-center mono text-sm w-16 outline-none" value="${item.alert || ''}" placeholder="%提醒" oninput="saveAndCalculate()">
+                    </div>
+                    <div class="flex items-center justify-between text-xs mt-2">
+                        <div class="flex items-center gap-1">
+                            <span class="text-[var(--text-muted)]">目标:</span>
+                            <span class="target-profit-cell mono font-bold text-emerald-400">--</span>
+                            <span class="target-ratio-cell text-xs font-bold opacity-80">--</span>
+                        </div>
                     </div>
                 </div>
             `;
@@ -716,6 +728,7 @@
                 const price = parseFloat(card.dataset.price) || 0;
                 const change = parseFloat(card.dataset.change) || 0;
                 const planBuy = parseFloat(card.querySelector('.plan-buy-input').value) || 0;
+                const targetPrice = parseFloat(card.querySelector('.target-price-input').value) || '';
                 const isF = card.dataset.isFund === 'true';
 
                 const rate = (code.length === 5) ? fx : 1;
@@ -794,8 +807,25 @@
                 card.querySelector('.ratio-cell').innerText = (ratio>=0?'+':'') + ratio + '%';
                 card.querySelector('.ratio-cell').className = 'ratio-cell text-xs font-bold ' + (ratio>=0?'up':'down');
 
+                // 目标价格收益计算
+                const targetProfitEl = card.querySelector('.target-profit-cell');
+                const targetRatioEl = card.querySelector('.target-ratio-cell');
+                if (targetPrice && targetPrice > 0 && shares > 0 && cost > 0) {
+                    const targetProfit = (targetPrice - cost) * shares * rate;
+                    const targetRatio = cost > 0 ? ((targetPrice - cost) / cost * 100).toFixed(2) : 0;
+                    targetProfitEl.innerText = (targetProfit >= 0 ? '+' : '') + Math.round(targetProfit).toLocaleString();
+                    targetProfitEl.className = 'target-profit-cell mono font-bold text-emerald-400 ' + (targetProfit >= 0 ? 'up' : 'down');
+                    targetRatioEl.innerText = (targetRatio >= 0 ? '+' : '') + targetRatio + '%';
+                    targetRatioEl.className = 'target-ratio-cell text-xs font-bold opacity-80 ' + (targetRatio >= 0 ? 'up' : 'down');
+                } else {
+                    targetProfitEl.innerText = '--';
+                    targetProfitEl.className = 'target-profit-cell mono font-bold text-emerald-400';
+                    targetRatioEl.innerText = '--';
+                    targetRatioEl.className = 'target-ratio-cell text-xs font-bold opacity-80';
+                }
+
                 const alert = parseFloat(card.querySelector('.alert-input').value) || '';
-                return { id: card.dataset.id, code, name: card.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, alert };
+                return { id: card.dataset.id, code, name: card.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, targetPrice, alert };
             });
 
             // 决定顶部显示哪一组数据
@@ -827,12 +857,13 @@
             const shares = parseFloat(el.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(el.querySelector('.cost-input').value) || 0;
             const planBuy = parseFloat(el.querySelector('.plan-buy-input').value) || 0;
+            const targetPrice = parseFloat(el.querySelector('.target-price-input').value) || '';
             const alert = parseFloat(el.querySelector('.alert-input').value) || '';
             const isFund = el.dataset.isFund === 'true';
             const name = el.querySelector('.stock-name').innerText;
             const id = el.dataset.id;
 
-            const rowData = { id, code, name, shares, cost, isFund, planBuy, alert };
+            const rowData = { id, code, name, shares, cost, isFund, planBuy, targetPrice, alert };
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/save-row`, {
@@ -1030,8 +1061,8 @@
         function exportCSV() {
             const s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
             if (!s || !s.items) return;
-            let csv = "\uFEFF代码,名称,数量,成本,类型,拟加仓,涨跌提醒\n";
-            s.items.forEach(d => csv += `${d.code},${d.name},${d.shares},${d.cost},${d.isFund?1:0},${d.planBuy},${d.alert || ''}\n`);
+            let csv = "\uFEFF代码,名称,数量,成本,类型,拟加仓,涨跌提醒,目标价格\n";
+            s.items.forEach(d => csv += `${d.code},${d.name},${d.shares},${d.cost},${d.isFund?1:0},${d.planBuy},${d.alert || ''},${d.targetPrice || ''}\n`);
             const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -1064,7 +1095,8 @@
                         addRow({
                             code: cols[0].trim(), name: cols[1].trim(), shares: parseFloat(cols[2]) || 0,
                             cost: parseFloat(cols[3]) || 0, isFund: cols[4].trim() === '1',
-                            planBuy: parseFloat(cols[5]) || 0, alert: parseFloat(cols[6]) || ''
+                            planBuy: parseFloat(cols[5]) || 0, alert: parseFloat(cols[6]) || '',
+                            targetPrice: parseFloat(cols[7]) || ''
                         }, false);
                     }
                 });
@@ -1073,6 +1105,11 @@
                 saveAndCalculate();
             };
             reader.readAsText(file);
+        }
+
+        // 包装函数用于HTML onclick调用
+        async function showPendingTradesModal() {
+            await openPendingTradesModal();
         }
 
         function toggleSort() {
@@ -1085,43 +1122,33 @@
         }
 
         window.onload = async () => {
-            let s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+            // 从后端同步数据
+            await syncPendingTradesFromServer();
+            await syncTradeHistoryFromServer();
 
-            // 如果本地没有数据，尝试从后端获取
-            if (!s || !s.items || s.items.length === 0) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/data`);
-                    const serverData = await response.json();
-                    if (serverData && serverData.rows && serverData.rows.length > 0) {
-                        s = {
-                            baseInput: 300000,
-                            fx: 0.91,
-                            items: serverData.rows,
-                            refreshVal: "0"
-                        };
-                        // 保存到本地
-                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(s));
-                    }
-                } catch (e) {
-                    console.log('从后端获取数据失败:', e);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/data`);
+                const serverData = await response.json();
+                if (serverData && serverData.rows && serverData.rows.length > 0) {
+                    // 移动端没有这些元素，安全检查
+                    const baseCashInput = document.getElementById('baseCashInput');
+                    if (baseCashInput) baseCashInput.value = 300000;
+                    const autoRefreshSelect = document.getElementById('autoRefreshSelect');
+                    if (autoRefreshSelect) autoRefreshSelect.value = "0";
+                    const saveAllBtn = document.getElementById('saveAllFundsBtn');
+                    if (saveAllBtn) saveAllBtn.style.display = 'none';
+
+                    serverData.rows.forEach(i => addRow(i, false));
+                } else {
+                    // 如果后端没有数据，添加默认行
+                    addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
                 }
+            } catch (e) {
+                console.log('从后端获取数据失败:', e);
+                // 如果失败，添加默认行
+                addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
             }
 
-            // 如果还是没有数据，用默认值
-            if (!s) {
-                s = {baseInput:300000, fx:0.91, items:[], refreshVal:"0"};
-            }
-
-            // 移动端没有这些元素，安全检查
-            const baseCashInput = document.getElementById('baseCashInput');
-            if (baseCashInput) baseCashInput.value = s.baseInput;
-            const autoRefreshSelect = document.getElementById('autoRefreshSelect');
-            if (autoRefreshSelect) autoRefreshSelect.value = s.refreshVal || "0";
-            const saveAllBtn = document.getElementById('saveAllFundsBtn');
-            if (saveAllBtn) saveAllBtn.style.display = 'none';
-
-            if (s.items && s.items.length) s.items.forEach(i => addRow(i, false));
-            else addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
             switchTab('all');
             setupAutoRefresh();
             updatePendingTradeBanner();
@@ -1224,7 +1251,7 @@
 
             if (!isBefore15) {
                 // 选择15点后：总是保存为待确认交易
-                const pendingTrades = getPendingTrades();
+                const pendingTrades = await getPendingTrades();
                 pendingTrades.push({
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     rowId: rowId,
@@ -1233,8 +1260,8 @@
                     amount: amount,
                     createdAt: now.toISOString()
                 });
-                savePendingTrades(pendingTrades);
-                updatePendingTradeBanner();
+                await savePendingTrades(pendingTrades);
+                await updatePendingTradeBanner();
                 closeAddFundModal();
                 alert('已提交待确认交易，请在合适的时间确认！');
             } else if (isTodayNetValue) {
@@ -1255,7 +1282,7 @@
                 await saveRow(currentAddFundRow);
                 saveAndCalculate();
 
-                addTradeRecord(rowId, {
+                await addTradeRecord(rowId, {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     type: 'add',
                     amount: amount,
@@ -1267,7 +1294,7 @@
                 closeAddFundModal();
             } else {
                 // 选择15点前 + 当日净值未更新 → 存为待确认
-                const pendingTrades = getPendingTrades();
+                const pendingTrades = await getPendingTrades();
                 pendingTrades.push({
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     rowId: rowId,
@@ -1276,8 +1303,8 @@
                     amount: amount,
                     createdAt: now.toISOString()
                 });
-                savePendingTrades(pendingTrades);
-                updatePendingTradeBanner();
+                await savePendingTrades(pendingTrades);
+                await updatePendingTradeBanner();
                 closeAddFundModal();
                 alert('当日净值尚未更新，已保存为待确认交易！');
             }
@@ -1379,7 +1406,7 @@
 
             // 记录交易历史
             const rowId = currentReduceFundRow.dataset.id;
-            addTradeRecord(rowId, {
+            await addTradeRecord(rowId, {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 type: 'reduce',
                 amount: redeemAmount,
@@ -1394,20 +1421,45 @@
         // ========== 待确认交易功能 ==========
         const PENDING_TRADES_KEY = 'vDashboard_pendingTrades';
 
-        function getPendingTrades() {
+        // 从后端同步待确认交易
+        async function syncPendingTradesFromServer() {
             try {
-                return JSON.parse(localStorage.getItem(PENDING_TRADES_KEY)) || [];
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades`);
+                const data = await response.json();
+                if (data.success && data.trades) {
+                    pendingTradesCache = data.trades;
+                }
             } catch (e) {
-                return [];
+                console.error('从后端同步待确认交易失败:', e);
+                pendingTradesCache = [];
             }
         }
 
-        function savePendingTrades(trades) {
-            localStorage.setItem(PENDING_TRADES_KEY, JSON.stringify(trades));
+        // 获取待确认交易（优先使用缓存）
+        async function getPendingTrades() {
+            if (pendingTradesCache.length === 0) {
+                await syncPendingTradesFromServer();
+            }
+            return pendingTradesCache;
         }
 
-        function updatePendingTradeBanner() {
-            const trades = getPendingTrades();
+        // 保存待确认交易到后端（替换整个列表）
+        async function savePendingTrades(trades) {
+            pendingTradesCache = trades;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-pending-trades`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trades })
+                });
+                await response.json();
+            } catch (e) {
+                console.error('保存待确认交易失败:', e);
+            }
+        }
+
+        async function updatePendingTradeBanner() {
+            const trades = await getPendingTrades();
             const banner = document.getElementById('pendingTradeBanner');
             const countEl = document.getElementById('pendingTradeCount');
 
@@ -1419,8 +1471,8 @@
             }
         }
 
-        function openPendingTradesModal() {
-            const trades = getPendingTrades();
+        async function openPendingTradesModal() {
+            const trades = await getPendingTrades();
             const listEl = document.getElementById('pendingTradesList');
 
             if (trades.length === 0) {
@@ -1458,7 +1510,7 @@
         }
 
         async function confirmPendingTrade(tradeId) {
-            const trades = getPendingTrades();
+            const trades = await getPendingTrades();
             const tradeIndex = trades.findIndex(t => t.id === tradeId);
             if (tradeIndex < 0) return;
 
@@ -1498,7 +1550,7 @@
             saveAndCalculate();
 
             // 记录交易历史
-            addTradeRecord(trade.rowId, {
+            await addTradeRecord(trade.rowId, {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 type: 'add',
                 amount: trade.amount,
@@ -1509,22 +1561,22 @@
 
             // 删除待确认交易
             trades.splice(tradeIndex, 1);
-            savePendingTrades(trades);
-            updatePendingTradeBanner();
+            await savePendingTrades(trades);
+            await updatePendingTradeBanner();
         }
 
-        function deletePendingTrade(tradeId) {
+        async function deletePendingTrade(tradeId) {
             if (!confirm('确定要删除这笔待确认交易吗？')) return;
 
-            const trades = getPendingTrades();
+            const trades = await getPendingTrades();
             const filtered = trades.filter(t => t.id !== tradeId);
-            savePendingTrades(filtered);
-            updatePendingTradeBanner();
-            openPendingTradesModal();
+            await savePendingTrades(filtered);
+            await updatePendingTradeBanner();
+            await openPendingTradesModal();
         }
 
         async function confirmAllPendingTrades() {
-            const trades = getPendingTrades();
+            const trades = await getPendingTrades();
             if (trades.length === 0) return;
 
             let successCount = 0;
@@ -1556,7 +1608,7 @@
                 await saveRow(card);
 
                 // 记录交易历史
-                addTradeRecord(trade.rowId, {
+                await addTradeRecord(trade.rowId, {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
                     type: 'add',
                     amount: trade.amount,
@@ -1569,8 +1621,8 @@
             }
 
             saveAndCalculate();
-            savePendingTrades([]);
-            updatePendingTradeBanner();
+            await savePendingTrades([]);
+            await updatePendingTradeBanner();
             closePendingTradesModal();
             alert(`已确认 ${successCount} 笔交易！`);
         }
@@ -1579,26 +1631,51 @@
         const TRADE_HISTORY_KEY = 'vDashboard_tradeHistory';
         let currentTradeHistoryRowId = null;
 
-        function getTradeHistory() {
+        // 从后端同步交易历史
+        async function syncTradeHistoryFromServer() {
             try {
-                return JSON.parse(localStorage.getItem(TRADE_HISTORY_KEY)) || {};
+                const response = await fetch(`${API_BASE_URL}/api/trade-history`);
+                const data = await response.json();
+                if (data.success && data.history) {
+                    localTradeHistory = data.history;
+                }
             } catch (e) {
-                return {};
+                console.error('从后端同步交易历史失败:', e);
+                localTradeHistory = {};
             }
         }
 
-        function saveTradeHistory(history) {
-            localStorage.setItem(TRADE_HISTORY_KEY, JSON.stringify(history));
+        // 获取交易历史（优先使用缓存）
+        async function getTradeHistory() {
+            if (!localTradeHistory) {
+                await syncTradeHistoryFromServer();
+            }
+            return localTradeHistory || {};
         }
 
-        function addTradeRecord(rowId, record) {
-            const history = getTradeHistory();
+        // 保存交易历史到后端
+        async function saveTradeHistory(history) {
+            localTradeHistory = history;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-trade-history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ history })
+                });
+                await response.json();
+            } catch (e) {
+                console.error('保存交易历史失败:', e);
+            }
+        }
+
+        async function addTradeRecord(rowId, record) {
+            const history = await getTradeHistory();
             if (!history[rowId]) history[rowId] = [];
             history[rowId].unshift(record);
-            saveTradeHistory(history);
+            await saveTradeHistory(history);
         }
 
-        function openTradeHistoryModal(row) {
+        async function openTradeHistoryModal(row) {
             if (row.dataset.isFund !== 'true') return;
 
             currentTradeHistoryRowId = row.dataset.id;
@@ -1607,8 +1684,8 @@
 
             document.getElementById('tradeHistoryFundName').innerText = `${name} (#${code})`;
 
-            const history = getTradeHistory();
-            const pendingTrades = getPendingTrades().filter(t => t.rowId === currentTradeHistoryRowId);
+            const history = await getTradeHistory();
+            const pendingTrades = (await getPendingTrades()).filter(t => t.rowId === currentTradeHistoryRowId);
             const records = history[currentTradeHistoryRowId] || [];
 
             const listEl = document.getElementById('tradeHistoryList');
@@ -1687,15 +1764,15 @@
             await confirmPendingTrade(tradeId);
             if (currentTradeHistoryRowId) {
                 const card = document.querySelector(`[data-id="${currentTradeHistoryRowId}"]`);
-                if (card) openTradeHistoryModal(card);
+                if (card) await openTradeHistoryModal(card);
             }
         }
 
-        function deletePendingTradeFromHistory(tradeId) {
-            deletePendingTrade(tradeId);
+        async function deletePendingTradeFromHistory(tradeId) {
+            await deletePendingTrade(tradeId);
             if (currentTradeHistoryRowId) {
                 const card = document.querySelector(`[data-id="${currentTradeHistoryRowId}"]`);
-                if (card) openTradeHistoryModal(card);
+                if (card) await openTradeHistoryModal(card);
             }
         }
     </script>

@@ -1,118 +1,108 @@
+// 加载环境变量
+require('dotenv').config();
+
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
+const db = require('./db');
 
 const PORT = 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
-const CONFIG_FILE = path.join(__dirname, 'config.json');
-const DAILY_PROFIT_FILE = path.join(__dirname, 'daily-profit.json');
-const PENDING_TRADES_FILE = path.join(__dirname, 'pending-trades.json');
-const TRADE_HISTORY_FILE = path.join(__dirname, 'trade-history.json');
 
 // ==================== 配置部分 ====================
 // Server酱配置 - 需要在 config.json 中设置或直接修改这里
 let SERVERCHAN_KEY = '';
 
 // 初始化配置文件
-function initConfig() {
-  if (!fs.existsSync(CONFIG_FILE)) {
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify({
-      serverchanKey: '',
-      alertTime: '0 22 * * *'
-    }, null, 2));
-    console.log('已创建配置文件 config.json，请填写 Server酱 Key');
-  } else {
-    const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    SERVERCHAN_KEY = config.serverchanKey || '';
-    if (!SERVERCHAN_KEY) {
-      console.log('请在 config.json 中配置 serverchanKey 以接收微信通知');
+async function initConfig() {
+  try {
+    // 从数据库获取配置
+    const configs = await db.getAllConfigs();
+
+    // 优先使用环境变量，如果不存在则使用数据库中的配置
+    const serverchanKeyFromEnv = process.env.SERVERCHAN_KEY;
+    const alertTimeFromEnv = process.env.ALERT_TIME;
+
+    // 设置默认配置（如果不存在）
+    if (!configs.serverchanKey) {
+      const defaultValue = serverchanKeyFromEnv || '';
+      await db.setConfig('serverchanKey', defaultValue);
+      if (!defaultValue) {
+        console.log('Server酱 Key 未设置，请在配置中填写');
+      }
     }
+    if (!configs.alertTime) {
+      const defaultValue = alertTimeFromEnv || '0 22 * * *';
+      await db.setConfig('alertTime', defaultValue);
+    }
+
+    // 更新内存中的配置（优先使用环境变量，其次使用数据库配置）
+    SERVERCHAN_KEY = serverchanKeyFromEnv || configs.serverchanKey || '';
+    if (!SERVERCHAN_KEY) {
+      console.log('Server酱 Key 未设置，无法发送微信通知');
+    }
+  } catch (error) {
+    console.error('初始化配置失败:', error);
+    // 设置默认值
+    SERVERCHAN_KEY = '';
   }
 }
 
-// 初始化数据文件
-if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ rows: [] }, null, 2));
-}
 
-// 初始化每日收益文件
-if (!fs.existsSync(DAILY_PROFIT_FILE)) {
-  fs.writeFileSync(DAILY_PROFIT_FILE, JSON.stringify({ records: [] }, null, 2));
-}
 
-// 初始化待确认交易文件
-if (!fs.existsSync(PENDING_TRADES_FILE)) {
-  fs.writeFileSync(PENDING_TRADES_FILE, JSON.stringify({ trades: [] }, null, 2));
-}
 
-// 初始化交易历史文件
-if (!fs.existsSync(TRADE_HISTORY_FILE)) {
-  fs.writeFileSync(TRADE_HISTORY_FILE, JSON.stringify({ history: {} }, null, 2));
-}
-
-// 读取每日收益数据
-function readDailyProfit() {
+// 初始化配置和启动服务器
+async function startServer() {
   try {
-    const data = fs.readFileSync(DAILY_PROFIT_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    return { records: [] };
+    // 初始化数据库连接
+    await db.initDatabase();
+    console.log('✅ 数据库连接初始化完成');
+
+    // 初始化配置
+    await initConfig();
+
+    // 设置定时任务
+    await setupCronJob();
+
+    // 启动HTTP服务器
+    server.listen(PORT, () => {
+      console.log(`\n服务器运行在 http://localhost:${PORT}`);
+      console.log('📊 数据存储: PostgreSQL');
+      console.log('\n可用接口:');
+      console.log('  GET  /api/data                    - 获取所有数据');
+      console.log('  POST /api/save-row                - 保存单行数据');
+      console.log('  POST /api/delete-row              - 删除单行数据');
+      console.log('  GET  /api/trigger-check           - 手动触发基金检查 (测试)');
+      console.log('  GET  /api/trigger-profit          - 手动触发每日收益计算 (测试)');
+      console.log('  GET  /api/trigger-confirm         - 手动触发自动确认交易 (测试)');
+      console.log('  POST /api/save-daily-profit       - 保存今日收益');
+      console.log('  GET  /api/daily-profit            - 获取每日收益历史');
+      console.log('  --- 待确认交易 ---');
+      console.log('  GET  /api/pending-trades          - 获取待确认交易列表');
+      console.log('  POST /api/pending-trades          - 新增待确认交易');
+      console.log('  POST /api/pending-trades/delete   - 删除待确认交易');
+      console.log('  POST /api/save-pending-trades     - 批量保存待确认交易列表');
+      console.log('  --- 交易历史 ---');
+      console.log('  GET  /api/trade-history           - 获取全部交易历史');
+      console.log('  GET  /api/trade-history/:rowId    - 获取某持仓的交易历史');
+      console.log('  POST /api/trade-history           - 新增交易历史记录');
+      console.log('  POST /api/save-trade-history      - 批量保存交易历史');
+      console.log('\n配置说明:');
+      console.log('  1. Server酱获取地址: https://sct.ftqq.com/');
+      console.log('  2. 在前端页面为基金设置涨跌提醒值 (%)');
+      console.log('  3. 每日收益定时任务: 每天 23:00 自动计算并保存');
+      console.log('  4. 自动确认交易定时任务: 每天 09:00 自动确认昨天15点前的交易');
+      console.log('  5. 配置存储在 PostgreSQL configs 表中');
+      console.log('');
+    });
+  } catch (error) {
+    console.error('服务器启动失败:', error);
+    process.exit(1);
   }
 }
 
-// 写入每日收益数据
-function writeDailyProfit(data) {
-  fs.writeFileSync(DAILY_PROFIT_FILE, JSON.stringify(data, null, 2));
-}
+// 启动服务器
+startServer();
 
-// 读取待确认交易
-function readPendingTrades() {
-  try {
-    const data = fs.readFileSync(PENDING_TRADES_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    return { trades: [] };
-  }
-}
-
-// 写入待确认交易
-function writePendingTrades(data) {
-  fs.writeFileSync(PENDING_TRADES_FILE, JSON.stringify(data, null, 2));
-}
-
-// 读取交易历史
-function readTradeHistory() {
-  try {
-    const data = fs.readFileSync(TRADE_HISTORY_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    return { history: {} };
-  }
-}
-
-// 写入交易历史
-function writeTradeHistory(data) {
-  fs.writeFileSync(TRADE_HISTORY_FILE, JSON.stringify(data, null, 2));
-}
-
-initConfig();
-
-// 读取数据
-function readData() {
-  try {
-    const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (e) {
-    return { rows: [] };
-  }
-}
-
-// 写入数据
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
 
 // ==================== 股票/基金价格获取 ====================
 async function fetchStockPrice(code) {
@@ -209,8 +199,8 @@ async function sendWechatMessage(title, content) {
 // ==================== 检查基金并发送提醒 ====================
 async function checkFundsAndAlert() {
   console.log('\n========== 开始检查基金涨跌提醒 ==========');
-  const data = readData();
-  const funds = data.rows.filter(r => r.isFund && r.alert && r.alert > 0 && r.code);
+  const rows = await db.getPositions();
+  const funds = rows.filter(r => r.isFund && r.alert && r.alert > 0 && r.code);
 
   if (funds.length === 0) {
     console.log('没有需要检查的基金');
@@ -269,15 +259,14 @@ async function checkFundsAndAlert() {
 // ==================== 计算并保存每日收益 ====================
 async function calculateAndSaveDailyProfit() {
   console.log('\n========== 开始计算每日收益 ==========');
-  const data = readData();
+  const rows = await db.getPositions();
   const now = new Date();
   const dateStr = now.getFullYear().toString() + '-' +
                  (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
                  now.getDate().toString().padStart(2, '0');
 
   // 检查今天是否已经有数据
-  const dailyData = readDailyProfit();
-  const existingRecord = dailyData.records.find(r => r.date === dateStr);
+  const existingRecord = await db.getDailyProfitByDate(dateStr);
   if (existingRecord) {
     console.log(`今日(${dateStr})收益数据已存在，跳过计算`);
     console.log('========== 计算完成 ==========\n');
@@ -285,8 +274,8 @@ async function calculateAndSaveDailyProfit() {
   }
 
   let stockToday = 0, fundToday = 0;
-  const stocks = data.rows.filter(r => !r.isFund && r.code);
-  const funds = data.rows.filter(r => r.isFund && r.code);
+  const stocks = rows.filter(r => !r.isFund && r.code);
+  const funds = rows.filter(r => r.isFund && r.code);
 
   console.log(`处理 ${stocks.length} 只股票，${funds.length} 只基金`);
 
@@ -367,8 +356,7 @@ async function calculateAndSaveDailyProfit() {
     totalToday: Math.round(stockToday + fundToday)
   };
 
-  dailyData.records.push(profitRecord);
-  writeDailyProfit(dailyData);
+  await db.createDailyProfit(profitRecord);
 
   console.log(`\n收益计算完成！`);
   console.log(`股票今日收益: ¥${profitRecord.stockToday.toLocaleString()}`);
@@ -380,11 +368,9 @@ async function calculateAndSaveDailyProfit() {
 // ==================== 自动确认待确认交易 ====================
 async function autoConfirmPendingTrades() {
   console.log('\n========== 开始自动确认待确认交易 ==========');
-  const pendingData = readPendingTrades();
-  const data = readData();
-  const tradeHistory = readTradeHistory();
+  const pendingTrades = await db.getPendingTrades();
 
-  if (pendingData.trades.length === 0) {
+  if (pendingTrades.length === 0) {
     console.log('没有待确认交易');
     console.log('========== 确认完成 ==========\n');
     return;
@@ -401,12 +387,12 @@ async function autoConfirmPendingTrades() {
   const yesterdayStr = yesterdayBeijing.toISOString().slice(0, 10);
 
   console.log(`今天(北京): ${todayStr}, 昨天(北京): ${yesterdayStr}`);
-  console.log(`待确认交易数量: ${pendingData.trades.length}`);
+  console.log(`待确认交易数量: ${pendingTrades.length}`);
 
   let confirmedCount = 0;
   const remainingTrades = [];
 
-  for (const trade of pendingData.trades) {
+  for (const trade of pendingTrades) {
     // 将 UTC 时间转换为北京时间
     const tradeDateUTC = new Date(trade.createdAt);
     const tradeDateBeijing = new Date(tradeDateUTC.getTime() + 8 * 60 * 60 * 1000);
@@ -436,14 +422,12 @@ async function autoConfirmPendingTrades() {
 
     if (shouldConfirm) {
       // 找到对应的持仓
-      const rowIndex = data.rows.findIndex(r => r.id === trade.rowId);
-      if (rowIndex < 0) {
+      const row = await db.getPosition(trade.rowId);
+      if (!row) {
         console.log(`  → 找不到对应的持仓，跳过`);
         remainingTrades.push(trade);
         continue;
       }
-
-      const row = data.rows[rowIndex];
 
       // 获取基金净值
       const fundData = await fetchFundNetValue(trade.code);
@@ -464,20 +448,22 @@ async function autoConfirmPendingTrades() {
       console.log(`  新增份额: ${newShares.toFixed(4)}, 总份额: ${totalShares.toFixed(4)}, 新成本: ${newCost.toFixed(4)}`);
 
       // 更新持仓（shares保留2位小数，cost保留4位小数）
-      row.shares = parseFloat(totalShares.toFixed(2));
-      row.cost = parseFloat(newCost.toFixed(4));
+      const updatedShares = parseFloat(totalShares.toFixed(2));
+      const updatedCost = parseFloat(newCost.toFixed(4));
+      const updatedPlanBuy = row.planBuy && row.planBuy > 0 ? Math.max(0, row.planBuy - trade.amount) : row.planBuy;
 
-      // 扣除拟加仓金额
-      if (row.planBuy && row.planBuy > 0) {
-        row.planBuy = Math.max(0, row.planBuy - trade.amount);
-      }
+      // 更新数据库中的持仓
+      await db.updatePosition(row.id, {
+        shares: updatedShares,
+        cost: updatedCost,
+        planBuy: updatedPlanBuy
+      });
 
-      // 添加交易历史记录
-      if (!tradeHistory.history[trade.rowId]) {
-        tradeHistory.history[trade.rowId] = [];
-      }
-      tradeHistory.history[trade.rowId].unshift({
+
+      // 添加交易历史记录到数据库
+      await db.createTradeRecord({
         id: trade.id,
+        rowId: trade.rowId,
         type: 'add',
         amount: trade.amount,
         shares: parseFloat(newShares.toFixed(2)),
@@ -487,6 +473,9 @@ async function autoConfirmPendingTrades() {
         localDate: tradeDateStr
       });
 
+      // 从数据库中删除已确认的待确认交易
+      await db.deletePendingTrade(trade.id);
+
       confirmedCount++;
       console.log(`  ✓ 确认成功`);
     } else {
@@ -495,10 +484,6 @@ async function autoConfirmPendingTrades() {
   }
 
   if (confirmedCount > 0) {
-    // 保存更新后的数据
-    writeData(data);
-    writeTradeHistory(tradeHistory);
-    writePendingTrades({ trades: remainingTrades });
     console.log(`\n自动确认完成！共确认 ${confirmedCount} 笔交易`);
   } else {
     console.log(`\n没有需要确认的交易`);
@@ -510,9 +495,10 @@ async function autoConfirmPendingTrades() {
 // ==================== 设置定时任务 ====================
 // 配置时间: 秒 分 时 日 月 周
 // 晚上10点: '0 0 22 * * *'
-function setupCronJob() {
-  const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-  const cronTime = config.alertTime || '0 16 01 * * *';
+async function setupCronJob() {
+  const configs = await db.getAllConfigs();
+  // 优先使用环境变量，其次使用数据库配置
+  const cronTime = process.env.ALERT_TIME || configs.alertTime || '0 22 * * *';
 
   // 清除旧任务
   if (global.cronJob) {
@@ -549,13 +535,11 @@ function setupCronJob() {
   console.log(`基金提醒定时任务已设置: 每天 ${cronTime} 执行`);
   console.log(`每日收益计算定时任务已设置: 每天 23:00 执行`);
   console.log(`自动确认交易定时任务已设置: 每天 09:00 执行`);
-  console.log('提示: 可以在 config.json 中修改 alertTime');
+  console.log('提示: 可以在 .env 文件中修改 ALERT_TIME 环境变量');
 }
 
-setupCronJob();
-
 // ==================== HTTP 服务器 ====================
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -593,9 +577,15 @@ const server = http.createServer((req, res) => {
   // ========== 待确认交易 API ==========
   // 获取待确认交易列表
   if (req.method === 'GET' && req.url === '/api/pending-trades') {
-    const data = readPendingTrades();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(data));
+    try {
+      const trades = await db.getPendingTrades();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ trades }));
+    } catch (error) {
+      console.error('Error getting pending trades:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get pending trades' }));
+    }
     return;
   }
 
@@ -603,15 +593,14 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/pending-trades') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const trade = JSON.parse(body);
-        const data = readPendingTrades();
-        data.trades.push(trade);
-        writePendingTrades(data);
+        await db.createPendingTrade(trade);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
+        console.error('Error creating pending trade:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
       }
@@ -623,15 +612,41 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/pending-trades/delete') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const { id } = JSON.parse(body);
-        const data = readPendingTrades();
-        data.trades = data.trades.filter(t => t.id !== id);
-        writePendingTrades(data);
+        await db.deletePendingTrade(id);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (e) {
+        console.error('Error deleting pending trade:', e);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
+    return;
+  }
+
+  // 批量保存待确认交易（替换整个列表）
+  if (req.method === 'POST' && req.url === '/api/save-pending-trades') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { trades } = JSON.parse(body);
+
+        // 先删除所有现有交易
+        await db.deleteAllPendingTrades();
+
+        // 批量插入新交易
+        for (const trade of trades) {
+          await db.createPendingTrade(trade);
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
+      } catch (e) {
+        console.error('Error saving pending trades:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
       }
@@ -642,19 +657,30 @@ const server = http.createServer((req, res) => {
   // ========== 交易历史 API ==========
   // 获取交易历史（全部）
   if (req.method === 'GET' && req.url === '/api/trade-history') {
-    const data = readTradeHistory();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(data));
+    try {
+      const history = await db.getTradeHistory();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ history }));
+    } catch (error) {
+      console.error('Error getting trade history:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get trade history' }));
+    }
     return;
   }
 
   // 获取某持仓的交易历史
   if (req.method === 'GET' && req.url.startsWith('/api/trade-history/')) {
-    const rowId = req.url.split('/api/trade-history/')[1];
-    const data = readTradeHistory();
-    const records = data.history[rowId] || [];
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ records }));
+    try {
+      const rowId = req.url.split('/api/trade-history/')[1];
+      const records = await db.getTradeHistoryByRowId(rowId);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ records }));
+    } catch (error) {
+      console.error('Error getting trade history by rowId:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get trade history' }));
+    }
     return;
   }
 
@@ -662,13 +688,9 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/trade-history') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const { rowId, record } = JSON.parse(body);
-        const data = readTradeHistory();
-        if (!data.history[rowId]) {
-          data.history[rowId] = [];
-        }
 
         // 格式化数值：shares保留2位小数，netValue保留4位小数
         const formattedRecord = { ...record };
@@ -679,11 +701,75 @@ const server = http.createServer((req, res) => {
           formattedRecord.netValue = parseFloat(formattedRecord.netValue.toFixed(4));
         }
 
-        data.history[rowId].push(formattedRecord);
-        writeTradeHistory(data);
+        // 创建交易记录
+        await db.createTradeRecord({
+          id: formattedRecord.id,
+          rowId: rowId,
+          type: formattedRecord.type,
+          amount: formattedRecord.amount,
+          shares: formattedRecord.shares,
+          netValue: formattedRecord.netValue,
+          isBefore15: formattedRecord.isBefore15 || true,
+          createdAt: formattedRecord.createdAt,
+          localDate: formattedRecord.localDate || null,
+        });
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
+        console.error('Error creating trade record:', e);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
+    return;
+  }
+
+  // 批量保存交易历史（替换整个历史）
+  if (req.method === 'POST' && req.url === '/api/save-trade-history') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { history } = JSON.parse(body);
+
+        // 开始事务：先删除所有现有记录
+        await db.query('BEGIN');
+        await db.query('DELETE FROM trade_history');
+
+        // 批量插入新记录
+        for (const [rowId, records] of Object.entries(history)) {
+          for (const record of records) {
+            // 格式化数值：shares保留2位小数，netValue保留4位小数
+            const formattedRecord = { ...record };
+            if (typeof formattedRecord.shares === 'number') {
+              formattedRecord.shares = parseFloat(formattedRecord.shares.toFixed(2));
+            }
+            if (typeof formattedRecord.netValue === 'number') {
+              formattedRecord.netValue = parseFloat(formattedRecord.netValue.toFixed(4));
+            }
+
+            await db.createTradeRecord({
+              id: formattedRecord.id,
+              rowId: rowId,
+              type: formattedRecord.type,
+              amount: formattedRecord.amount,
+              shares: formattedRecord.shares,
+              netValue: formattedRecord.netValue,
+              isBefore15: formattedRecord.isBefore15 || true,
+              createdAt: formattedRecord.createdAt,
+              localDate: formattedRecord.localDate || null,
+            });
+          }
+        }
+
+        await db.query('COMMIT');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
+      } catch (e) {
+        // 回滚事务
+        await db.query('ROLLBACK').catch(() => {});
+        console.error('Error saving trade history:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
       }
@@ -695,20 +781,9 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/save-row') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const rowData = JSON.parse(body);
-        const data = readData();
-
-        // 用 code 和 isFund 共同判断是否存在
-        let index = -1;
-        if (rowData.code) {
-          index = data.rows.findIndex(r => r.code === rowData.code && r.isFund === rowData.isFund);
-        }
-        // 如果没找到，再用 id 判断（兼容旧数据）
-        if (index < 0 && rowData.id) {
-          index = data.rows.findIndex(r => r.id === rowData.id);
-        }
 
         // 格式化数值：shares保留2位小数，cost保留4位小数
         if (typeof rowData.shares === 'number') {
@@ -718,18 +793,48 @@ const server = http.createServer((req, res) => {
           rowData.cost = parseFloat(rowData.cost.toFixed(4));
         }
 
-        if (index >= 0) {
-          // 更新时保留原 id
-          rowData.id = data.rows[index].id;
-          data.rows[index] = rowData;
-        } else {
-          data.rows.push(rowData);
+        // 检查是否已存在（根据id或code+isFund）
+        let existingPosition = null;
+        if (rowData.id) {
+          existingPosition = await db.getPosition(rowData.id);
+        }
+        if (!existingPosition && rowData.code && rowData.isFund !== undefined) {
+          existingPosition = await db.getPositionByCode(rowData.code, rowData.isFund);
         }
 
-        writeData(data);
+        if (existingPosition) {
+          // 更新现有记录
+          await db.updatePosition(existingPosition.id, {
+            code: rowData.code,
+            name: rowData.name,
+            shares: rowData.shares,
+            cost: rowData.cost,
+            isFund: rowData.isFund,
+            isOverseas: rowData.isOverseas || false,
+            planBuy: rowData.planBuy || 0,
+            alert: rowData.alert || null,
+            targetPrice: rowData.targetPrice || null,
+          });
+        } else {
+          // 创建新记录
+          await db.createPosition({
+            id: rowData.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            code: rowData.code,
+            name: rowData.name,
+            shares: rowData.shares,
+            cost: rowData.cost,
+            isFund: rowData.isFund || false,
+            isOverseas: rowData.isOverseas || false,
+            planBuy: rowData.planBuy || 0,
+            alert: rowData.alert || null,
+            targetPrice: rowData.targetPrice || null,
+          });
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
+        console.error('Save row error:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
       }
@@ -741,29 +846,34 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/delete-row') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const { id, code, isFund } = JSON.parse(body);
-        const data = readData();
+        let deleted = false;
 
         // 先用 code + isFund 删除
-        let deleted = false;
-        if (code) {
-          const initialLength = data.rows.length;
-          data.rows = data.rows.filter(r => !(r.code === code && r.isFund === isFund));
-          deleted = data.rows.length !== initialLength;
+        if (code && isFund !== undefined) {
+          try {
+            await db.deletePositionByCode(code, isFund);
+            deleted = true;
+          } catch (e) {
+            // 可能不存在，继续尝试用id删除
+          }
         }
         // 如果没删除成功，再用 id 删除
         if (!deleted && id) {
-          const initialLength = data.rows.length;
-          data.rows = data.rows.filter(r => r.id !== id);
-          deleted = data.rows.length !== initialLength;
+          try {
+            await db.deletePosition(id);
+            deleted = true;
+          } catch (e) {
+            // 可能不存在
+          }
         }
 
-        writeData(data);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, deleted }));
       } catch (e) {
+        console.error('Delete row error:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
       }
@@ -773,9 +883,15 @@ const server = http.createServer((req, res) => {
 
   // 获取所有数据
   if (req.method === 'GET' && req.url === '/api/data') {
-    const data = readData();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(data));
+    try {
+      const rows = await db.getPositions();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ rows }));
+    } catch (error) {
+      console.error('Error getting positions:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get data' }));
+    }
     return;
   }
 
@@ -783,23 +899,14 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/save-daily-profit') {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const profitData = JSON.parse(body);
-        const data = readDailyProfit();
-
-        // 检查该日期是否已存在，存在则更新，不存在则添加
-        const existingIndex = data.records.findIndex(r => r.date === profitData.date);
-        if (existingIndex >= 0) {
-          data.records[existingIndex] = profitData;
-        } else {
-          data.records.push(profitData);
-        }
-
-        writeDailyProfit(data);
+        await db.createDailyProfit(profitData);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
+        console.error('Save daily profit error:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
       }
@@ -809,9 +916,15 @@ const server = http.createServer((req, res) => {
 
   // 获取每日收益历史
   if (req.method === 'GET' && req.url === '/api/daily-profit') {
-    const data = readDailyProfit();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(data));
+    try {
+      const records = await db.getDailyProfits();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ records }));
+    } catch (error) {
+      console.error('Error getting daily profits:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get daily profits' }));
+    }
     return;
   }
 
@@ -819,34 +932,3 @@ const server = http.createServer((req, res) => {
   res.end('Not Found');
 });
 
-server.listen(PORT, () => {
-  console.log(`\n服务器运行在 http://localhost:${PORT}`);
-  console.log(`数据文件: ${DATA_FILE}`);
-  console.log(`配置文件: ${CONFIG_FILE}`);
-  console.log(`每日收益文件: ${DAILY_PROFIT_FILE}`);
-  console.log(`待确认交易文件: ${PENDING_TRADES_FILE}`);
-  console.log(`交易历史文件: ${TRADE_HISTORY_FILE}`);
-  console.log('\n可用接口:');
-  console.log('  GET  /api/data                    - 获取所有数据');
-  console.log('  POST /api/save-row                - 保存单行数据');
-  console.log('  GET  /api/trigger-check           - 手动触发基金检查 (测试)');
-  console.log('  GET  /api/trigger-profit          - 手动触发每日收益计算 (测试)');
-  console.log('  GET  /api/trigger-confirm         - 手动触发自动确认交易 (测试)');
-  console.log('  POST /api/save-daily-profit       - 保存今日收益');
-  console.log('  GET  /api/daily-profit            - 获取每日收益历史');
-  console.log('  --- 待确认交易 ---');
-  console.log('  GET  /api/pending-trades          - 获取待确认交易列表');
-  console.log('  POST /api/pending-trades          - 新增待确认交易');
-  console.log('  POST /api/pending-trades/delete   - 删除待确认交易');
-  console.log('  --- 交易历史 ---');
-  console.log('  GET  /api/trade-history           - 获取全部交易历史');
-  console.log('  GET  /api/trade-history/:rowId    - 获取某持仓的交易历史');
-  console.log('  POST /api/trade-history           - 新增交易历史记录');
-  console.log('\n配置说明:');
-  console.log('  1. 在 config.json 中填写 serverchanKey (Server酱 SendKey)');
-  console.log('  2. Server酱获取地址: https://sct.ftqq.com/');
-  console.log('  3. 在前端页面为基金设置涨跌提醒值 (%)');
-  console.log('  4. 每日收益定时任务: 每天 23:00 自动计算并保存');
-  console.log('  5. 自动确认交易定时任务: 每天 09:00 自动确认昨天15点前的交易');
-  console.log('');
-});

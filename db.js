@@ -298,7 +298,28 @@ async function deleteTradeRecord(id) {
 // ==================== 每日收益表操作 ====================
 async function getDailyProfits() {
   const res = await query('SELECT * FROM daily_profits ORDER BY date DESC');
-  return res.rows;
+  // Convert snake_case database fields to camelCase for frontend
+  return res.rows.map(row => {
+    const converted = snakeToCamel(row);
+    // Convert numeric strings to numbers
+    if (typeof converted.stockToday === 'string') {
+      converted.stockToday = parseFloat(converted.stockToday);
+    }
+    if (typeof converted.fundToday === 'string') {
+      converted.fundToday = parseFloat(converted.fundToday);
+    }
+    if (typeof converted.totalToday === 'string') {
+      converted.totalToday = parseFloat(converted.totalToday);
+    }
+    // Format date as YYYY-MM-DD string
+    if (converted.date) {
+      const d = new Date(converted.date);
+      converted.date = d.getFullYear() + '-' +
+                      (d.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                      d.getDate().toString().padStart(2, '0');
+    }
+    return converted;
+  });
 }
 
 async function getDailyProfitByDate(date) {

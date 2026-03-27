@@ -181,7 +181,6 @@
                 <button onclick="exportCSV()" class="p-2 border border-[var(--border-color)] rounded-xl text-[10px] font-black hover:bg-[var(--table-hover)]">导出数据</button>
                 <button onclick="saveDailyProfit()" class="p-2 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-black hover:bg-emerald-500/10">保存今日收益</button>
                 <button onclick="openProfitCalendarModal()" class="p-2 border border-indigo-500/30 text-indigo-400 rounded-xl text-[10px] font-black hover:bg-indigo-500/10">收益看板</button>
-                <button onclick="clearLocalData()" class="p-2 border border-rose-500/30 text-rose-400 rounded-xl text-[10px] font-black hover:bg-rose-500/10">清除本地数据</button>
                 <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
             </div>
         </div>
@@ -466,7 +465,8 @@
 
     <script>
         // ==================== 配置 ====================
-        const API_BASE_URL = 'https://finance-app-kanh.onrender.com';
+        // const API_BASE_URL = 'https://finance-app-kanh.onrender.com';
+        const API_BASE_URL = 'https://finance-app-production-3a22.up.railway.app';
         // const API_BASE_URL = 'http://localhost:3000';
 
         let currentTab = 'all';
@@ -526,7 +526,7 @@
                         <input type="text" class="code-input bg-transparent border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
                     </div>
                 </td>
-                <td class="px-4 text-center"><input type="number" class="shares-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.shares || 0}" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
+                <td class="px-4 text-center"><input type="number" class="shares-input bg-transparent text-center mono text-sm w-24 outline-none" value="${parseFloat(item.shares || 0).toFixed(2)}" oninput="saveAndCalculate()" onfocus="clearZero(this)" onblur="formatSharesInput(this)" step="0.01"></td>
                 <td class="px-4 text-center"><input type="number" class="cost-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
                 <td class="px-4 text-center mono text-sm price-cell italic">¥0.000</td>
                 <td class="px-4 text-center">
@@ -806,8 +806,27 @@
             }
         }
 
+        function formatSharesInput(input) {
+            // 格式化shares输入框为两位小数
+            if (!input) return;
+
+            if (input.value === '' || input.value === null || input.value === undefined) {
+                input.value = '0.00';
+            } else {
+                const num = parseFloat(input.value) || 0;
+                input.value = num.toFixed(2);
+            }
+        }
+
         function saveAndCalculate() {
             const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+
+            // 格式化所有shares输入框为两位小数
+            rows.forEach(row => {
+                const sharesInput = row.querySelector('.shares-input');
+                if (sharesInput) formatSharesInput(sharesInput);
+            });
+
             const baseInput = parseFloat(document.getElementById('baseCashInput').value) || 0;
             const fx = parseFloat(document.getElementById('fxRateInput').value) || 0.91;
             const refreshVal = document.getElementById('autoRefreshSelect').value;
@@ -968,7 +987,6 @@
             document.getElementById('overallProfitDisplay').innerText = (dOverall>=0?'+':'') + Math.round(dOverall).toLocaleString();
             document.getElementById('overallProfitDisplay').className = 'text-2xl font-black mono ' + (dOverall>=0?'up':'down');
 
-            localStorage.setItem('vDashboard_Final_Stable', JSON.stringify({ baseInput, fx, items, refreshVal }));
             updateNetValueStatus();
         }
 
@@ -1023,21 +1041,6 @@
                 if (result.success) {
                     // 从 DOM 移除
                     row.remove();
-
-                    // 同步更新本地 localStorage
-                    const localData = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
-                    if (localData && localData.items) {
-                        localData.items = localData.items.filter(item => {
-                            if (code && item.code === code && item.isFund === isFund) {
-                                return false;
-                            }
-                            if (item.id === id) {
-                                return false;
-                            }
-                            return true;
-                        });
-                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(localData));
-                    }
 
                     updatePagination();
                     saveAndCalculate();
@@ -1172,26 +1175,23 @@
         }
 
         function exportCSV() {
-            const s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+            const rows = Array.from(document.querySelectorAll('#stockBody tr'));
             let csv = "\uFEFF代码,名称,数量,成本,类型,拟加仓,涨跌提醒,目标价格\n";
-            s.items.forEach(d => csv += `${d.code},${d.name},${d.shares},${d.cost},${d.isFund?1:0},${d.planBuy},${d.alert || ''},${d.targetPrice || ''}\n`);
+            rows.forEach(row => {
+                const code = row.querySelector('.code-input').value;
+                const name = row.querySelector('.stock-name').innerText;
+                const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+                const isFund = row.dataset.isFund === 'true';
+                const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
+                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
+                csv += `${code},${name},${shares},${cost},${isFund?1:0},${planBuy},${alert || ''},${targetPrice || ''}\n`;
+            });
             const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = '我的资产配置.csv'; a.click();
-        }
-
-        function clearLocalData() {
-            if (!confirm('确定要清除浏览器本地数据吗？刷新后会从后端重新加载数据。')) {
-                return;
-            }
-            localStorage.removeItem('vDashboard_Final_Stable');
-            localStorage.removeItem('vDashboard_pendingTrades');
-            localStorage.removeItem('vDashboard_tradeHistory');
-            showToast('本地数据已清除，正在刷新...');
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
         }
 
         function importCSV(event) {
@@ -1504,7 +1504,7 @@
         window.onload = async () => {
             let s = null;
 
-            // 优先从后端获取数据
+            // 从后端获取数据
             try {
                 const response = await fetch(`${API_BASE_URL}/api/data`);
                 const serverData = await response.json();
@@ -1518,22 +1518,14 @@
                     console.log('已从后端加载持仓数据');
                 }
             } catch (e) {
-                console.log('从后端获取数据失败，尝试本地缓存:', e);
-            }
-
-            // 如果后端没有数据，尝试从本地获取
-            if (!s || !s.items || s.items.length === 0) {
-                s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
-                if (s) {
-                    console.log('已从本地缓存加载数据');
-                }
+                console.log('从后端获取数据失败:', e);
             }
 
             // 从后端同步待确认交易和交易历史
             await syncPendingTradesFromServer();
             await syncTradeHistoryFromServer();
 
-            // 如果还是没有数据，用默认值
+            // 如果没有数据，用默认值
             if (!s) {
                 s = {baseInput:300000, fx:0.91, items:[], refreshVal:"0"};
             }
@@ -1690,13 +1682,23 @@
         }
 
 		async function getHKDToCNY() {
-		  const res = await fetch("https://open.er-api.com/v6/latest/HKD");
-		  const data = await res.json();
-		
-		  const rate = data.rates.CNY;
-		  document.getElementById('fxRateInput').value = rate.toFixed(2);
-		  console.log("1 HKD ≈", rate, "CNY");
-		  return rate;
+		  try {
+		    const res = await fetch("https://open.er-api.com/v6/latest/HKD");
+		    const data = await res.json();
+
+		    if (data && data.rates && data.rates.CNY) {
+		      const rate = data.rates.CNY;
+		      const fxRateInput = document.getElementById('fxRateInput');
+		      if (fxRateInput) {
+		        fxRateInput.value = rate.toFixed(2);
+		      }
+		      console.log("1 HKD ≈", rate, "CNY");
+		      return rate;
+		    }
+		  } catch (e) {
+		    console.log("获取汇率失败:", e);
+		  }
+		  return 0.91; // 默认汇率
 		}
 		getHKDToCNY();
 

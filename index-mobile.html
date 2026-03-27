@@ -1156,15 +1156,25 @@
             setTimeout(updateNetValueStatus, 2000);
         };
 		async function getHKDToCNY() {
-		  const res = await fetch("https://open.er-api.com/v6/latest/HKD");
-		  const data = await res.json();
-		
-		  const rate = data.rates.CNY;
-		  document.getElementById('fxRateInput').value = rate.toFixed(2);
-		  console.log("1 HKD ≈", rate, "CNY");
-		  return rate;
+		  try {
+		    const res = await fetch("https://open.er-api.com/v6/latest/HKD");
+		    const data = await res.json();
+
+		    if (data && data.rates && data.rates.CNY) {
+		      const rate = data.rates.CNY;
+		      const fxRateInput = document.getElementById('fxRateInput');
+		      if (fxRateInput) {
+		        fxRateInput.value = rate.toFixed(2);
+		      }
+		      console.log("1 HKD ≈", rate, "CNY");
+		      return rate;
+		    }
+		  } catch (e) {
+		    console.log("获取汇率失败:", e);
+		  }
+		  return 0.91; // 默认汇率
 		}
-		getHKDToCNY();
+		// getHKDToCNY(); // 移动端没有汇率输入框
 
         // ========== 基金加仓功能 ==========
         let currentAddFundRow = null;
@@ -1251,19 +1261,18 @@
 
             if (!isBefore15) {
                 // 选择15点后：总是保存为待确认交易
-                const pendingTrades = await getPendingTrades();
-                pendingTrades.push({
+                const newTrade = {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     rowId: rowId,
                     code: code,
                     name: name,
                     amount: amount,
+                    isBefore15: isBefore15,
                     createdAt: now.toISOString()
-                });
-                await savePendingTrades(pendingTrades);
+                };
+                await addPendingTrade(newTrade);
                 await updatePendingTradeBanner();
                 closeAddFundModal();
-                alert('已提交待确认交易，请在合适的时间确认！');
             } else if (isTodayNetValue) {
                 // 选择15点前 + 当日净值已更新 → 直接确认
                 const newShares = amount / price;
@@ -1294,19 +1303,18 @@
                 closeAddFundModal();
             } else {
                 // 选择15点前 + 当日净值未更新 → 存为待确认
-                const pendingTrades = await getPendingTrades();
-                pendingTrades.push({
+                const newTrade = {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     rowId: rowId,
                     code: code,
                     name: name,
                     amount: amount,
+                    isBefore15: isBefore15,
                     createdAt: now.toISOString()
-                });
-                await savePendingTrades(pendingTrades);
+                };
+                await addPendingTrade(newTrade);
                 await updatePendingTradeBanner();
                 closeAddFundModal();
-                alert('当日净值尚未更新，已保存为待确认交易！');
             }
         }
 
@@ -1426,8 +1434,10 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/api/pending-trades`);
                 const data = await response.json();
-                if (data.success && data.trades) {
+                if (data.trades) {
                     pendingTradesCache = data.trades;
+                } else {
+                    pendingTradesCache = []; // 兼容旧格式
                 }
             } catch (e) {
                 console.error('从后端同步待确认交易失败:', e);
@@ -1441,6 +1451,46 @@
                 await syncPendingTradesFromServer();
             }
             return pendingTradesCache;
+        }
+
+        // 新增单条待确认交易到后端
+        async function addPendingTrade(trade) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trade)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 重新从后端同步以保持一致性
+                    await syncPendingTradesFromServer();
+                    return true;
+                }
+            } catch (e) {
+                console.error('新增待确认交易失败:', e);
+            }
+            return false;
+        }
+
+        // 从后端删除待确认交易
+        async function deletePendingTradeFromBackend(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 重新从后端同步以保持一致性
+                    await syncPendingTradesFromServer();
+                    return true;
+                }
+            } catch (e) {
+                console.error('删除待确认交易失败:', e);
+            }
+            return false;
         }
 
         // 保存待确认交易到后端（替换整个列表）
@@ -1568,9 +1618,7 @@
         async function deletePendingTrade(tradeId) {
             if (!confirm('确定要删除这笔待确认交易吗？')) return;
 
-            const trades = await getPendingTrades();
-            const filtered = trades.filter(t => t.id !== tradeId);
-            await savePendingTrades(filtered);
+            await deletePendingTradeFromBackend(tradeId);
             await updatePendingTradeBanner();
             await openPendingTradesModal();
         }
@@ -1636,8 +1684,10 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/api/trade-history`);
                 const data = await response.json();
-                if (data.success && data.history) {
+                if (data.history) {
                     localTradeHistory = data.history;
+                } else {
+                    localTradeHistory = data; // 兼容旧格式
                 }
             } catch (e) {
                 console.error('从后端同步交易历史失败:', e);

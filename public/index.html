@@ -148,16 +148,16 @@
         </div>
 
         <!-- 待确认交易提示 -->
-        <div id="pendingTradeBanner" class="hidden mb-6 bg-amber-500/20 border border-amber-500/30 rounded-xl p-4">
+        <div id="pendingTradeBanner" class="hidden mb-6 bg-indigo-500/20 border border-indigo-500/30 rounded-xl p-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <span class="text-amber-400 text-lg">⏰</span>
+                    <span class="text-indigo-400 text-lg">🤖</span>
                     <div>
-                        <div class="font-black text-amber-400 text-sm">有待确认的基金加仓交易</div>
-                        <div id="pendingTradeCount" class="text-[10px] text-[var(--text-muted)]">请在次日确认交易</div>
+                        <div class="font-black text-indigo-400 text-sm">有待确认的基金加仓交易</div>
+                        <div id="pendingTradeCount" class="text-[10px] text-[var(--text-muted)]">系统将在次日上午9:00自动确认</div>
                     </div>
                 </div>
-                <button onclick="openPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg font-black text-[10px]">查看待确认</button>
+                <button onclick="openPendingTradesModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-black text-[10px]">查看</button>
             </div>
         </div>
 
@@ -181,7 +181,6 @@
                 <button onclick="exportCSV()" class="p-2 border border-[var(--border-color)] rounded-xl text-[10px] font-black hover:bg-[var(--table-hover)]">导出数据</button>
                 <button onclick="saveDailyProfit()" class="p-2 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-black hover:bg-emerald-500/10">保存今日收益</button>
                 <button onclick="openProfitCalendarModal()" class="p-2 border border-indigo-500/30 text-indigo-400 rounded-xl text-[10px] font-black hover:bg-indigo-500/10">收益看板</button>
-                <button onclick="clearLocalData()" class="p-2 border border-rose-500/30 text-rose-400 rounded-xl text-[10px] font-black hover:bg-rose-500/10">清除本地数据</button>
                 <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
             </div>
         </div>
@@ -382,7 +381,6 @@
                 <div id="pendingTradesList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
                 <div class="flex gap-3 mt-6">
                     <button onclick="closePendingTradesModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
-                    <button onclick="confirmAllPendingTrades()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">全部确认</button>
                 </div>
             </div>
         </div>
@@ -405,40 +403,70 @@
         </div>
 
         <!-- 收益看板弹窗 -->
-        <div id="profitCalendarModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-6 w-[700px] border border-[var(--border-color)]">
-                <div class="flex justify-between items-center mb-4">
-                    <div>
-                        <h3 class="text-lg font-black">收益看板</h3>
-                    </div>
-                    <button onclick="closeProfitCalendarModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+        <div id="profitCalendarModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-4 md:p-6 w-[850px] max-w-[92vw] max-h-[85vh] overflow-y-auto border border-[var(--border-color)] shadow-2xl relative transform transition-all duration-300 scale-95 opacity-0 profit-modal-content">
+                <button onclick="closeProfitCalendarModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white text-2xl transition">&times;</button>
+
+                <!-- 标题 -->
+                <div class="mb-4">
+                    <h3 class="text-lg md:text-xl font-black mb-1">收益看板</h3>
+                    <div class="text-[9px] md:text-[10px] text-[var(--text-muted)]">查看历史收益数据</div>
                 </div>
 
-                <!-- 切换按钮 -->
-                <div class="flex p-1 bg-[var(--bg-main)] rounded-lg mb-4 gap-1">
-                    <button onclick="switchProfitType('total')" id="profit-type-total" class="flex-1 py-2 rounded-lg font-black text-xs bg-indigo-600 text-white profit-type-btn">总收益</button>
-                    <button onclick="switchProfitType('stock')" id="profit-type-stock" class="flex-1 py-2 rounded-lg font-black text-xs text-[var(--text-muted)] profit-type-btn">股票收益</button>
-                    <button onclick="switchProfitType('fund')" id="profit-type-fund" class="flex-1 py-2 rounded-lg font-black text-xs text-[var(--text-muted)] profit-type-btn">基金收益</button>
+                <!-- 切换按钮和统计区 -->
+                <div class="flex items-center justify-between mb-6">
+                    <!-- 切换按钮 -->
+                    <div class="flex p-1 bg-[var(--bg-main)] rounded-lg gap-1">
+                        <button onclick="switchProfitType('total')" id="profit-type-total" class="px-6 py-1.5 rounded-lg font-black text-[10px] transition-all duration-200 profit-type-btn bg-indigo-600 text-white hover:bg-indigo-500">总收益</button>
+                        <button onclick="switchProfitType('stock')" id="profit-type-stock" class="px-6 py-1.5 rounded-lg font-black text-[10px] transition-all duration-200 profit-type-btn text-[var(--text-muted)] hover:bg-[var(--table-hover)] hover:text-[var(--text-main)]">股票收益</button>
+                        <button onclick="switchProfitType('fund')" id="profit-type-fund" class="px-6 py-1.5 rounded-lg font-black text-[10px] transition-all duration-200 profit-type-btn text-[var(--text-muted)] hover:bg-[var(--table-hover)] hover:text-[var(--text-main)]">基金收益</button>
+                    </div>
+
+                    <!-- 收益统计 - 固定宽度，靠右 -->
+                    <div class="flex gap-6 flex-shrink-0 text-right">
+                        <div class="w-[140px]">
+                            <div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">年度收益</div>
+                            <div id="yearlyProfitDisplay" class="text-xl md:text-2xl font-black mono">¥0</div>
+                        </div>
+                        <div class="w-[140px]">
+                            <div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">本月收益</div>
+                            <div id="monthlyProfitDisplay" class="text-xl md:text-2xl font-black mono">¥0</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 月份切换 -->
-                <div class="flex items-center justify-between mb-4">
-                    <button onclick="changeMonth(-1)" class="p-2 border border-[var(--border-color)] rounded-lg text-xs font-black hover:bg-[var(--table-hover)]">◀ 上月</button>
-                    <span id="currentMonthDisplay" class="font-black text-sm"></span>
-                    <button onclick="changeMonth(1)" class="p-2 border border-[var(--border-color)] rounded-lg text-xs font-black hover:bg-[var(--table-hover)]">下月 ▶</button>
+                <div class="flex items-center justify-between mb-5 bg-[var(--bg-main)] p-2 rounded-xl">
+                    <button onclick="changeMonth(-1)" class="p-2 px-3 md:p-2.5 md:px-4 border border-[var(--border-color)] rounded-xl text-[10px] md:text-xs font-black hover:bg-[var(--table-hover)] transition flex items-center gap-1">
+                        <span class="text-xs md:text-sm">◀</span> <span class="hidden md:inline">上月</span>
+                    </button>
+                    <span id="currentMonthDisplay" class="font-black text-sm md:text-base px-3 md:px-4 py-1 md:py-1.5 bg-[var(--bg-card)] rounded-lg border border-[var(--border-color)] text-center"></span>
+                    <button onclick="changeMonth(1)" class="p-2 px-3 md:p-2.5 md:px-4 border border-[var(--border-color)] rounded-xl text-[10px] md:text-xs font-black hover:bg-[var(--table-hover)] transition flex items-center gap-1">
+                        <span class="hidden md:inline">下月</span> <span class="text-xs md:text-sm">▶</span>
+                    </button>
+                </div>
+
+                <!-- 星期标题 -->
+                <div class="grid grid-cols-7 gap-1 md:gap-2 mb-3">
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周日</div>
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周一</div>
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周二</div>
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周三</div>
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周四</div>
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周五</div>
+                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周六</div>
                 </div>
 
                 <!-- 日历 -->
-                <div id="profitCalendar" class="grid grid-cols-7 gap-2"></div>
+                <div id="profitCalendar" class="grid grid-cols-7 gap-1 md:gap-2"></div>
             </div>
         </div>
     </div>
 
+    <script src="./app-config.js"></script>
     <script>
         // ==================== 配置 ====================
-        // const API_BASE_URL = 'https://unfilial-constrictingly-maddie.ngrok-free.dev';
-        const API_BASE_URL = 'https://finance-app-production-3a22.up.railway.app/'
-        // const API_BASE_URL = 'http://localhost:3000';
+        const API_BASE_URL = window.API_BASE_URL;
 
         let currentTab = 'all';
         let sortDir = -1;
@@ -497,7 +525,7 @@
                         <input type="text" class="code-input bg-transparent border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
                     </div>
                 </td>
-                <td class="px-4 text-center"><input type="number" class="shares-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.shares || 0}" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
+                <td class="px-4 text-center"><input type="number" class="shares-input bg-transparent text-center mono text-sm w-24 outline-none" value="${parseFloat(item.shares || 0).toFixed(2)}" oninput="saveAndCalculate()" onfocus="clearZero(this)" onblur="formatSharesInput(this)" step="0.01"></td>
                 <td class="px-4 text-center"><input type="number" class="cost-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
                 <td class="px-4 text-center mono text-sm price-cell italic">¥0.000</td>
                 <td class="px-4 text-center">
@@ -777,12 +805,35 @@
             }
         }
 
+        function formatSharesInput(input) {
+            // 格式化shares输入框为两位小数
+            if (!input) return;
+
+            if (input.value === '' || input.value === null || input.value === undefined) {
+                input.value = '0.00';
+            } else {
+                const num = parseFloat(input.value) || 0;
+                input.value = num.toFixed(2);
+            }
+        }
+
         function saveAndCalculate() {
             const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+
+            // 格式化所有shares输入框为两位小数
+            rows.forEach(row => {
+                const sharesInput = row.querySelector('.shares-input');
+                if (sharesInput) formatSharesInput(sharesInput);
+            });
+
             const baseInput = parseFloat(document.getElementById('baseCashInput').value) || 0;
             const fx = parseFloat(document.getElementById('fxRateInput').value) || 0.91;
             const refreshVal = document.getElementById('autoRefreshSelect').value;
-            
+
+            // 获取交易历史和今天日期（用于排除今日新增份额的收益）
+            const tradeHistory = getTradeHistory();
+            const todayLocalStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
             let totalMkt = 0, totalToday = 0, totalOverall = 0, totalPlan = 0;
             let stockMkt = 0, stockToday = 0, stockOverall = 0;
             let fundMkt = 0, fundToday = 0, fundOverall = 0;
@@ -798,8 +849,29 @@
                 const isF = row.dataset.isFund === 'true';
 
                 const rate = (code.length === 5) ? fx : 1;
-                const mkt = shares * price * rate;
-                const profit = (price - cost) * shares * rate;
+
+                // 如果是基金，需要排除今日新增份额的收益
+                let effectiveShares = shares;
+                if (isF) {
+                    const rowId = row.dataset.id;
+                    const records = tradeHistory[rowId] || [];
+                    let todayNewShares = 0;
+
+                    records.forEach(record => {
+                        if (record.type === 'add') {
+                            const recordDate = record.localDate || new Date(record.createdAt).toLocaleDateString('en-CA');
+                            if (recordDate === todayLocalStr) {
+                                // 所有今日新增份额都不参与今日收益计算
+                                todayNewShares += record.shares || 0;
+                            }
+                        }
+                    });
+
+                    effectiveShares = Math.max(0, shares - todayNewShares);
+                }
+
+                const mkt = effectiveShares * price * rate;
+                const profit = (price - cost) * shares * rate; // 总盈亏仍按全部份额计算
 
                 // 判断今日净值是否已更新
                 let today = 0;
@@ -914,7 +986,6 @@
             document.getElementById('overallProfitDisplay').innerText = (dOverall>=0?'+':'') + Math.round(dOverall).toLocaleString();
             document.getElementById('overallProfitDisplay').className = 'text-2xl font-black mono ' + (dOverall>=0?'up':'down');
 
-            localStorage.setItem('vDashboard_Final_Stable', JSON.stringify({ baseInput, fx, items, refreshVal }));
             updateNetValueStatus();
         }
 
@@ -969,21 +1040,6 @@
                 if (result.success) {
                     // 从 DOM 移除
                     row.remove();
-
-                    // 同步更新本地 localStorage
-                    const localData = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
-                    if (localData && localData.items) {
-                        localData.items = localData.items.filter(item => {
-                            if (code && item.code === code && item.isFund === isFund) {
-                                return false;
-                            }
-                            if (item.id === id) {
-                                return false;
-                            }
-                            return true;
-                        });
-                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(localData));
-                    }
 
                     updatePagination();
                     saveAndCalculate();
@@ -1071,7 +1127,7 @@
             clearInterval(refreshTimer);
             clearInterval(progressInterval);
             document.getElementById('refreshProgress').style.width = '0%';
-            
+
             if (seconds > 0) {
                 remainingSeconds = seconds;
                 progressInterval = setInterval(() => {
@@ -1118,26 +1174,23 @@
         }
 
         function exportCSV() {
-            const s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+            const rows = Array.from(document.querySelectorAll('#stockBody tr'));
             let csv = "\uFEFF代码,名称,数量,成本,类型,拟加仓,涨跌提醒,目标价格\n";
-            s.items.forEach(d => csv += `${d.code},${d.name},${d.shares},${d.cost},${d.isFund?1:0},${d.planBuy},${d.alert || ''},${d.targetPrice || ''}\n`);
+            rows.forEach(row => {
+                const code = row.querySelector('.code-input').value;
+                const name = row.querySelector('.stock-name').innerText;
+                const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+                const isFund = row.dataset.isFund === 'true';
+                const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
+                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
+                csv += `${code},${name},${shares},${cost},${isFund?1:0},${planBuy},${alert || ''},${targetPrice || ''}\n`;
+            });
             const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = '我的资产配置.csv'; a.click();
-        }
-
-        function clearLocalData() {
-            if (!confirm('确定要清除浏览器本地数据吗？刷新后会从后端重新加载数据。')) {
-                return;
-            }
-            localStorage.removeItem('vDashboard_Final_Stable');
-            localStorage.removeItem('vDashboard_pendingTrades');
-            localStorage.removeItem('vDashboard_tradeHistory');
-            showToast('本地数据已清除，正在刷新...');
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
         }
 
         function importCSV(event) {
@@ -1177,6 +1230,11 @@
         async function saveDailyProfit() {
             // 计算股票和基金的今日收益
             const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+
+            // 获取交易历史和今天日期（用于排除今日新增份额的收益）
+            const tradeHistory = getTradeHistory();
+            const todayLocalStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
             let stockToday = 0, fundToday = 0;
 
             rows.forEach(row => {
@@ -1184,7 +1242,28 @@
                 const price = parseFloat(row.dataset.price) || 0;
                 const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
                 const change = parseFloat(row.dataset.change) || 0;
-                const mkt = shares * price;
+
+                // 计算有效份额（排除今日新增份额）
+                let effectiveShares = shares;
+                if (isF) {
+                    const rowId = row.dataset.id;
+                    const records = tradeHistory[rowId] || [];
+                    let todayNewShares = 0;
+
+                    records.forEach(record => {
+                        if (record.type === 'add') {
+                            const recordDate = record.localDate || new Date(record.createdAt).toLocaleDateString('en-CA');
+                            if (recordDate === todayLocalStr) {
+                                // 所有今日新增份额都不参与今日收益计算
+                                todayNewShares += record.shares || 0;
+                            }
+                        }
+                    });
+
+                    effectiveShares = Math.max(0, shares - todayNewShares);
+                }
+
+                const mkt = effectiveShares * price;
 
                 if (isF) {
                     // 基金：判断净值是否已更新
@@ -1265,21 +1344,42 @@
                 profitCalendarData = [];
             }
             document.getElementById('profitCalendarModal').classList.remove('hidden');
-            renderProfitCalendar();
+
+            // 触发动画
+            requestAnimationFrame(() => {
+                const modalContent = document.querySelector('#profitCalendarModal .profit-modal-content');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            });
+
+            // 确保按钮状态正确
+            switchProfitType('total');
         }
 
         function closeProfitCalendarModal() {
-            document.getElementById('profitCalendarModal').classList.add('hidden');
+            const modalContent = document.querySelector('#profitCalendarModal .profit-modal-content');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+
+            // 动画结束后隐藏弹窗
+            setTimeout(() => {
+                document.getElementById('profitCalendarModal').classList.add('hidden');
+            }, 300);
         }
 
         function switchProfitType(type) {
             profitDisplayType = type;
             document.querySelectorAll('[id^="profit-type-"]').forEach(btn => {
-                btn.classList.remove('bg-indigo-600', 'text-white');
-                btn.classList.add('text-[var(--text-muted)]');
+                // 重置所有按钮为未选中状态
+                btn.classList.remove('bg-indigo-600', 'text-white', 'hover:bg-indigo-500');
+                btn.classList.add('bg-[var(--bg-card)]', 'text-[var(--text-muted)]', 'hover:bg-[var(--table-hover)]', 'hover:text-[var(--text-main)]');
             });
-            document.getElementById('profit-type-' + type).classList.remove('text-[var(--text-muted)]');
-            document.getElementById('profit-type-' + type).classList.add('bg-indigo-600', 'text-white');
+
+            // 设置选中按钮
+            const activeBtn = document.getElementById('profit-type-' + type);
+            activeBtn.classList.remove('bg-[var(--bg-card)]', 'text-[var(--text-muted)]', 'hover:bg-[var(--table-hover)]', 'hover:text-[var(--text-main)]');
+            activeBtn.classList.add('bg-indigo-600', 'text-white', 'hover:bg-indigo-500');
+
             renderProfitCalendar();
         }
 
@@ -1291,16 +1391,60 @@
         function renderProfitCalendar() {
             const calendarEl = document.getElementById('profitCalendar');
             const monthDisplayEl = document.getElementById('currentMonthDisplay');
+            const yearlyProfitEl = document.getElementById('yearlyProfitDisplay');
+            const monthlyProfitEl = document.getElementById('monthlyProfitDisplay');
 
             const year = profitCurrentMonth.getFullYear();
             const month = profitCurrentMonth.getMonth();
 
             monthDisplayEl.textContent = `${year}年${month + 1}月`;
 
+            // 计算年度收益和本月收益
+            let yearlyTotal = 0;
+            let monthlyTotal = 0;
+
+            profitCalendarData.forEach(record => {
+                if (!record || !record.date) return;
+
+                const dateParts = record.date.split('-');
+                if (dateParts.length < 3) return;
+
+                const recordYear = parseInt(dateParts[0]);
+                const recordMonth = parseInt(dateParts[1]);
+
+                let profitValue = 0;
+                if (profitDisplayType === 'total') {
+                    profitValue = record.totalToday || 0;
+                } else if (profitDisplayType === 'stock') {
+                    profitValue = record.stockToday || 0;
+                } else if (profitDisplayType === 'fund') {
+                    profitValue = record.fundToday || 0;
+                }
+
+                // 年度收益（当前年份）
+                if (recordYear === year) {
+                    yearlyTotal += profitValue;
+                }
+
+                // 本月收益（当前年份和月份）
+                if (recordYear === year && recordMonth === month + 1) {
+                    monthlyTotal += profitValue;
+                }
+            });
+
+            // 更新显示
+            yearlyProfitEl.textContent = (yearlyTotal >= 0 ? '+' : '') + '¥' + Math.round(yearlyTotal).toLocaleString();
+            yearlyProfitEl.className = 'text-xl md:text-2xl font-black mono ' + (yearlyTotal >= 0 ? 'up' : 'down');
+
+            monthlyProfitEl.textContent = (monthlyTotal >= 0 ? '+' : '') + '¥' + Math.round(monthlyTotal).toLocaleString();
+            monthlyProfitEl.className = 'text-xl md:text-2xl font-black mono ' + (monthlyTotal >= 0 ? 'up' : 'down');
+
             // 创建日期到收益的映射
             const profitMap = {};
             profitCalendarData.forEach(record => {
-                profitMap[record.date] = record;
+                if (record && record.date) {
+                    profitMap[record.date] = record;
+                }
             });
 
             // 计算当月第一天和最后一天
@@ -1309,12 +1453,6 @@
             const startDayOfWeek = firstDay.getDay(); // 0 = 周日
 
             let html = '';
-
-            // 星期标题
-            const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-            weekDays.forEach(day => {
-                html += `<div class="text-center text-[10px] font-black text-[var(--text-muted)] py-1">${day}</div>`;
-            });
 
             // 填充前面的空白
             for (let i = 0; i < startDayOfWeek; i++) {
@@ -1340,17 +1478,20 @@
                 const hasData = profitValue !== null;
                 const isUp = hasData && profitValue >= 0;
                 const profitClass = hasData ? (isUp ? 'up' : 'down') : '';
-                const bgClass = hasData ? (isUp ? 'bg-rose-500/10' : 'bg-emerald-500/10') : 'bg-[var(--bg-main)]';
+
+                const bgClass = hasData ? (isUp ? 'bg-rose-500/20' : 'bg-emerald-500/20') : 'bg-[var(--bg-main)]';
+                const borderClass = hasData ? (isUp ? 'border-rose-500/30' : 'border-emerald-500/30') : 'border-[var(--border-color)]';
+                const hoverClass = hasData ? (isUp ? 'hover:bg-rose-500/30' : 'hover:bg-emerald-500/30') : 'hover:bg-[var(--table-hover)]';
 
                 html += `
-                    <div class="${bgClass} rounded-lg p-2 text-center border border-[var(--border-color)] min-h-[60px] hover:bg-[var(--table-hover)] cursor-default transition">
-                        <div class="text-[10px] font-black text-[var(--text-muted)] mb-1">${day}</div>
+                    <div class="${bgClass} ${borderClass} ${hoverClass} rounded-xl p-3 text-center border min-h-[70px] md:min-h-[80px] cursor-default transition-all duration-300 hover:scale-[1.02] hover:shadow-lg flex flex-col justify-center">
+                        <div class="text-xs font-black text-[var(--text-muted)] mb-1.5">${day}</div>
                         ${hasData ? `
-                            <div class="mono text-xs font-black ${profitClass}">
+                            <div class="mono text-xs md:text-sm font-black ${profitClass}">
                                 ${isUp ? '+' : ''}¥${Math.round(profitValue).toLocaleString()}
                             </div>
                         ` : `
-                            <div class="text-[10px] text-[var(--text-muted)]">--</div>
+                            <div class="text-[10px] md:text-[11px] text-[var(--text-muted)]">--</div>
                         `}
                     </div>
                 `;
@@ -1360,29 +1501,30 @@
         }
 
         window.onload = async () => {
-            let s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+            let s = null;
 
-            // 如果本地没有数据，尝试从后端获取
-            if (!s || !s.items || s.items.length === 0) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/data`);
-                    const serverData = await response.json();
-                    if (serverData && serverData.rows && serverData.rows.length > 0) {
-                        s = {
-                            baseInput: 300000,
-                            fx: 0.91,
-                            items: serverData.rows,
-                            refreshVal: "0"
-                        };
-                        // 保存到本地
-                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(s));
-                    }
-                } catch (e) {
-                    console.log('从后端获取数据失败:', e);
+            // 从后端获取数据
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/data`);
+                const serverData = await response.json();
+                if (serverData && serverData.rows) {
+                    s = {
+                        baseInput: 300000,
+                        fx: 0.91,
+                        items: serverData.rows,
+                        refreshVal: "0"
+                    };
+                    console.log('已从后端加载持仓数据');
                 }
+            } catch (e) {
+                console.log('从后端获取数据失败:', e);
             }
 
-            // 如果还是没有数据，用默认值
+            // 从后端同步待确认交易和交易历史
+            await syncPendingTradesFromServer();
+            await syncTradeHistoryFromServer();
+
+            // 如果没有数据，用默认值
             if (!s) {
                 s = {baseInput:300000, fx:0.91, items:[], refreshVal:"0"};
             }
@@ -1407,15 +1549,155 @@
             updatePendingTradeBanner();
             // 等净值获取完成后更新状态
             setTimeout(updateNetValueStatus, 2000);
+
+            // 设置每日自动保存收益
+            setupDailyAutoSave();
         };
+        // 设置每日23:00自动保存收益
+        function setupDailyAutoSave() {
+            const now = new Date();
+            const targetHour = 23; // 23点
+            const targetMinute = 0; // 0分
+
+            // 计算到下一个23:00的毫秒数
+            let targetTime = new Date();
+            targetTime.setHours(targetHour, targetMinute, 0, 0);
+
+            // 如果今天已经过了23:00，就设置到明天
+            if (now > targetTime) {
+                targetTime.setDate(targetTime.getDate() + 1);
+            }
+
+            const msUntilTarget = targetTime.getTime() - now.getTime();
+
+            console.log(`已设置每日自动保存收益，将在 ${targetTime.toLocaleString()} 执行`);
+
+            // 设置定时器
+            setTimeout(async () => {
+                try {
+                    console.log('开始自动保存今日收益...');
+                    await saveDailyProfit();
+                    console.log('自动保存今日收益完成');
+
+                    // 设置下一次定时（24小时后）
+                    setupDailyAutoSave();
+                } catch (e) {
+                    console.error('自动保存收益失败:', e);
+                    // 失败后1小时重试
+                    setTimeout(setupDailyAutoSave, 60 * 60 * 1000);
+                }
+            }, msUntilTarget);
+        }
+
+        // 设置页面关闭前自动保存收益
+        function setupBeforeUnloadSave() {
+            // 标记是否已经尝试过保存，避免重复保存
+            let hasTriedSave = false;
+
+            // 监听页面关闭/刷新事件
+            window.addEventListener('beforeunload', function(event) {
+                // 避免重复保存
+                if (hasTriedSave) return;
+
+                hasTriedSave = true;
+
+                // 尝试保存今日收益
+                // 使用 sendBeacon 可以在页面关闭时可靠地发送数据
+                try {
+                    // 计算今日收益
+                    const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+                    let stockToday = 0, fundToday = 0;
+
+                    rows.forEach(row => {
+                        const isF = row.dataset.isFund === 'true';
+                        const price = parseFloat(row.dataset.price) || 0;
+                        const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+                        const change = parseFloat(row.dataset.change) || 0;
+                        const mkt = shares * price;
+
+                        if (isF) {
+                            // 基金：判断净值是否已更新
+                            const priceDate = row.dataset.priceDate || '';
+                            const now = new Date();
+                            const todayStr = now.getFullYear().toString() +
+                                             (now.getMonth() + 1).toString().padStart(2, '0') +
+                                             now.getDate().toString().padStart(2, '0');
+                            const yesterday = new Date(now);
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            const yesterdayStr = yesterday.getFullYear().toString() +
+                                                 (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+                                                 yesterday.getDate().toString().padStart(2, '0');
+                            const hour = now.getHours();
+                            const minute = now.getMinutes();
+                            const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
+
+                            let isTodayUpdated = false;
+                            if (priceDate === todayStr) {
+                                isTodayUpdated = true;
+                            } else if (priceDate === yesterdayStr) {
+                                if (isTradingMorning) {
+                                    isTodayUpdated = false;
+                                } else {
+                                    isTodayUpdated = hour < 15;
+                                }
+                            }
+
+                            if (isTodayUpdated) {
+                                fundToday += mkt * (change / 100);
+                            }
+                        } else {
+                            stockToday += mkt * (change / 100);
+                        }
+                    });
+
+                    // 获取今天的日期字符串 YYYY-MM-DD
+                    const now = new Date();
+                    const dateStr = now.getFullYear().toString() + '-' +
+                                   (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                                   now.getDate().toString().padStart(2, '0');
+
+                    const data = {
+                        date: dateStr,
+                        stockToday: Math.round(stockToday),
+                        fundToday: Math.round(fundToday),
+                        totalToday: Math.round(stockToday + fundToday)
+                    };
+
+                    // 使用 sendBeacon 发送数据
+                    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                    const success = navigator.sendBeacon(`${API_BASE_URL}/api/save-daily-profit`, blob);
+
+                    if (success) {
+                        console.log('页面关闭前已尝试保存今日收益');
+                    } else {
+                        console.warn('sendBeacon 发送失败，页面关闭可能过快');
+                    }
+                } catch (e) {
+                    console.error('页面关闭前保存收益失败:', e);
+                }
+            });
+
+            console.log('已设置页面关闭前自动保存收益');
+        }
+
 		async function getHKDToCNY() {
-		  const res = await fetch("https://open.er-api.com/v6/latest/HKD");
-		  const data = await res.json();
-		
-		  const rate = data.rates.CNY;
-		  document.getElementById('fxRateInput').value = rate.toFixed(2);
-		  console.log("1 HKD ≈", rate, "CNY");
-		  return rate;
+		  try {
+		    const res = await fetch("https://open.er-api.com/v6/latest/HKD");
+		    const data = await res.json();
+
+		    if (data && data.rates && data.rates.CNY) {
+		      const rate = data.rates.CNY;
+		      const fxRateInput = document.getElementById('fxRateInput');
+		      if (fxRateInput) {
+		        fxRateInput.value = rate.toFixed(2);
+		      }
+		      console.log("1 HKD ≈", rate, "CNY");
+		      return rate;
+		    }
+		  } catch (e) {
+		    console.log("获取汇率失败:", e);
+		  }
+		  return 0.91; // 默认汇率
 		}
 		getHKDToCNY();
 
@@ -1504,19 +1786,18 @@
 
             if (!isBefore15) {
                 // 选择15点后：总是保存为待确认交易
-                const pendingTrades = getPendingTrades();
-                pendingTrades.push({
+                const newTrade = {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     rowId: rowId,
                     code: code,
                     name: name,
                     amount: amount,
+                    isBefore15: isBefore15,
                     createdAt: now.toISOString()
-                });
-                savePendingTrades(pendingTrades);
-                updatePendingTradeBanner();
+                };
+                await addPendingTrade(newTrade);
+                await updatePendingTradeBanner();
                 closeAddFundModal();
-                alert('已提交待确认交易，请在合适的时间确认！');
             } else if (isTodayNetValue) {
                 // 选择15点前 + 当日净值已更新 → 直接确认
                 const newShares = amount / price;
@@ -1532,34 +1813,35 @@
                 const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
                 planBuyInput.value = Math.max(0, currentPlanBuy - amount);
 
-                await saveRow(currentAddFundRow);
-                saveAndCalculate();
-
-                addTradeRecord(rowId, {
+                await addTradeRecord(rowId, {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     type: 'add',
                     amount: amount,
-                    shares: newShares,
-                    netValue: price,
-                    createdAt: now.toISOString()
+                    shares: parseFloat(newShares.toFixed(2)),
+                    netValue: parseFloat(price.toFixed(4)),
+                    isBefore15: true,
+                    createdAt: now.toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
                 });
+
+                await saveRow(currentAddFundRow);
+                saveAndCalculate();
 
                 closeAddFundModal();
             } else {
                 // 选择15点前 + 当日净值未更新 → 存为待确认
-                const pendingTrades = getPendingTrades();
-                pendingTrades.push({
+                const newTrade = {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                     rowId: rowId,
                     code: code,
                     name: name,
                     amount: amount,
+                    isBefore15: isBefore15,
                     createdAt: now.toISOString()
-                });
-                savePendingTrades(pendingTrades);
-                updatePendingTradeBanner();
+                };
+                await addPendingTrade(newTrade);
+                await updatePendingTradeBanner();
                 closeAddFundModal();
-                alert('当日净值尚未更新，已保存为待确认交易！');
             }
         }
 
@@ -1659,13 +1941,14 @@
 
             // 记录交易历史
             const rowId = currentReduceFundRow.dataset.id;
-            addTradeRecord(rowId, {
+            await addTradeRecord(rowId, {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 type: 'reduce',
                 amount: redeemAmount,
-                shares: reduceShares,
-                netValue: price,
-                createdAt: new Date().toISOString()
+                shares: parseFloat(reduceShares.toFixed(2)),
+                netValue: parseFloat(price.toFixed(4)),
+                createdAt: new Date().toISOString(),
+                localDate: new Date().toLocaleDateString('en-CA')
             });
 
             closeReduceFundModal();
@@ -1673,17 +1956,64 @@
 
         // ========== 待确认交易功能 ==========
         const PENDING_TRADES_KEY = 'vDashboard_pendingTrades';
+        let pendingTradesCache = [];
 
+        // 获取待确认交易（优先从缓存获取）
         function getPendingTrades() {
+            return pendingTradesCache;
+        }
+
+        // 从后端同步待确认交易
+        async function syncPendingTradesFromServer() {
             try {
-                return JSON.parse(localStorage.getItem(PENDING_TRADES_KEY)) || [];
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades`);
+                const data = await response.json();
+                pendingTradesCache = data.trades || [];
+                console.log('待确认交易已从后端同步');
             } catch (e) {
-                return [];
+                console.error('从后端同步待确认交易失败:', e);
+                pendingTradesCache = [];
             }
         }
 
-        function savePendingTrades(trades) {
-            localStorage.setItem(PENDING_TRADES_KEY, JSON.stringify(trades));
+        // 新增单条待确认交易到后端
+        async function addPendingTrade(trade) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trade)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 重新从后端同步以保持一致性
+                    await syncPendingTradesFromServer();
+                    return true;
+                }
+            } catch (e) {
+                console.error('新增待确认交易失败:', e);
+            }
+            return false;
+        }
+
+        // 从后端删除待确认交易
+        async function deletePendingTradeFromBackend(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 重新从后端同步以保持一致性
+                    await syncPendingTradesFromServer();
+                    return true;
+                }
+            } catch (e) {
+                console.error('删除待确认交易失败:', e);
+            }
+            return false;
         }
 
         function updatePendingTradeBanner() {
@@ -1722,7 +2052,7 @@
                                 <div>
                                     <div class="font-black">${trade.name}</div>
                                     <div class="text-[10px] text-[var(--text-muted)] mono">#${trade.code}</div>
-                                    <div class="text-[10px] font-black ${netValueStatusClass} mt-1">${netValueStatusText}</div>
+                                    <div class="text-[10px] font-black text-indigo-400 mt-1">系统将自动确认</div>
                                 </div>
                                 <div class="text-right">
                                     <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
@@ -1730,7 +2060,6 @@
                                 </div>
                             </div>
                             <div class="flex gap-2 mt-3">
-                                <button onclick="confirmPendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-[10px] ${isNetValueUpdated ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-600 hover:bg-slate-500'} text-white">确认</button>
                                 <button onclick="deletePendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
                             </div>
                         </div>
@@ -1782,34 +2111,33 @@
             const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
             planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
 
-            await saveRow(row);
-            saveAndCalculate();
-
-            // 记录交易历史
-            addTradeRecord(trade.rowId, {
+            // 记录交易历史（先保存，以便 saveAndCalculate 能读取到今日新增份额）
+            await addTradeRecord(trade.rowId, {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 type: 'add',
                 amount: trade.amount,
-                shares: newShares,
-                netValue: price,
-                createdAt: new Date().toISOString()
+                shares: parseFloat(newShares.toFixed(2)),
+                netValue: parseFloat(price.toFixed(4)),
+                isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                createdAt: new Date().toISOString(),
+                localDate: new Date().toLocaleDateString('en-CA')
             });
 
+            await saveRow(row);
+            saveAndCalculate();
+
             // 删除待确认交易
-            trades.splice(tradeIndex, 1);
-            savePendingTrades(trades);
-            updatePendingTradeBanner();
+            await deletePendingTradeFromBackend(tradeId);
+            await updatePendingTradeBanner();
             // 重新打开弹窗刷新列表
             openPendingTradesModal();
         }
 
-        function deletePendingTrade(tradeId) {
+        async function deletePendingTrade(tradeId) {
             if (!confirm('确定要删除这笔待确认交易吗？')) return;
 
-            const trades = getPendingTrades();
-            const filtered = trades.filter(t => t.id !== tradeId);
-            savePendingTrades(filtered);
-            updatePendingTradeBanner();
+            await deletePendingTradeFromBackend(tradeId);
+            await updatePendingTradeBanner();
             openPendingTradesModal();
         }
 
@@ -1846,46 +2174,73 @@
                 await saveRow(row);
 
                 // 记录交易历史
-                addTradeRecord(trade.rowId, {
+                await addTradeRecord(trade.rowId, {
                     id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
                     type: 'add',
                     amount: trade.amount,
-                    shares: newShares,
-                    netValue: price,
-                    createdAt: now.toISOString()
+                    shares: parseFloat(newShares.toFixed(2)),
+                    netValue: parseFloat(price.toFixed(4)),
+                    isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                    createdAt: now.toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
                 });
 
+                // 从后端删除这条待确认交易
+                await deletePendingTradeFromBackend(trade.id);
                 successCount++;
             }
 
             saveAndCalculate();
-            savePendingTrades([]);
             updatePendingTradeBanner();
             closePendingTradesModal();
-            alert(`已确认 ${successCount} 笔交易！`);
         }
 
         // ========== 交易记录功能 ==========
         const TRADE_HISTORY_KEY = 'vDashboard_tradeHistory';
         let currentTradeHistoryRowId = null;
+        let localTradeHistory = null;
 
+        // 获取交易历史（从内存缓存）
         function getTradeHistory() {
+            return localTradeHistory || {};
+        }
+
+        // 从后端同步交易历史
+        async function syncTradeHistoryFromServer() {
             try {
-                return JSON.parse(localStorage.getItem(TRADE_HISTORY_KEY)) || {};
+                const response = await fetch(`${API_BASE_URL}/api/trade-history`);
+                const data = await response.json();
+                localTradeHistory = data.history || {};
+                console.log('交易历史已从后端同步');
             } catch (e) {
-                return {};
+                console.error('从后端同步交易历史失败:', e);
             }
         }
 
-        function saveTradeHistory(history) {
-            localStorage.setItem(TRADE_HISTORY_KEY, JSON.stringify(history));
-        }
-
-        function addTradeRecord(rowId, record) {
-            const history = getTradeHistory();
-            if (!history[rowId]) history[rowId] = [];
-            history[rowId].unshift(record);
-            saveTradeHistory(history);
+        // 保存交易历史到后端并更新本地缓存
+        async function addTradeRecord(rowId, record) {
+            // 添加本地日期字段，用于准确匹配今日新增份额
+            if (!record.localDate) {
+                record.localDate = new Date().toLocaleDateString('en-CA');
+            }
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/trade-history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rowId, record })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 更新本地缓存
+                    if (!localTradeHistory) localTradeHistory = {};
+                    if (!localTradeHistory[rowId]) localTradeHistory[rowId] = [];
+                    localTradeHistory[rowId].unshift(record);
+                    return true;
+                }
+            } catch (e) {
+                console.error('新增交易历史失败:', e);
+            }
+            return false;
         }
 
         function openTradeHistoryModal(row) {
@@ -1913,21 +2268,21 @@
                     const date = new Date(trade.createdAt);
                     const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
                     html += `
-                        <div class="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+                        <div class="bg-indigo-500/10 p-4 rounded-lg border border-indigo-500/30">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <span class="text-amber-400 font-black">加仓</span>
-                                        <span class="bg-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-[10px] font-black">待确认</span>
+                                        <span class="text-indigo-400 font-black">加仓</span>
+                                        <span class="bg-indigo-500/30 text-indigo-400 px-2 py-0.5 rounded text-[10px] font-black">待确认</span>
                                     </div>
+                                    <div class="text-[10px] text-indigo-400 mt-1">系统将自动确认</div>
                                     <div class="text-[10px] text-[var(--text-muted)] mt-1">${dateStr}</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="mono font-black text-amber-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
                                 </div>
                             </div>
                             <div class="mt-2 flex gap-2">
-                                <button onclick="confirmPendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
                                 <button onclick="deletePendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
                             </div>
                         </div>

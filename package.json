@@ -2,15 +2,27 @@
   "name": "stock-dashboard",
   "version": "1.0.0",
   "description": "股票资产看板 - 带后端保存功能",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node src/server.js",
+    "db:init": "node scripts/init-db.js",
+    "db:migrate": "node scripts/migrate-data.js",
+    "db:test": "node scripts/test-db.js",
+    "check:codes": "node scripts/check-codes.js",
+    "fix:codes": "node scripts/fix-codes.js",
+    "debug:alert": "node scripts/debug-alert.js",
+    "check:profit": "node scripts/check-profit.js"
   },
-  "keywords": ["stock", "dashboard"],
+  "keywords": [
+    "stock",
+    "dashboard"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^17.3.1",
     "node-cron": "^3.0.3",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "pg": "^8.20.0"
   }
 }

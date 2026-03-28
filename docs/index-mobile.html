@@ -631,7 +631,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-lock">解锁</button>
+                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-lock">🔒</button>
                 <button id="addStockBtn" onclick="createNewAsset(false)" class="toolbar-chip toolbar-chip-strong bg-slate-800 hover:bg-slate-700">+股</button>
                 <button id="addFundBtn" onclick="createNewAsset(true)" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">+基</button>
             </div>
@@ -922,7 +922,7 @@
         const API_BASE_URL = window.API_BASE_URL;
 
         let currentTab = 'all';
-        let sortDir = -1;
+        let sortDir = 1;
         let refreshTimer = null;
         let progressInterval = null;
         let remainingSeconds = 0;
@@ -935,7 +935,7 @@
         let editUnlockTimer = null;
         let isEditingUnlocked = getStoredEditUnlockState();
         let mobileCompactMode = localStorage.getItem(MOBILE_COMPACT_MODE_KEY) === '1';
-        let mobileSortMetric = ['today', 'change'].includes(localStorage.getItem(MOBILE_COMPACT_SORT_KEY)) ? localStorage.getItem(MOBILE_COMPACT_SORT_KEY) : 'today';
+        let mobileSortMetric = ['mkt', 'today', 'change'].includes(localStorage.getItem(MOBILE_COMPACT_SORT_KEY)) ? localStorage.getItem(MOBILE_COMPACT_SORT_KEY) : 'mkt';
 
         // 分页相关
         let currentPageNum = 1;
@@ -1024,7 +1024,7 @@
         function updateEditLockButton() {
             const btn = document.getElementById('editLockBtn');
             if (!btn) return;
-            btn.textContent = isEditingUnlocked ? '已解锁' : '解锁';
+            btn.textContent = isEditingUnlocked ? '🔓' : '🔒';
             btn.className = `toolbar-chip ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
         }
 
@@ -1151,9 +1151,13 @@
         function toggleCompactMode() {
             mobileCompactMode = !mobileCompactMode;
             localStorage.setItem(MOBILE_COMPACT_MODE_KEY, mobileCompactMode ? '1' : '0');
-            if (mobileCompactMode && !['today', 'change'].includes(mobileSortMetric)) {
-                mobileSortMetric = 'today';
+            if (mobileCompactMode) {
+                mobileSortMetric = 'mkt';
+                sortDir = 1;
                 localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+            }
+            if (!mobileCompactMode) {
+                sortDir = 1;
             }
             updateCompactModeUI();
             updateSortButton();
@@ -1166,6 +1170,7 @@
             if (mobileCompactMode) {
                 mobileCompactMode = false;
                 localStorage.setItem(MOBILE_COMPACT_MODE_KEY, '0');
+                sortDir = 1;
                 updateCompactModeUI();
                 updateSortButton();
                 updatePagination();
@@ -2155,6 +2160,11 @@
         }
 
         window.onload = async () => {
+            sortDir = 1;
+            if (mobileCompactMode) {
+                mobileSortMetric = 'mkt';
+                localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+            }
             await loadAppSettings();
             // 从后端同步数据
             await syncPendingTradesFromServer();

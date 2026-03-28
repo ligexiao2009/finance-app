@@ -630,7 +630,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap justify-end">
-                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-soft toolbar-chip-lock">解锁编辑</button>
+                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-soft toolbar-chip-lock">🔒 解锁</button>
                 <button id="addStockBtn" onclick="addRow({code:'', name:'新股票', shares:0, cost:0, isFund:false})" class="toolbar-chip toolbar-chip-strong bg-slate-800 hover:bg-slate-700">+ 添加股票</button>
                 <button id="addFundBtn" onclick="addRow({code:'', name:'新基金', shares:0, cost:0, isFund:true})" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">+ 添加基金</button>
                 <button id="saveAllFundsBtn" onclick="saveAllFunds()" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">💾 一键保存全部</button>
@@ -1045,7 +1045,7 @@
         function updateEditLockButton() {
             const btn = document.getElementById('editLockBtn');
             if (!btn) return;
-            btn.textContent = isEditingUnlocked ? '已解锁' : '解锁编辑';
+            btn.textContent = isEditingUnlocked ? '🔓 已解锁' : '🔒 解锁';
             btn.className = `toolbar-chip toolbar-chip-soft ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
         }
 

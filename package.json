@@ -11,7 +11,8 @@
     "check:codes": "node scripts/check-codes.js",
     "fix:codes": "node scripts/fix-codes.js",
     "debug:alert": "node scripts/debug-alert.js",
-    "check:profit": "node scripts/check-profit.js"
+    "check:profit": "node scripts/check-profit.js",
+    "sync:docs": "node scripts/sync-docs.js"
   },
   "keywords": [
     "stock",

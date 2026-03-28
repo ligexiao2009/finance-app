@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "build:css": "tailwindcss -i ./styles/tailwind.input.css -o ./public/tailwind.generated.css --minify",
     "db:init": "node scripts/init-db.js",
     "db:migrate": "node scripts/migrate-data.js",
     "db:test": "node scripts/test-db.js",
@@ -25,5 +26,10 @@
     "node-cron": "^3.0.3",
     "node-fetch": "^2.7.0",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17"
   }
 }

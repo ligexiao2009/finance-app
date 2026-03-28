@@ -11,6 +11,7 @@ const filesToCopy = [
   'index.html',
   'index-mobile.html',
   'app-config.js',
+  'tailwind.generated.css',
 ];
 
 function ensureDir(dirPath) {

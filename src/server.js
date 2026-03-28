@@ -90,7 +90,7 @@ async function startServer() {
       console.log('\n配置说明:');
       console.log('  1. Server酱获取地址: https://sct.ftqq.com/');
       console.log('  2. 在前端页面为基金设置涨跌提醒值 (%)');
-      console.log('  3. 每日收益定时任务: 每天 23:00 自动计算并保存');
+      console.log('  3. 每日收益定时任务: 周一到周五 23:00 自动计算并保存');
       console.log('  4. 自动确认交易定时任务: 每天 09:00 自动确认昨天15点前的交易');
       console.log('  5. 配置存储在 PostgreSQL configs 表中');
       console.log('');
@@ -519,8 +519,8 @@ async function setupCronJob() {
     timezone: 'Asia/Shanghai'
   });
 
-  // 每日收益计算定时任务 - 每天晚上11点执行
-  global.profitCronJob = cron.schedule('0 0 23 * * *', () => {
+  // 每日收益计算定时任务 - 周一到周五晚上11点执行
+  global.profitCronJob = cron.schedule('0 0 23 * * 1-5', () => {
     calculateAndSaveDailyProfit();
   }, {
     timezone: 'Asia/Shanghai'
@@ -534,7 +534,7 @@ async function setupCronJob() {
   });
 
   console.log(`基金提醒定时任务已设置: 每天 ${cronTime} 执行`);
-  console.log(`每日收益计算定时任务已设置: 每天 23:00 执行`);
+  console.log(`每日收益计算定时任务已设置: 周一到周五 23:00 执行`);
   console.log(`自动确认交易定时任务已设置: 每天 09:00 执行`);
   console.log('提示: 可以在 .env 文件中修改 ALERT_TIME 环境变量');
 }

@@ -414,6 +414,158 @@
             cursor: not-allowed;
             opacity: 0.75;
         }
+        .mobile-compact-row {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .mobile-compact-main {
+            flex: 1;
+            min-width: 0;
+        }
+        .mobile-compact-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .mobile-compact-meta {
+            margin-top: 0.2rem;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .mobile-compact-profit {
+            min-width: 5.6rem;
+            text-align: right;
+            font-size: 0.95rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+        .mobile-compact-change {
+            min-width: 5.4rem;
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+        .mobile-card-compact {
+            padding-top: 0.95rem;
+            padding-bottom: 0.95rem;
+        }
+        .mobile-card-compact .price-status,
+        .mobile-card-compact .mobile-code-row,
+        .mobile-card-compact .mobile-card-header,
+        .mobile-card-compact .mobile-full-content {
+            display: none !important;
+        }
+        .mobile-card-compact .mobile-compact-row {
+            display: flex;
+        }
+        .mobile-compact-header {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.75rem 0.2rem 0.85rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+            margin-bottom: 0.4rem;
+        }
+        .mobile-compact-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            min-width: 0;
+            color: var(--text-muted);
+            font-weight: 800;
+        }
+        .mobile-compact-summary-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .mobile-compact-summary-item b {
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+        .mobile-compact-summary-item.up {
+            color: #ef4444;
+        }
+        .mobile-compact-summary-item.down {
+            color: #10b981;
+        }
+        .mobile-compact-columns {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+        .mobile-compact-column {
+            min-width: 5.6rem;
+            text-align: center;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            color: var(--text-muted);
+            font-weight: 800;
+        }
+        .mobile-compact-column.active {
+            color: var(--text-main);
+        }
+        .mobile-compact-column span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.22rem;
+            justify-content: center;
+            width: 100%;
+        }
+        .sort-arrows {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 0.72;
+            margin-left: 0.08rem;
+        }
+        .sort-arrow {
+            font-size: 0.5rem;
+            color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .sort-arrow.active {
+            color: #6366f1;
+            transform: scale(1.08);
+        }
+        .mobile-compact-column small {
+            display: block;
+            margin-top: 0.18rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .compact-mode-fab {
+            width: 2.35rem;
+            height: 2.35rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .compact-mode-fab.is-active {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            color: white;
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.25);
+        }
     </style>
 </head>
 <body class="py-6 light-mode text-base">
@@ -426,6 +578,7 @@
                 <span class="text-indigo-500 text-xs font-extrabold">PRO</span>
             </div>
             <div class="flex items-center gap-2">
+                <button id="compactModeBtn" onclick="toggleCompactMode()" class="compact-mode-fab" title="切换简洁模式">简</button>
                 <button onclick="refreshAllPrices()" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500 text-white px-3" title="立即刷新">
                     <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                 </button>
@@ -483,11 +636,31 @@
 
         <!-- 净值更新状态 -->
         <div id="netValueStatusRow" class="flex items-center justify-between gap-2 text-xs text-[var(--text-muted)] font-black mb-3">
-            <div id="netValueStatusText" class="status-pill min-w-0">
-                <span>净值更新</span>
-                <span id="netValueUpdateStatus" class="status-badge status-badge-success">--</span>
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+                <div id="netValueStatusText" class="status-pill min-w-0">
+                    <span>净值更新</span>
+                    <span id="netValueUpdateStatus" class="status-badge status-badge-success">--</span>
+                </div>
+                <button id="compactSortMetricBtn" onclick="toggleCompactSortMetric()" class="toolbar-chip toolbar-chip-soft whitespace-nowrap hidden">按收益</button>
             </div>
             <button id="sortByMktBtn" onclick="toggleSort()" class="toolbar-chip toolbar-chip-soft ml-auto whitespace-nowrap">市值↓</button>
+        </div>
+
+        <div id="mobileCompactHeader" class="mobile-compact-header">
+            <div class="mobile-compact-summary">
+                <span class="mobile-compact-summary-item up"><b id="compactUpCount">0</b><span>↑</span></span>
+                <span class="mobile-compact-summary-item down"><b id="compactDownCount">0</b><span>↓</span></span>
+            </div>
+            <div class="mobile-compact-columns">
+                <button id="compactProfitColumn" onclick="setCompactSortMetric('today')" class="mobile-compact-column">
+                    <span>当日收益 <em class="sort-arrows"><i id="compactProfitSortArrowUp" class="sort-arrow">▲</i><i id="compactProfitSortArrowDown" class="sort-arrow">▼</i></em></span>
+                    <small id="compactHeaderDateProfit">--</small>
+                </button>
+                <button id="compactChangeColumn" onclick="setCompactSortMetric('change')" class="mobile-compact-column">
+                    <span>当日涨幅 <em class="sort-arrows"><i id="compactChangeSortArrowUp" class="sort-arrow">▲</i><i id="compactChangeSortArrowDown" class="sort-arrow">▼</i></em></span>
+                    <small id="compactHeaderDateChange">--</small>
+                </button>
+            </div>
         </div>
 
         <!-- 卡片列表 -->
@@ -752,11 +925,15 @@
         let progressInterval = null;
         let remainingSeconds = 0;
         let requiresEditUnlock = true;
+        const MOBILE_COMPACT_MODE_KEY = 'vDashboardMobileCompactMode';
+        const MOBILE_COMPACT_SORT_KEY = 'vDashboardMobileCompactSortMetric';
         const EDIT_UNLOCK_DURATION_MS = 30 * 60 * 1000;
         const EDIT_UNLOCK_FLAG_KEY = 'vDashboardEditingUnlocked';
         const EDIT_UNLOCK_EXPIRES_KEY = 'vDashboardEditingUnlockedUntil';
         let editUnlockTimer = null;
         let isEditingUnlocked = getStoredEditUnlockState();
+        let mobileCompactMode = localStorage.getItem(MOBILE_COMPACT_MODE_KEY) === '1';
+        let mobileSortMetric = ['today', 'change'].includes(localStorage.getItem(MOBILE_COMPACT_SORT_KEY)) ? localStorage.getItem(MOBILE_COMPACT_SORT_KEY) : 'today';
 
         // 分页相关
         let currentPageNum = 1;
@@ -941,6 +1118,92 @@
             return false;
         }
 
+        function updateCompactModeUI() {
+            const compactBtn = document.getElementById('compactModeBtn');
+            const metricBtn = document.getElementById('compactSortMetricBtn');
+            const netValueStatusText = document.getElementById('netValueStatusText');
+            const compactHeader = document.getElementById('mobileCompactHeader');
+            const sortByMktBtn = document.getElementById('sortByMktBtn');
+
+            if (compactBtn) {
+                compactBtn.textContent = '简';
+                compactBtn.className = `compact-mode-fab${mobileCompactMode ? ' is-active' : ''}`;
+            }
+
+            if (metricBtn) {
+                metricBtn.classList.add('hidden');
+                metricBtn.textContent = mobileSortMetric === 'change' ? '按涨幅' : '按收益';
+            }
+
+            if (compactHeader) {
+                compactHeader.style.display = mobileCompactMode ? 'flex' : 'none';
+            }
+
+            if (sortByMktBtn) {
+                sortByMktBtn.style.display = mobileCompactMode ? 'none' : '';
+            }
+
+            if (netValueStatusText) {
+                netValueStatusText.style.display = (mobileCompactMode || currentTab === 'stock') ? 'none' : '';
+            }
+
+            document.querySelectorAll('#stockBody [data-id]').forEach(card => {
+                card.classList.toggle('mobile-card-compact', mobileCompactMode);
+            });
+        }
+
+        function toggleCompactMode() {
+            mobileCompactMode = !mobileCompactMode;
+            localStorage.setItem(MOBILE_COMPACT_MODE_KEY, mobileCompactMode ? '1' : '0');
+            if (mobileCompactMode && !['today', 'change'].includes(mobileSortMetric)) {
+                mobileSortMetric = 'today';
+                localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+            }
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+            saveAndCalculate();
+        }
+
+        function toggleCompactSortMetric() {
+            mobileSortMetric = mobileSortMetric === 'change' ? 'today' : 'change';
+            localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+        }
+
+        function setCompactSortMetric(metric) {
+            if (!['today', 'change'].includes(metric)) return;
+            if (mobileSortMetric === metric) {
+                sortDir *= -1;
+            } else {
+                mobileSortMetric = metric;
+                localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+                sortDir = 1;
+            }
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+        }
+
+        function sortCards() {
+            const body = document.getElementById('stockBody');
+            const cards = Array.from(body.querySelectorAll('[data-id]'));
+            const metric = mobileCompactMode ? mobileSortMetric : 'mkt';
+
+            cards.sort((a, b) => {
+                const aVal = parseFloat(a.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
+                const bVal = parseFloat(b.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
+                return sortDir * (bVal - aVal);
+            });
+
+            cards.forEach(card => body.appendChild(card));
+        }
+
         // 添加卡片
         function addRow(item, prepend = true) {
             const card = document.createElement('div');
@@ -949,13 +1212,13 @@
             card.className = "card p-4";
 
             card.innerHTML = `
-                <div class="flex items-start justify-between gap-3">
+                <div class="mobile-card-header flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start justify-between gap-2">
                             <div class="stock-name mobile-card-title flex-1 text-[15px] font-black">${item.name || '正在获取...'}</div>
                             <div class="price-status status-badge status-badge-warn shrink-0 ${item.isFund ? '' : 'hidden'}">${item.isFund ? '待更新' : ''}</div>
                         </div>
-                        <div class="mt-1.5 flex items-center justify-between gap-2">
+                        <div class="mobile-code-row mt-1.5 flex items-center justify-between gap-2">
                             <div class="mobile-code-pill mono">
                                 <span class="text-indigo-500">#</span>
                                 <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
@@ -967,6 +1230,16 @@
                     </div>
                 </div>
 
+                <div class="mobile-compact-row">
+                    <div class="mobile-compact-main">
+                        <div class="compact-name mobile-compact-name">${item.name || '正在获取...'}</div>
+                        <div class="compact-mkt-val mobile-compact-meta mono">¥0</div>
+                    </div>
+                    <div class="compact-today-profit mobile-compact-profit mono up">+0</div>
+                    <div class="compact-chg-pct mobile-compact-change up">+0.00%</div>
+                </div>
+
+                <div class="mobile-full-content">
                 <div class="mt-4 grid grid-cols-3 gap-2">
                     <div class="mobile-stat-tile">
                         <div class="flex items-center justify-between gap-2">
@@ -1044,6 +1317,7 @@
                         </div>
                     </div>
                 </div>
+                </div>
             `;
             const stockBody = document.getElementById('stockBody');
             if (prepend && stockBody.firstChild) {
@@ -1052,6 +1326,8 @@
                 stockBody.appendChild(card);
             }
             applyEditingLockState();
+            updateCompactModeUI();
+            updateSortButton();
             if(item.code) fetchPrice(card, item.code);
             updatePagination();
 
@@ -1179,6 +1455,8 @@
                 if (window[vn]) {
                     const d = window[vn].split('~');
                     card.querySelector('.stock-name').innerText = d[1].replace('[基金] ', '');
+                    const compactNameEl = card.querySelector('.compact-name');
+                    if (compactNameEl) compactNameEl.innerText = d[1].replace('[基金] ', '');
 
                     let priceText = '¥' + parseFloat(d[3]).toFixed(3);
                     let priceDate = '';
@@ -1391,6 +1669,9 @@
             let totalMkt = 0, totalToday = 0, totalOverall = 0, totalPlan = 0;
             let stockMkt = 0, stockToday = 0, stockOverall = 0;
             let fundMkt = 0, fundToday = 0, fundOverall = 0;
+            let compactUpCount = 0;
+            let compactDownCount = 0;
+            const compactHeaderDate = new Date().toLocaleDateString('en-CA', { month: '2-digit', day: '2-digit' }).slice(5);
 
             const items = cards.map(card => {
                 const code = card.querySelector('.code-input').value;
@@ -1466,12 +1747,33 @@
 
                 totalMkt += mkt; totalToday += today; totalOverall += profit; totalPlan += planBuy;
                 card.dataset.mktVal = mkt;
+                card.dataset.todayProfitVal = today;
+                card.dataset.changeSortVal = displayChange;
+                const inCurrentTab = currentTab === 'all' || (currentTab === 'stock' && !isF) || (currentTab === 'fund' && isF);
 
                 card.querySelector('.mkt-val-cell').innerText = '¥' + Math.round(mkt).toLocaleString();
+                const compactMktEl = card.querySelector('.compact-mkt-val');
+                if (compactMktEl) {
+                    compactMktEl.innerText = '¥' + mkt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
                 card.querySelector('.today-profit-cell').innerText = (today>=0?'+':'') + Math.round(today).toLocaleString();
                 card.querySelector('.today-profit-cell').className = 'today-profit-cell mono mt-1 text-base font-black ' + (today>=0?'up':'down');
                 card.querySelector('.chg-pct-cell').innerText = (displayChange>=0?'+':'') + displayChange.toFixed(2) + '%';
                 card.querySelector('.chg-pct-cell').className = 'chg-pct-cell mt-1 text-xs font-black ' + (displayChange>=0?'up':'down');
+                const compactTodayEl = card.querySelector('.compact-today-profit');
+                const compactChgEl = card.querySelector('.compact-chg-pct');
+                if (compactTodayEl) {
+                    compactTodayEl.innerText = (today>=0?'+':'') + Math.round(today).toLocaleString();
+                    compactTodayEl.className = 'compact-today-profit mobile-compact-profit mono ' + (today>=0?'up':'down');
+                }
+                if (compactChgEl) {
+                    compactChgEl.innerText = (displayChange>=0?'+':'') + displayChange.toFixed(2) + '%';
+                    const compactChangeState = displayChange > 0 ? 'up' : (displayChange < 0 ? 'down' : 'flat');
+                    compactChgEl.className = 'compact-chg-pct mobile-compact-change ' + compactChangeState;
+                }
+
+                if (inCurrentTab && displayChange > 0) compactUpCount++;
+                if (inCurrentTab && displayChange < 0) compactDownCount++;
                 card.querySelector('.overall-profit-cell').innerText = (profit>=0?'+':'') + Math.round(profit).toLocaleString();
                 card.querySelector('.overall-profit-cell').className = 'overall-profit-cell mono text-[22px] font-black leading-none ' + (profit>=0?'up':'down');
                 const ratio = cost > 0 ? ((price-cost)/cost*100).toFixed(2) : 0;
@@ -1519,7 +1821,20 @@
                 overallProfitEl.className = 'text-lg font-black mono ' + (dOverall>=0?'up':'down');
             }
 
+            const compactUpEl = document.getElementById('compactUpCount');
+            const compactDownEl = document.getElementById('compactDownCount');
+            const compactDateProfitEl = document.getElementById('compactHeaderDateProfit');
+            const compactDateChangeEl = document.getElementById('compactHeaderDateChange');
+            if (compactUpEl) compactUpEl.textContent = compactUpCount;
+            if (compactDownEl) compactDownEl.textContent = compactDownCount;
+            if (compactDateProfitEl) compactDateProfitEl.textContent = compactHeaderDate;
+            if (compactDateChangeEl) compactDateChangeEl.textContent = compactHeaderDate;
+
             localStorage.setItem('vDashboard_Final_Stable', JSON.stringify({ baseInput, fx, items, refreshVal }));
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
             updateNetValueStatus();
         }
 
@@ -1725,10 +2040,10 @@
             document.getElementById('addFundBtn').style.display = (t === 'all' || t === 'fund') ? '' : 'none';
             const saveAllBtn = document.getElementById('saveAllFundsBtn');
             if (saveAllBtn) saveAllBtn.style.display = (t === 'fund') ? '' : 'none';
-            const netValueStatusText = document.getElementById('netValueStatusText');
-            if (netValueStatusText) netValueStatusText.style.display = (t === 'stock') ? 'none' : '';
 
             currentPageNum = 1;
+            updateCompactModeUI();
+            updateSortButton();
             updatePagination();
             saveAndCalculate();
         }
@@ -1794,18 +2109,45 @@
 
         function toggleSort() {
             sortDir *= -1;
-            const body = document.getElementById('stockBody');
-            const cards = Array.from(body.querySelectorAll('[data-id]'));
-            cards.sort((a, b) => sortDir * (parseFloat(b.dataset.mktVal) - parseFloat(a.dataset.mktVal)));
-            cards.forEach(r => body.appendChild(r));
+            sortCards();
             updateSortButton();
             updatePagination();
         }
 
         function updateSortButton() {
             const sortBtn = document.getElementById('sortByMktBtn');
-            if (!sortBtn) return;
-            sortBtn.textContent = sortDir === 1 ? '市值↓' : '市值↑';
+            const profitColumn = document.getElementById('compactProfitColumn');
+            const changeColumn = document.getElementById('compactChangeColumn');
+            const profitArrowUp = document.getElementById('compactProfitSortArrowUp');
+            const profitArrowDown = document.getElementById('compactProfitSortArrowDown');
+            const changeArrowUp = document.getElementById('compactChangeSortArrowUp');
+            const changeArrowDown = document.getElementById('compactChangeSortArrowDown');
+            if (!sortBtn && !profitColumn && !changeColumn) return;
+            const directionText = sortDir === 1 ? '↓' : '↑';
+            if (mobileCompactMode) {
+                if (profitColumn) profitColumn.classList.toggle('active', mobileSortMetric === 'today');
+                if (changeColumn) changeColumn.classList.toggle('active', mobileSortMetric === 'change');
+                [profitArrowUp, profitArrowDown, changeArrowUp, changeArrowDown].forEach(arrow => arrow?.classList.remove('active'));
+                if (mobileSortMetric === 'today') {
+                    if (sortDir === 1) {
+                        profitArrowDown?.classList.add('active');
+                    } else {
+                        profitArrowUp?.classList.add('active');
+                    }
+                }
+                if (mobileSortMetric === 'change') {
+                    if (sortDir === 1) {
+                        changeArrowDown?.classList.add('active');
+                    } else {
+                        changeArrowUp?.classList.add('active');
+                    }
+                }
+            } else {
+                if (sortBtn) sortBtn.textContent = `市值${directionText}`;
+                if (profitColumn) profitColumn.classList.remove('active');
+                if (changeColumn) changeColumn.classList.remove('active');
+                [profitArrowUp, profitArrowDown, changeArrowUp, changeArrowDown].forEach(arrow => arrow?.classList.remove('active'));
+            }
         }
 
         window.onload = async () => {

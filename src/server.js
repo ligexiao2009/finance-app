@@ -35,6 +35,10 @@ async function initConfig() {
       const defaultValue = alertTimeFromEnv || '0 22 * * *';
       await db.setConfig('alertTime', defaultValue);
     }
+    if (!configs.editUnlockPassword) {
+      const defaultValue = process.env.EDIT_UNLOCK_PASSWORD || '8957';
+      await db.setConfig('editUnlockPassword', defaultValue);
+    }
 
     // 更新内存中的配置（优先使用环境变量，其次使用数据库配置）
     SERVERCHAN_KEY = serverchanKeyFromEnv || configs.serverchanKey || '';
@@ -46,6 +50,10 @@ async function initConfig() {
     // 设置默认值
     SERVERCHAN_KEY = '';
   }
+}
+
+async function getEditUnlockPassword() {
+  return process.env.EDIT_UNLOCK_PASSWORD || await db.getConfig('editUnlockPassword') || '8957';
 }
 
 
@@ -574,6 +582,40 @@ const server = http.createServer(async (req, res) => {
     checkFundsAndAlert();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: '检查已触发' }));
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/app-settings') {
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ requiresEditUnlock: true }));
+    } catch (error) {
+      console.error('Error getting app settings:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get app settings' }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/verify-unlock') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { password } = JSON.parse(body || '{}');
+        const unlockPassword = await getEditUnlockPassword();
+        const success = password === unlockPassword;
+        res.writeHead(success ? 200 : 401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success,
+          message: success ? '解锁成功' : '密码错误'
+        }));
+      } catch (e) {
+        console.error('Error verifying unlock password:', e);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
     return;
   }
 

@@ -60,7 +60,13 @@ function snakeToCamel(obj) {
   for (const [key, value] of Object.entries(obj)) {
     // Convert snake_case to camelCase
     const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-    result[camelKey] = value;
+
+    // Convert numeric strings to numbers, EXCEPT for code fields (keep leading zeros)
+    if (camelKey !== 'code' && typeof value === 'string' && !isNaN(value) && value !== '') {
+      result[camelKey] = parseFloat(value);
+    } else {
+      result[camelKey] = value;
+    }
   }
   return result;
 }

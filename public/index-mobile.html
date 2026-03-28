@@ -582,7 +582,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start justify-between gap-2">
                             <div class="stock-name mobile-card-title flex-1 text-[15px] font-black">${item.name || '正在获取...'}</div>
-                            <div class="price-status text-xs font-black text-amber-400 shrink-0 pt-0.5">待更新</div>
+                            <div class="price-status text-xs font-black text-amber-400 shrink-0 pt-0.5 ${item.isFund ? '' : 'hidden'}">${item.isFund ? '待更新' : ''}</div>
                         </div>
                         <div class="mt-1.5 flex items-center justify-between gap-2">
                             <div class="mobile-code-pill mono">
@@ -885,15 +885,21 @@
 
                         const statusEl = card.querySelector('.price-status');
                         if (statusEl) {
-                            if (showUpdated) {
-                                statusEl.innerText = labelText;
-                                statusEl.className = 'price-status text-xs font-black text-emerald-400';
-                            } else if (priceDate) {
-                                statusEl.innerText = '待更新';
-                                statusEl.className = 'price-status text-xs font-black text-amber-400';
+                            if (isF) {
+                                statusEl.classList.remove('hidden');
+                                if (showUpdated) {
+                                    statusEl.innerText = labelText;
+                                    statusEl.className = 'price-status text-xs font-black text-emerald-400 shrink-0 pt-0.5';
+                                } else if (priceDate) {
+                                    statusEl.innerText = '待更新';
+                                    statusEl.className = 'price-status text-xs font-black text-amber-400 shrink-0 pt-0.5';
+                                } else {
+                                    statusEl.innerText = '--';
+                                    statusEl.className = 'price-status text-xs font-black text-[var(--text-muted)] shrink-0 pt-0.5';
+                                }
                             } else {
-                                statusEl.innerText = '--';
-                                statusEl.className = 'price-status text-xs font-black text-[var(--text-muted)]';
+                                statusEl.innerText = '';
+                                statusEl.className = 'price-status hidden';
                             }
                         }
                         card.dataset.isTodayUpdated = showUpdated ? '1' : '0';

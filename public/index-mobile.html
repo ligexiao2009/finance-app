@@ -214,6 +214,9 @@
             background: rgba(148, 163, 184, 0.08);
             border-color: rgba(148, 163, 184, 0.16);
         }
+        .price-status.is-hidden {
+            display: none !important;
+        }
         .page-title {
             font-size: 1.08rem;
             font-weight: 800;
@@ -1225,7 +1228,7 @@
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start justify-between gap-2">
                             <div class="stock-name mobile-card-title flex-1 text-[15px] font-black">${item.name || '正在获取...'}</div>
-                            <div class="price-status status-badge status-badge-warn shrink-0 ${item.isFund ? '' : 'hidden'}">${item.isFund ? '待更新' : ''}</div>
+                            <div class="price-status status-badge status-badge-warn shrink-0 ${item.isFund ? '' : 'is-hidden'}">${item.isFund ? '待更新' : ''}</div>
                         </div>
                         <div class="mobile-code-row mt-1.5 flex items-center justify-between gap-2">
                             <div class="mobile-code-pill mono">
@@ -1545,7 +1548,7 @@
                         const statusEl = card.querySelector('.price-status');
                         if (statusEl) {
                             if (isF) {
-                                statusEl.classList.remove('hidden');
+                                statusEl.classList.remove('is-hidden');
                                 if (showUpdated) {
                                     statusEl.innerText = labelText;
                                     statusEl.className = 'price-status status-badge status-badge-success shrink-0';
@@ -1558,7 +1561,7 @@
                                 }
                             } else {
                                 statusEl.innerText = '';
-                                statusEl.className = 'price-status hidden';
+                                statusEl.className = 'price-status is-hidden';
                             }
                         }
                         card.dataset.isTodayUpdated = showUpdated ? '1' : '0';

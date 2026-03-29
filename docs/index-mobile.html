@@ -423,10 +423,11 @@
         .mobile-compact-row {
             display: none;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.85rem;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 5.6rem 4.9rem;
         }
         .mobile-compact-main {
-            flex: 1;
             min-width: 0;
         }
         .mobile-compact-name {
@@ -458,26 +459,44 @@
             line-height: 1;
             white-space: nowrap;
         }
+        .draft-pill.is-saved {
+            border-style: solid;
+            border-color: rgba(16, 185, 129, 0.28);
+            background: rgba(16, 185, 129, 0.08);
+            color: #059669;
+        }
+        .draft-pill.is-error {
+            border-style: solid;
+            border-color: rgba(244, 63, 94, 0.28);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+        }
         .draft-pill.hidden {
             display: none !important;
         }
         .mobile-compact-profit {
-            min-width: 5.2rem;
             text-align: right;
             font-size: 0.92rem;
             font-weight: 700;
             line-height: 1.1;
+            justify-self: end;
+            width: 100%;
         }
         .mobile-compact-change {
-            min-width: 5rem;
-            text-align: center;
+            text-align: right;
             font-size: 0.92rem;
             font-weight: 700;
             line-height: 1.1;
+            justify-self: end;
+            width: 100%;
         }
         .mobile-card-compact {
             padding-top: 0.82rem;
             padding-bottom: 0.82rem;
+            border-width: 0 0 1px 0;
+            border-radius: 0;
+            border-color: color-mix(in srgb, var(--border-color) 82%, transparent);
+            background: transparent;
         }
         .mobile-card-compact .price-status,
         .mobile-card-compact .mobile-code-row,
@@ -486,7 +505,10 @@
             display: none !important;
         }
         .mobile-card-compact .mobile-compact-row {
-            display: flex;
+            display: grid;
+        }
+        .mobile-card-compact:last-child {
+            border-bottom: 0;
         }
         .mobile-compact-header {
             display: none;
@@ -1246,6 +1268,35 @@
             updatePagination();
         }
 
+        function setCardSaveState(card, state) {
+            if (!card) return;
+            const pills = card.querySelectorAll('.draft-pill');
+            pills.forEach(pill => {
+                pill.classList.remove('hidden', 'is-saved', 'is-error');
+                if (state === 'hidden') {
+                    pill.classList.add('hidden');
+                    return;
+                }
+                if (state === 'saved') {
+                    pill.textContent = '已保存';
+                    pill.classList.add('is-saved');
+                    return;
+                }
+                if (state === 'error') {
+                    pill.textContent = '保存失败';
+                    pill.classList.add('is-error');
+                    return;
+                }
+                pill.textContent = '未保存';
+            });
+        }
+
+        function markCardDirty(card) {
+            if (!card) return;
+            card.dataset.isDraft = '1';
+            setCardSaveState(card, 'dirty');
+        }
+
         // 添加卡片
         function addRow(item, prepend = true) {
             const card = document.createElement('div');
@@ -1267,7 +1318,7 @@
                         <div class="mobile-code-row mt-1.5 flex items-center justify-between gap-2">
                             <div class="mobile-code-pill mono">
                                 <span class="text-indigo-500">#</span>
-                                <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
+                                <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="markCardDirty(this.closest('[data-id]')); handleCodeInput(this)">
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button onclick="openMobileActionSheet(this.closest('[data-id]'))" class="mobile-compact-action" title="操作">⋯<span>操作</span></button>
@@ -1293,13 +1344,13 @@
                     <div class="mobile-stat-tile">
                         <div class="flex items-center justify-between gap-2">
                             <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">持仓</div>
-                            <input type="number" class="shares-input mobile-metric-input mono text-right" value="${item.shares || 0}" oninput="saveAndCalculate()" onfocus="clearZero(this)">
+                            <input type="number" class="shares-input mobile-metric-input mono text-right" value="${item.shares || 0}" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()" onfocus="clearZero(this)">
                         </div>
                     </div>
                     <div class="mobile-stat-tile">
                         <div class="flex items-center justify-between gap-2">
                             <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">成本</div>
-                            <input type="number" class="cost-input mobile-metric-input mono text-right" value="${item.cost || 0}" step="0.001" oninput="saveAndCalculate()" onfocus="clearZero(this)">
+                            <input type="number" class="cost-input mobile-metric-input mono text-right" value="${item.cost || 0}" step="0.001" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()" onfocus="clearZero(this)">
                         </div>
                     </div>
                     <div class="mobile-stat-tile text-right">
@@ -1344,17 +1395,17 @@
                         </div>
                         <div class="mobile-mini-field">
                             <div class="text-[11px] font-black text-center text-[var(--text-muted)]">%提醒</div>
-                            <input type="number" class="alert-input mono" value="${item.alert || ''}" placeholder="--" oninput="saveAndCalculate()">
+                            <input type="number" class="alert-input mono" value="${item.alert || ''}" placeholder="--" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()">
                         </div>
                     </div>
                     <div class="mt-2 grid grid-cols-2 gap-2">
                         <div class="mobile-mini-field">
                             <div class="text-[11px] font-black text-center text-[var(--text-muted)]">拟加仓</div>
-                            <input type="number" class="plan-buy-input mono text-indigo-400" value="${item.planBuy || 0}" placeholder="0" oninput="saveAndCalculate()">
+                            <input type="number" class="plan-buy-input mono text-indigo-400" value="${item.planBuy || 0}" placeholder="0" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()">
                         </div>
                         <div class="mobile-mini-field">
                             <div class="text-[11px] font-black text-center text-[var(--text-muted)]">目标价</div>
-                            <input type="number" class="target-price-input mono text-emerald-400" value="${item.targetPrice || ''}" step="0.001" placeholder="--" oninput="saveAndCalculate()">
+                            <input type="number" class="target-price-input mono text-emerald-400" value="${item.targetPrice || ''}" step="0.001" placeholder="--" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()">
                         </div>
                     </div>
                         <div class="mt-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs">
@@ -1917,14 +1968,16 @@
                 const result = await response.json();
                 if (result.success) {
                     el.dataset.isDraft = '0';
-                    el.querySelectorAll('.draft-pill').forEach(pill => pill.classList.add('hidden'));
+                    setCardSaveState(el, 'saved');
                     el.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
                     sortCards();
                     updatePagination();
+                    setTimeout(() => setCardSaveState(el, 'hidden'), 1500);
                     setTimeout(() => el.style.backgroundColor = '', 500);
                 }
             } catch (e) {
                 console.error('保存失败:', e);
+                setCardSaveState(el, 'error');
                 el.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                 setTimeout(() => el.style.backgroundColor = '', 500);
             }

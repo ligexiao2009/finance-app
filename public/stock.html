@@ -2,8 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>资产看板专业版 - Ultimate v2.1</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>持仓看板专业版 - Ultimate v2.1</title>
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="stylesheet" href="./tailwind.generated.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         :root {
@@ -27,6 +29,146 @@
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .input-box { background: transparent; border-bottom: 1px solid var(--border-color); text-align: right; outline: none; transition: 0.2s; }
         .input-box:focus { border-color: var(--indigo-accent); }
+        .editable-field {
+            min-height: 34px;
+            padding: 0 10px;
+            border: 1px solid rgba(99, 102, 241, 0.14);
+            border-radius: 10px;
+            background: rgba(99, 102, 241, 0.05);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .editable-field:hover {
+            border-color: rgba(99, 102, 241, 0.24);
+            background: rgba(99, 102, 241, 0.08);
+        }
+        .asset-row:hover .editable-field,
+        .asset-row.is-active .editable-field {
+            border-color: rgba(99, 102, 241, 0.28);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        .editable-field:focus {
+            border-color: var(--indigo-accent);
+            background: rgba(99, 102, 241, 0.12);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        }
+        .editable-field-soft {
+            background: rgba(148, 163, 184, 0.05);
+            border-color: rgba(148, 163, 184, 0.18);
+        }
+        .editable-field-soft:hover {
+            border-color: rgba(148, 163, 184, 0.3);
+            background: rgba(148, 163, 184, 0.09);
+        }
+        .asset-row:hover .editable-field-soft,
+        .asset-row.is-active .editable-field-soft {
+            border-color: rgba(99, 102, 241, 0.22);
+            background: rgba(99, 102, 241, 0.08);
+        }
+        .editable-field-soft:focus {
+            border-color: var(--indigo-accent);
+            background: rgba(99, 102, 241, 0.12);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+        }
+        .editable-field-plan {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.24);
+        }
+        .asset-row {
+            transition: background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .asset-row td {
+            transition: background-color 0.18s ease;
+        }
+        .asset-row:hover td,
+        .asset-row.is-active td {
+            background: color-mix(in srgb, var(--table-hover) 78%, transparent);
+        }
+        .asset-row:hover td:first-child,
+        .asset-row.is-active td:first-child {
+            box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.75);
+        }
+        .asset-row:hover .stock-name,
+        .asset-row.is-active .stock-name {
+            color: color-mix(in srgb, var(--text-main) 88%, #4f46e5 12%);
+        }
+        .asset-row.is-locked td {
+            opacity: 0.92;
+        }
+        .asset-row.is-locked .editable-field {
+            cursor: not-allowed;
+            background: rgba(148, 163, 184, 0.06);
+            border-color: rgba(148, 163, 184, 0.12);
+            box-shadow: none;
+        }
+        .asset-row.is-dirty td:first-child {
+            box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.88);
+        }
+        .asset-row.is-saved td:first-child {
+            box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.8);
+        }
+        .asset-row.is-error td:first-child {
+            box-shadow: inset 3px 0 0 rgba(244, 63, 94, 0.8);
+        }
+        .row-save-state {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 18px;
+            padding: 0 7px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 900;
+            line-height: 1;
+            border: 1px dashed rgba(99, 102, 241, 0.3);
+            background: rgba(99, 102, 241, 0.07);
+            color: #6366f1;
+            white-space: nowrap;
+        }
+        .row-save-state.hidden {
+            display: none !important;
+        }
+        .row-save-state.is-saved {
+            border-style: solid;
+            border-color: rgba(16, 185, 129, 0.22);
+            background: rgba(16, 185, 129, 0.08);
+            color: #059669;
+        }
+        .row-save-state.is-error {
+            border-style: solid;
+            border-color: rgba(244, 63, 94, 0.22);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+        }
+        .price-status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 18px;
+            padding: 0 6px;
+            margin-left: 6px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 900;
+            line-height: 1;
+            vertical-align: middle;
+            border: 1px solid transparent;
+        }
+        .price-status-badge-success {
+            color: #059669;
+            background: rgba(5, 150, 105, 0.1);
+            border-color: rgba(5, 150, 105, 0.14);
+        }
+        .price-status-badge-warn {
+            color: #d97706;
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.18);
+        }
+        .price-status-badge-neutral {
+            color: var(--text-muted);
+            background: rgba(148, 163, 184, 0.08);
+            border-color: rgba(148, 163, 184, 0.16);
+        }
         #refreshProgress { transition: width 1s linear; }
         /* 自定义 tooltip */
         .tooltip-btn {
@@ -94,6 +236,414 @@
         .profit-type-btn:hover:not(.bg-indigo-600) {
             background-color: var(--table-hover) !important;
         }
+        .profit-modal-shell {
+            background:
+                radial-gradient(circle at top right, rgba(99, 102, 241, 0.14), transparent 28%),
+                radial-gradient(circle at top left, rgba(16, 185, 129, 0.08), transparent 22%),
+                var(--bg-card);
+        }
+        .profit-summary-card {
+            min-width: 170px;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: color-mix(in srgb, var(--bg-main) 72%, transparent);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .profit-toolbar {
+            background: color-mix(in srgb, var(--bg-main) 76%, transparent);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 10px 12px;
+        }
+        .profit-calendar-day {
+            min-height: 68px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 8px 7px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        .profit-calendar-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+        }
+        .profit-calendar-empty {
+            background: color-mix(in srgb, var(--bg-main) 82%, transparent);
+            color: var(--text-muted);
+        }
+        .profit-calendar-positive {
+            background: linear-gradient(180deg, rgba(220, 38, 38, 0.08), rgba(220, 38, 38, 0.16));
+            border-color: rgba(220, 38, 38, 0.18);
+        }
+        .profit-calendar-negative {
+            background: linear-gradient(180deg, rgba(5, 150, 105, 0.08), rgba(5, 150, 105, 0.16));
+            border-color: rgba(5, 150, 105, 0.18);
+        }
+        .profit-calendar-weekday {
+            letter-spacing: 0.08em;
+        }
+        .toolbar-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            min-height: 36px;
+            padding: 0 14px;
+            border-radius: 14px;
+            border: 1px solid transparent;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: 0.03em;
+            transition: 0.2s ease;
+        }
+        .toolbar-chip-strong {
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        }
+        .toolbar-chip-soft {
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+        }
+        .toolbar-chip-soft:hover {
+            background: var(--table-hover);
+            color: var(--text-main);
+        }
+        .toolbar-chip-lock {
+            border-color: rgba(245, 158, 11, 0.26);
+            color: #b45309;
+            background: rgba(245, 158, 11, 0.08);
+        }
+        .toolbar-chip-lock:hover {
+            background: rgba(245, 158, 11, 0.14);
+            color: #92400e;
+        }
+        .toolbar-chip-unlocked {
+            border-color: rgba(5, 150, 105, 0.22);
+            color: #047857;
+            background: rgba(5, 150, 105, 0.08);
+        }
+        .toolbar-chip-unlocked:hover {
+            background: rgba(5, 150, 105, 0.12);
+            color: #065f46;
+        }
+        .toolbar-chip:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            box-shadow: none;
+            filter: saturate(0.7);
+        }
+        .toolbar-chip-soft:disabled,
+        .toolbar-chip-strong:disabled {
+            background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+            color: var(--text-muted);
+            border-color: var(--border-color);
+        }
+        .pager-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 30px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--text-main);
+            font-size: 10px;
+            font-weight: 900;
+            transition: 0.2s ease;
+        }
+        .pager-btn:hover {
+            background: var(--table-hover);
+        }
+        .pager-btn:disabled {
+            background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+            color: var(--text-muted);
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .row-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 900;
+            transition: 0.2s ease;
+        }
+        .row-action-btn:hover {
+            background: var(--table-hover);
+            color: var(--text-main);
+        }
+        .row-action-cluster {
+            opacity: 0.25;
+            transform: translateX(6px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+        .asset-row:hover .row-action-cluster,
+        .asset-row.is-active .row-action-cluster {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .row-action-menu {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .row-action-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            display: none;
+            min-width: 118px;
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+            z-index: 30;
+        }
+        .row-action-menu.is-open .row-action-dropdown {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .row-action-item {
+            display: flex;
+            align-items: center;
+            min-height: 30px;
+            padding: 0 10px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-main);
+            font-size: 10px;
+            font-weight: 900;
+            text-align: left;
+            transition: 0.2s ease;
+        }
+        .row-action-item:hover {
+            background: var(--table-hover);
+        }
+        .row-action-item-danger {
+            color: #dc2626;
+        }
+        .stat-strip {
+            display: flex;
+            gap: 10px;
+        }
+        .stat-card {
+            min-width: 160px;
+            padding: 12px 14px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        }
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            line-height: 1;
+        }
+        .label-kicker {
+            color: var(--text-muted);
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .label-kicker-strong {
+            color: var(--indigo-accent);
+            font-style: italic;
+        }
+        .metric-number {
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .section-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .modal-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .modal-label {
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .modal-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .modal-muted {
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .unlock-status-note {
+            color: var(--text-muted);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        .unlock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            background: rgba(99, 102, 241, 0.08);
+            color: #6366f1;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .delete-confirm-shell {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(244, 63, 94, 0.12), transparent 26%),
+                radial-gradient(circle at top left, rgba(248, 113, 113, 0.08), transparent 22%),
+                var(--bg-card);
+        }
+        .delete-confirm-shell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%);
+        }
+        .delete-confirm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(244, 63, 94, 0.18);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .delete-confirm-name {
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+        .delete-confirm-note {
+            border-radius: 18px;
+            border: 1px solid rgba(244, 63, 94, 0.16);
+            background: linear-gradient(180deg, rgba(244, 63, 94, 0.08), rgba(244, 63, 94, 0.03));
+            color: color-mix(in srgb, var(--text-main) 78%, #fb7185 22%);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .delete-confirm-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            background: color-mix(in srgb, var(--bg-main) 84%, transparent);
+            transition: 0.2s ease;
+        }
+        .delete-confirm-close:hover {
+            background: var(--table-hover);
+            color: var(--text-main);
+        }
+        .delete-confirm-submit {
+            box-shadow: 0 16px 32px rgba(225, 29, 72, 0.18);
+        }
+        .unlock-input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .unlock-input:focus {
+            border-color: rgba(99, 102, 241, 0.65);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        }
+        .unlock-error {
+            min-height: 18px;
+            color: #fb7185;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.08em;
+        }
+        .stat-value {
+            font-size: 26px;
+            line-height: 1.05;
+            font-weight: 800;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-height: 34px;
+            padding: 0 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .table-shell {
+            background: var(--bg-card);
+            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+        }
+        .table-head-profit {
+            background: rgba(16, 185, 129, 0.05);
+            color: #059669 !important;
+        }
+        .table-head-accent {
+            background: rgba(99, 102, 241, 0.06);
+            color: #4f46e5 !important;
+        }
+        .table-head-plan {
+            background: rgba(99, 102, 241, 0.05);
+            color: #4f46e5 !important;
+        }
     </style>
 </head>
 <body class="py-6 light-mode">
@@ -101,12 +651,12 @@
         
         <div class="flex items-center justify-between mb-8 gap-6">
             <div class="flex items-center gap-4">
-                <h1 class="text-xl font-black italic tracking-tighter uppercase">资产看板 <span class="text-indigo-500">PRO</span></h1>
+                <h1 class="page-title italic uppercase">持仓看板 <span class="text-indigo-500">PRO</span></h1>
                 <div class="flex items-center bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg p-1 gap-1">
                     <button onclick="refreshAllPrices()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg transition" title="立即刷新">
                         <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                     </button>
-                    <select id="autoRefreshSelect" onchange="setupAutoRefresh()" class="bg-transparent text-[10px] font-black px-2 outline-none cursor-pointer text-[var(--text-muted)]">
+                    <select id="autoRefreshSelect" onchange="setupAutoRefresh()" class="bg-transparent text-[10px] font-bold px-2 outline-none cursor-pointer text-[var(--text-muted)]">
                         <option value="0">手动刷新</option>
                         <option value="60">1 分钟自动</option>
                         <option value="300">5 分钟自动</option>
@@ -118,32 +668,41 @@
 
             <div class="flex-grow relative flex items-center justify-center gap-10 border-x border-[var(--border-color)] px-8 h-16">
                 <div class="flex flex-col items-center">
-                    <span class="text-[9px] font-black text-[var(--text-muted)] uppercase mb-1">总投入本金</span>
-                    <div class="flex items-center text-sm font-black mono italic">
+                    <span class="label-kicker mb-1">总投入本金</span>
+                    <div class="flex items-center text-sm mono italic metric-number">
                         <span class="text-indigo-500 mr-1">¥</span>
                         <input type="number" id="baseCashInput" class="input-box w-28" oninput="saveAndCalculate()">
                     </div>
                 </div>
                 <div class="flex flex-col items-center">
-                    <span class="text-[9px] font-black text-[var(--text-muted)] uppercase mb-1">HKD 汇率</span>
-                    <div class="flex items-center text-sm font-black mono italic">
+                    <span class="label-kicker mb-1">HKD 汇率</span>
+                    <div class="flex items-center text-sm mono italic metric-number">
                         <span class="text-indigo-500 mr-1">@</span>
                         <input type="number" id="fxRateInput" step="0.001" class="input-box w-20" oninput="saveAndCalculate()">
                     </div>
                 </div>
                 <div class="flex flex-col items-center">
-                    <span class="text-[9px] font-black text-indigo-500 uppercase mb-1 italic">可用现金 (总本金 - 拟加仓)</span>
-                    <div id="availCashDisplay" class="text-base font-black mono text-indigo-500 italic">¥ 0</div>
+                    <span class="label-kicker label-kicker-strong mb-1">可用现金 (总本金 - 拟加仓)</span>
+                    <div id="availCashDisplay" class="text-base mono text-indigo-500 italic metric-number">¥ 0</div>
                 </div>
                 <div class="absolute bottom-0 left-0 h-[2px] bg-indigo-500/30 w-full overflow-hidden">
                     <div id="refreshProgress" class="h-full bg-indigo-500 w-0"></div>
                 </div>
             </div>
             
-            <div class="flex gap-8 text-right">
-                <div><div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">总市值 <span id="statLabel1" class="text-indigo-500">(全部)</span></div><div id="totalMktDisplay" class="text-2xl font-black mono italic">¥ 0</div></div>
-                <div><div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">今日盈亏 <span id="statLabel2" class="text-indigo-500">(全部)</span></div><div id="todayProfitDisplay" class="text-2xl font-black mono">¥ 0</div></div>
-                <div><div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">累计盈亏 <span id="statLabel3" class="text-indigo-500">(全部)</span></div><div id="overallProfitDisplay" class="text-2xl font-black mono">¥ 0</div></div>
+            <div class="stat-strip text-right">
+                <div class="stat-card">
+                    <div class="stat-label">总市值 <span id="statLabel1" class="text-indigo-500">(全部)</span></div>
+                    <div id="totalMktDisplay" class="stat-value mono italic">¥ 0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">今日盈亏 <span id="statLabel2" class="text-indigo-500">(全部)</span></div>
+                    <div id="todayProfitDisplay" class="stat-value mono">¥ 0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">累计盈亏 <span id="statLabel3" class="text-indigo-500">(全部)</span></div>
+                    <div id="overallProfitDisplay" class="stat-value mono">¥ 0</div>
+                </div>
             </div>
         </div>
 
@@ -153,7 +712,7 @@
                 <div class="flex items-center gap-3">
                     <span class="text-indigo-400 text-lg">🤖</span>
                     <div>
-                        <div class="font-black text-indigo-400 text-sm">有待确认的基金加仓交易</div>
+                        <div class="font-extrabold text-indigo-400 text-sm">有待确认的基金加仓交易</div>
                         <div id="pendingTradeCount" class="text-[10px] text-[var(--text-muted)]">系统将在次日上午9:00自动确认</div>
                     </div>
                 </div>
@@ -161,44 +720,40 @@
             </div>
         </div>
 
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex justify-between items-start mb-4 gap-6">
             <div class="flex items-center gap-4">
                 <div class="flex p-1 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
-                    <button onclick="switchTab('all')" id="tab-all" class="px-6 py-1.5 rounded-lg font-black text-[10px] bg-indigo-600 text-white">全部</button>
-                    <button onclick="switchTab('stock')" id="tab-stock" class="px-6 py-1.5 rounded-lg font-black text-[10px]">股票</button>
-                    <button onclick="switchTab('fund')" id="tab-fund" class="px-6 py-1.5 rounded-lg font-black text-[10px]">基金</button>
+                    <button onclick="switchTab('all')" id="tab-all" class="px-6 py-1.5 rounded-lg font-extrabold text-[10px] bg-indigo-600 text-white">全部</button>
+                    <button onclick="switchTab('stock')" id="tab-stock" class="px-6 py-1.5 rounded-lg font-extrabold text-[10px]">股票</button>
+                    <button onclick="switchTab('fund')" id="tab-fund" class="px-6 py-1.5 rounded-lg font-extrabold text-[10px]">基金</button>
                 </div>
-                <div class="text-[10px] text-[var(--text-muted)] font-black">
-                    净值更新: <span id="netValueUpdateStatus" class="text-emerald-400">--</span>
+                <div class="status-pill">
+                    <span>净值更新</span>
+                    <span id="netValueUpdateStatus" class="text-emerald-400">--</span>
                 </div>
             </div>
-            <div class="flex gap-2">
-                <button id="addStockBtn" onclick="addRow({code:'', name:'新股票', shares:0, cost:0, isFund:false})" class="bg-slate-800 text-white px-5 py-2 rounded-xl font-black text-[10px] hover:bg-slate-700 transition">+ 添加股票</button>
-                <button id="addFundBtn" onclick="addRow({code:'', name:'新基金', shares:0, cost:0, isFund:true})" class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-black text-[10px] hover:bg-indigo-500 transition">+ 添加基金</button>
-                <button id="saveAllFundsBtn" onclick="saveAllFunds()" class="bg-indigo-600 text-white px-5 py-2 rounded-xl font-black text-[10px] hover:bg-indigo-500 transition">💾 一键保存全部基金</button>
-                <div class="h-8 w-[1px] bg-[var(--border-color)] mx-1"></div>
-                <button onclick="document.getElementById('importFile').click()" class="p-2 border border-[var(--border-color)] rounded-xl text-[10px] font-black hover:bg-[var(--table-hover)]">导入 CSV</button>
-                <button onclick="exportCSV()" class="p-2 border border-[var(--border-color)] rounded-xl text-[10px] font-black hover:bg-[var(--table-hover)]">导出数据</button>
-                <button onclick="saveDailyProfit()" class="p-2 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-black hover:bg-emerald-500/10">保存今日收益</button>
-                <button onclick="openProfitCalendarModal()" class="p-2 border border-indigo-500/30 text-indigo-400 rounded-xl text-[10px] font-black hover:bg-indigo-500/10">收益看板</button>
-                <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-soft toolbar-chip-lock">🔒 解锁</button>
+                <button id="addStockBtn" onclick="addRow({code:'', name:'新股票', shares:0, cost:0, isFund:false})" class="toolbar-chip toolbar-chip-strong bg-slate-800 hover:bg-slate-700">+ 添加股票</button>
+                <button id="addFundBtn" onclick="addRow({code:'', name:'新基金', shares:0, cost:0, isFund:true})" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">+ 添加基金</button>
+                <button id="saveAllFundsBtn" onclick="saveAllFunds()" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">💾 一键保存全部</button>
             </div>
         </div>
 
-        <div class="card overflow-hidden shadow-xl">
+        <div class="card table-shell overflow-hidden shadow-xl">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="bg-[var(--bg-table-header)] text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest">
-                        <th class="px-8 py-5">标的信息 (代码/名称)</th>
+                    <tr class="bg-[var(--bg-table-header)] text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest">
+                        <th class="px-8 py-5">标的信息</th>
                         <th class="px-4 text-center">持仓数量</th>
                         <th class="px-4 text-center">成本均价</th>
                         <th class="px-4 text-center">当前价格</th>
-                        <th class="px-4 text-center">今日盈亏 / 涨跌幅</th>
-                        <th class="px-4 text-center">累计盈亏 / 收益率</th>
-                        <th class="px-4 text-center cursor-pointer hover:text-indigo-400" onclick="toggleSort()">当前市值 ↕</th>
+                        <th class="px-4 text-center table-head-profit">今日盈亏 / 涨跌幅</th>
+                        <th class="px-4 text-center table-head-profit">累计盈亏 / 收益率</th>
+                        <th class="px-4 text-center cursor-pointer hover:text-indigo-400 table-head-accent" onclick="toggleSort()">当前市值 ↕</th>
                         <th class="px-4 text-center">目标价格</th>
                         <th class="px-4 text-center">卖出收益 / 收益率</th>
-                        <th class="px-4 text-center bg-indigo-500/5 text-indigo-400 border-l border-indigo-500/10">拟加仓金额 (CNY)</th>
+                        <th class="px-4 text-center table-head-plan border-l border-indigo-500/10">拟加仓金额 (CNY)</th>
                         <th class="px-4 text-center">涨跌提醒</th>
                         <th class="w-44"></th>
                     </tr>
@@ -209,15 +764,22 @@
 
         <!-- 分页控件 -->
         <div class="flex items-center justify-between mt-4">
-            <div class="text-[10px] text-[var(--text-muted)] font-black">
+            <div class="text-[10px] text-[var(--text-muted)] font-bold">
                 共 <span id="totalCount" class="text-indigo-400">0</span> 条
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="changePage('prev')" class="px-3 py-1 border border-[var(--border-color)] rounded-lg text-[10px] font-black hover:bg-[var(--table-hover)]" id="prevBtn">上一页</button>
-                <span class="text-[10px] text-[var(--text-muted)] font-black px-2">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 px-2">
+                    <button onclick="openProfitCalendarModal()" class="toolbar-chip toolbar-chip-soft border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10">收益看板</button>
+                    <button onclick="saveDailyProfit()" class="toolbar-chip toolbar-chip-soft border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10">保存今日收益</button>
+                    <button id="importDataBtn" onclick="document.getElementById('importFile').click()" class="toolbar-chip toolbar-chip-soft">导入 CSV</button>
+                    <button onclick="exportCSV()" class="toolbar-chip toolbar-chip-soft">导出数据</button>
+                    <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
+                </div>
+                <button onclick="changePage('prev')" class="pager-btn" id="prevBtn">上一页</button>
+                <span class="text-[10px] text-[var(--text-muted)] font-bold px-2">
                     第 <span id="currentPage" class="text-indigo-400">1</span> / <span id="totalPages" class="text-indigo-400">1</span> 页
                 </span>
-                <button onclick="changePage('next')" class="px-3 py-1 border border-[var(--border-color)] rounded-lg text-[10px] font-black hover:bg-[var(--table-hover)]" id="nextBtn">下一页</button>
+                <button onclick="changePage('next')" class="pager-btn" id="nextBtn">下一页</button>
                 <select onchange="changePageSize(this.value)" class="bg-transparent border border-[var(--border-color)] rounded-lg px-2 py-1 text-[10px] font-black outline-none">
                     <option value="10">10条/页</option>
                     <option value="20">20条/页</option>
@@ -230,63 +792,63 @@
         <div id="addFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
             <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-black">基金加仓</h3>
+                    <h3 class="modal-title">基金加仓</h3>
                     <button onclick="closeAddFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
                 </div>
                 <div class="space-y-4">
                     <div class="text-sm text-[var(--text-muted)]">
-                        <span class="text-indigo-400 font-black" id="modalFundName"></span>
+                        <span class="text-indigo-400 font-extrabold" id="modalFundName"></span>
                         <span class="mono ml-2" id="modalFundCode"></span>
                     </div>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前持仓</div>
-                            <div class="mono font-black" id="modalCurrentShares">0 份</div>
+                            <div class="modal-label">当前持仓</div>
+                            <div class="modal-number" id="modalCurrentShares">0 份</div>
                         </div>
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前成本</div>
-                            <div class="mono font-black" id="modalCurrentCost">¥0.000</div>
+                            <div class="modal-label">当前成本</div>
+                            <div class="modal-number" id="modalCurrentCost">¥0.000</div>
                         </div>
                     </div>
                     <div class="bg-[var(--bg-main)] p-4 rounded-lg">
-                        <div class="text-[var(--text-muted)] text-[10px] uppercase mb-1">当前净值</div>
-                        <div class="mono font-black text-xl text-indigo-400" id="modalNetValue">¥0.000</div>
+                        <div class="modal-label mb-1">当前净值</div>
+                        <div class="mono font-extrabold text-xl text-indigo-400" id="modalNetValue">¥0.000</div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase mb-2 block">交易时间</label>
+                        <label class="modal-label mb-2 block">交易时间</label>
                         <div class="flex gap-2 mb-4">
                             <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
                                 <input type="radio" name="tradeTime" id="tradeTimeBefore" value="before" checked class="accent-indigo-500">
-                                <span class="text-sm font-black">15:00前</span>
+                                <span class="text-sm font-bold">15:00前</span>
                             </label>
                             <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
                                 <input type="radio" name="tradeTime" id="tradeTimeAfter" value="after" class="accent-indigo-500">
-                                <span class="text-sm font-black">15:00后</span>
+                                <span class="text-sm font-bold">15:00后</span>
                             </label>
                         </div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">加仓金额 (CNY)</label>
-                        <input type="number" id="modalAddAmount" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-indigo-500 outline-none" placeholder="输入加仓金额" oninput="previewAddFund()">
+                        <label class="modal-label">加仓金额 (CNY)</label>
+                        <input type="number" id="modalAddAmount" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-extrabold text-lg focus:border-indigo-500 outline-none" placeholder="输入加仓金额" oninput="previewAddFund()">
                     </div>
                     <div class="bg-indigo-500/10 p-4 rounded-lg border border-indigo-500/20">
-                        <div class="text-[10px] font-black text-indigo-400 uppercase mb-2">加仓预览</div>
+                        <div class="modal-label text-indigo-400 mb-2">加仓预览</div>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">新增份额</div>
-                                <div class="mono font-black" id="modalNewShares">+0 份</div>
+                                <div class="modal-muted">新增份额</div>
+                                <div class="modal-number" id="modalNewShares">+0 份</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">总份额</div>
-                                <div class="mono font-black" id="modalTotalShares">0 份</div>
+                                <div class="modal-muted">总份额</div>
+                                <div class="modal-number" id="modalTotalShares">0 份</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">新成本</div>
-                                <div class="mono font-black" id="modalNewCost">¥0.000</div>
+                                <div class="modal-muted">新成本</div>
+                                <div class="modal-number" id="modalNewCost">¥0.000</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">总成本</div>
-                                <div class="mono font-black" id="modalTotalCost">¥0</div>
+                                <div class="modal-muted">总成本</div>
+                                <div class="modal-number" id="modalTotalCost">¥0</div>
                             </div>
                         </div>
                     </div>
@@ -302,36 +864,36 @@
         <div id="reduceFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
             <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-black">基金减仓</h3>
+                    <h3 class="modal-title">基金减仓</h3>
                     <button onclick="closeReduceFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
                 </div>
                 <div class="space-y-4">
                     <div class="text-sm text-[var(--text-muted)]">
-                        <span class="text-rose-400 font-black" id="reduceModalFundName"></span>
+                        <span class="text-rose-400 font-extrabold" id="reduceModalFundName"></span>
                         <span class="mono ml-2" id="reduceModalFundCode"></span>
                     </div>
                     <div class="grid grid-cols-2 gap-4 text-sm">
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">当前持仓</div>
-                            <div class="mono font-black" id="reduceModalCurrentShares">0 份</div>
+                            <div class="modal-label">当前持仓</div>
+                            <div class="modal-number" id="reduceModalCurrentShares">0 份</div>
                         </div>
                         <div class="bg-[var(--bg-main)] p-3 rounded-lg">
-                            <div class="text-[var(--text-muted)] text-[10px] uppercase">成本价</div>
-                            <div class="mono font-black" id="reduceModalCurrentCost">¥0.0000</div>
+                            <div class="modal-label">成本价</div>
+                            <div class="modal-number" id="reduceModalCurrentCost">¥0.0000</div>
                         </div>
                     </div>
                     <div class="bg-[var(--bg-main)] p-4 rounded-lg">
-                        <div class="text-[var(--text-muted)] text-[10px] uppercase mb-1">当前净值</div>
-                        <div class="mono font-black text-xl text-rose-400" id="reduceModalNetValue">¥0.000</div>
+                        <div class="modal-label mb-1">当前净值</div>
+                        <div class="mono font-extrabold text-xl text-rose-400" id="reduceModalNetValue">¥0.000</div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">减仓份额</label>
-                            <input type="number" id="reduceModalShares" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-rose-500 outline-none" placeholder="输入份额" oninput="previewReduceFund()">
+                            <label class="modal-label">减仓份额</label>
+                            <input type="number" id="reduceModalShares" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-extrabold text-lg focus:border-rose-500 outline-none" placeholder="输入份额" oninput="previewReduceFund()">
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-[var(--text-muted)] uppercase">减仓比例</label>
-                            <select id="reduceModalPercent" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-black text-lg focus:border-rose-500 outline-none" onchange="applyReducePercent()">
+                            <label class="modal-label">减仓比例</label>
+                            <select id="reduceModalPercent" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-extrabold text-lg focus:border-rose-500 outline-none" onchange="applyReducePercent()">
                                 <option value="">选择</option>
                                 <option value="25">1/4 (25%)</option>
                                 <option value="33.33">1/3 (33%)</option>
@@ -343,23 +905,23 @@
                         </div>
                     </div>
                     <div class="bg-rose-500/10 p-4 rounded-lg border border-rose-500/20">
-                        <div class="text-[10px] font-black text-rose-400 uppercase mb-2">减仓预览</div>
+                        <div class="modal-label text-rose-400 mb-2">减仓预览</div>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">剩余份额</div>
-                                <div class="mono font-black" id="reduceModalRemainShares">0.00 份</div>
+                                <div class="modal-muted">剩余份额</div>
+                                <div class="modal-number" id="reduceModalRemainShares">0.00 份</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">赎回金额</div>
-                                <div class="mono font-black" id="reduceModalRedeemAmount">¥0</div>
+                                <div class="modal-muted">赎回金额</div>
+                                <div class="modal-number" id="reduceModalRedeemAmount">¥0</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">持仓成本</div>
-                                <div class="mono font-black" id="reduceModalRemainCost">¥0.0000</div>
+                                <div class="modal-muted">持仓成本</div>
+                                <div class="modal-number" id="reduceModalRemainCost">¥0.0000</div>
                             </div>
                             <div>
-                                <div class="text-[var(--text-muted)] text-[10px]">实现盈亏</div>
-                                <div class="mono font-black" id="reduceModalRealizedPL">¥0</div>
+                                <div class="modal-muted">实现盈亏</div>
+                                <div class="modal-number" id="reduceModalRealizedPL">¥0</div>
                             </div>
                         </div>
                     </div>
@@ -375,7 +937,7 @@
         <div id="pendingTradesModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
             <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[600px] border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-black">待确认交易</h3>
+                    <h3 class="modal-title">待确认交易</h3>
                     <button onclick="closePendingTradesModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
                 </div>
                 <div id="pendingTradesList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
@@ -390,8 +952,8 @@
             <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[650px] border border-[var(--border-color)]">
                 <div class="flex justify-between items-center mb-6">
                     <div>
-                        <h3 class="text-lg font-black">交易记录</h3>
-                        <div class="text-[10px] text-[var(--text-muted)]" id="tradeHistoryFundName"></div>
+                        <h3 class="modal-title">交易记录</h3>
+                        <div class="modal-muted" id="tradeHistoryFundName"></div>
                     </div>
                     <button onclick="closeTradeHistoryModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
                 </div>
@@ -402,78 +964,134 @@
             </div>
         </div>
 
+        <div id="editUnlockModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[420px] border border-[var(--border-color)] shadow-2xl">
+                <div class="flex justify-between items-start gap-4 mb-6">
+                    <div>
+                        <div class="unlock-badge mb-3">编辑保护</div>
+                        <h3 class="modal-title">输入密码后才能编辑</h3>
+                        <div class="unlock-status-note mt-2">解锁后可修改并保存数据，30 分钟后会自动重新锁定。</div>
+                    </div>
+                    <button onclick="closeEditUnlockModal()" class="text-[var(--text-muted)] hover:text-white text-2xl leading-none">&times;</button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="editUnlockPasswordInput" class="modal-label mb-2 block">解锁密码</label>
+                        <input type="password" id="editUnlockPasswordInput" class="unlock-input" placeholder="请输入密码" maxlength="32" onkeydown="handleEditUnlockKeydown(event)">
+                    </div>
+                    <div id="editUnlockError" class="unlock-error"></div>
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <button onclick="closeEditUnlockModal()" class="py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button id="editUnlockSubmitBtn" onclick="submitEditUnlock()" class="py-3 rounded-xl font-black text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white">确认解锁</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden" onclick="closeDeleteConfirmModal()">
+            <div class="delete-confirm-shell rounded-[28px] p-8 w-[460px] max-w-[92vw] border border-[var(--border-color)] shadow-2xl" onclick="event.stopPropagation()">
+                <div class="relative flex justify-between items-start gap-6">
+                    <div>
+                        <div class="delete-confirm-badge mb-3">危险操作</div>
+                        <h3 class="modal-title text-[1.45rem] leading-tight">确定要删除这条记录吗？</h3>
+                        <div id="deleteConfirmName" class="delete-confirm-name mt-4"></div>
+                    </div>
+                    <button onclick="closeDeleteConfirmModal()" class="delete-confirm-close text-2xl leading-none">&times;</button>
+                </div>
+                <div class="delete-confirm-note mt-6 px-5 py-4">
+                    删除后会同时移除当前持仓记录和本地缓存，且无法恢复。
+                </div>
+                <div class="mt-8 flex gap-4">
+                    <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-2xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button id="deleteConfirmSubmitBtn" onclick="confirmDeleteRow()" class="delete-confirm-submit flex-1 py-3 rounded-2xl font-black text-[10px] bg-rose-600 hover:bg-rose-500 text-white">确认删除</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 收益看板弹窗 -->
         <div id="profitCalendarModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-4 md:p-6 w-[850px] max-w-[92vw] max-h-[85vh] overflow-y-auto border border-[var(--border-color)] shadow-2xl relative transform transition-all duration-300 scale-95 opacity-0 profit-modal-content">
-                <button onclick="closeProfitCalendarModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white text-2xl transition">&times;</button>
+            <div class="profit-modal-shell rounded-3xl p-4 md:p-6 w-[900px] max-w-[92vw] max-h-[85vh] overflow-y-auto border border-[var(--border-color)] shadow-2xl relative transform transition-all duration-300 scale-95 opacity-0 profit-modal-content">
+                <button onclick="closeProfitCalendarModal()" class="absolute top-4 right-4 h-10 w-10 rounded-full border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:border-indigo-500/40 text-2xl transition">&times;</button>
 
                 <!-- 标题 -->
-                <div class="mb-4">
-                    <h3 class="text-lg md:text-xl font-black mb-1">收益看板</h3>
-                    <div class="text-[9px] md:text-[10px] text-[var(--text-muted)]">查看历史收益数据</div>
+                <div class="mb-5">
+                    <h3 class="text-xl md:text-2xl font-black mb-1">收益看板</h3>
+                    <div class="text-[10px] md:text-xs text-[var(--text-muted)]">查看历史收益数据</div>
                 </div>
 
                 <!-- 切换按钮和统计区 -->
-                <div class="flex items-center justify-between mb-6">
+                <div class="flex items-start justify-between gap-4 mb-6">
                     <!-- 切换按钮 -->
-                    <div class="flex p-1 bg-[var(--bg-main)] rounded-lg gap-1">
-                        <button onclick="switchProfitType('total')" id="profit-type-total" class="px-6 py-1.5 rounded-lg font-black text-[10px] transition-all duration-200 profit-type-btn bg-indigo-600 text-white hover:bg-indigo-500">总收益</button>
-                        <button onclick="switchProfitType('stock')" id="profit-type-stock" class="px-6 py-1.5 rounded-lg font-black text-[10px] transition-all duration-200 profit-type-btn text-[var(--text-muted)] hover:bg-[var(--table-hover)] hover:text-[var(--text-main)]">股票收益</button>
-                        <button onclick="switchProfitType('fund')" id="profit-type-fund" class="px-6 py-1.5 rounded-lg font-black text-[10px] transition-all duration-200 profit-type-btn text-[var(--text-muted)] hover:bg-[var(--table-hover)] hover:text-[var(--text-main)]">基金收益</button>
+                    <div class="flex p-1.5 bg-[var(--bg-main)] rounded-2xl gap-1.5 border border-[var(--border-color)]">
+                        <button onclick="switchProfitType('total')" id="profit-type-total" class="px-5 py-2 rounded-xl font-black text-[10px] transition-all duration-200 profit-type-btn bg-indigo-600 text-white hover:bg-indigo-500">总收益</button>
+                        <button onclick="switchProfitType('stock')" id="profit-type-stock" class="px-5 py-2 rounded-xl font-black text-[10px] transition-all duration-200 profit-type-btn text-[var(--text-muted)] hover:bg-[var(--table-hover)] hover:text-[var(--text-main)]">股票收益</button>
+                        <button onclick="switchProfitType('fund')" id="profit-type-fund" class="px-5 py-2 rounded-xl font-black text-[10px] transition-all duration-200 profit-type-btn text-[var(--text-muted)] hover:bg-[var(--table-hover)] hover:text-[var(--text-main)]">基金收益</button>
                     </div>
 
                     <!-- 收益统计 - 固定宽度，靠右 -->
-                    <div class="flex gap-6 flex-shrink-0 text-right">
-                        <div class="w-[140px]">
-                            <div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">年度收益</div>
-                            <div id="yearlyProfitDisplay" class="text-xl md:text-2xl font-black mono">¥0</div>
+                    <div class="flex gap-3 flex-shrink-0 text-right">
+                        <div class="profit-summary-card">
+                            <div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-2">年度收益</div>
+                            <div id="yearlyProfitDisplay" class="text-2xl md:text-[38px] font-black mono leading-none">¥0</div>
                         </div>
-                        <div class="w-[140px]">
-                            <div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-1">本月收益</div>
-                            <div id="monthlyProfitDisplay" class="text-xl md:text-2xl font-black mono">¥0</div>
+                        <div class="profit-summary-card">
+                            <div class="text-[var(--text-muted)] text-[9px] font-black uppercase mb-2">本月收益</div>
+                            <div id="monthlyProfitDisplay" class="text-2xl md:text-[38px] font-black mono leading-none">¥0</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 月份切换 -->
-                <div class="flex items-center justify-between mb-5 bg-[var(--bg-main)] p-2 rounded-xl">
-                    <button onclick="changeMonth(-1)" class="p-2 px-3 md:p-2.5 md:px-4 border border-[var(--border-color)] rounded-xl text-[10px] md:text-xs font-black hover:bg-[var(--table-hover)] transition flex items-center gap-1">
+                <div class="profit-toolbar flex items-center justify-between mb-5">
+                    <button onclick="changeMonth(-1)" class="p-2 px-3 md:px-4 border border-[var(--border-color)] rounded-xl text-[10px] md:text-xs font-black hover:bg-[var(--table-hover)] transition flex items-center gap-1">
                         <span class="text-xs md:text-sm">◀</span> <span class="hidden md:inline">上月</span>
                     </button>
-                    <span id="currentMonthDisplay" class="font-black text-sm md:text-base px-3 md:px-4 py-1 md:py-1.5 bg-[var(--bg-card)] rounded-lg border border-[var(--border-color)] text-center"></span>
-                    <button onclick="changeMonth(1)" class="p-2 px-3 md:p-2.5 md:px-4 border border-[var(--border-color)] rounded-xl text-[10px] md:text-xs font-black hover:bg-[var(--table-hover)] transition flex items-center gap-1">
+                    <span id="currentMonthDisplay" class="font-black text-sm md:text-base px-4 md:px-5 py-2 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)] text-center shadow-sm"></span>
+                    <button onclick="changeMonth(1)" class="p-2 px-3 md:px-4 border border-[var(--border-color)] rounded-xl text-[10px] md:text-xs font-black hover:bg-[var(--table-hover)] transition flex items-center gap-1">
                         <span class="hidden md:inline">下月</span> <span class="text-xs md:text-sm">▶</span>
                     </button>
                 </div>
 
                 <!-- 星期标题 -->
-                <div class="grid grid-cols-7 gap-1 md:gap-2 mb-3">
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周日</div>
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周一</div>
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周二</div>
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周三</div>
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周四</div>
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周五</div>
-                    <div class="text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周六</div>
+                <div class="grid grid-cols-7 gap-1 md:gap-1.5 mb-2.5">
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周日</div>
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周一</div>
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周二</div>
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周三</div>
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周四</div>
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周五</div>
+                    <div class="profit-calendar-weekday text-center text-[10px] md:text-xs font-black text-[var(--text-muted)] py-1">周六</div>
                 </div>
 
                 <!-- 日历 -->
-                <div id="profitCalendar" class="grid grid-cols-7 gap-1 md:gap-2"></div>
+                <div id="profitCalendar" class="grid grid-cols-7 gap-1 md:gap-1.5"></div>
             </div>
         </div>
     </div>
 
+    <script src="./app-config.js"></script>
     <script>
         // ==================== 配置 ====================
-        // const API_BASE_URL = 'https://finance-app-kanh.onrender.com';
-        const API_BASE_URL = 'https://finance-app-production-3a22.up.railway.app';
-        // const API_BASE_URL = 'http://localhost:3000';
+        const API_BASE_URL = window.API_BASE_URL;
+
+        const OVERSEAS_FUND_CODES = new Set(['017145', '017437']);
+
+        function isOverseasFundLike(item = {}) {
+            return !!item.isOverseas || OVERSEAS_FUND_CODES.has(String(item.code || '').trim());
+        }
 
         let currentTab = 'all';
         let sortDir = -1;
         let refreshTimer = null;
         let progressInterval = null;
         let remainingSeconds = 0;
+        let requiresEditUnlock = true;
+        const EDIT_UNLOCK_DURATION_MS = 30 * 60 * 1000;
+        const EDIT_UNLOCK_FLAG_KEY = 'vDashboardEditingUnlocked';
+        const EDIT_UNLOCK_EXPIRES_KEY = 'vDashboardEditingUnlockedUntil';
+        let editUnlockTimer = null;
+        let pendingDeleteRowId = null;
+        let isEditingUnlocked = getStoredEditUnlockState();
 
         // 分页相关
         let currentPageNum = 1;
@@ -485,8 +1103,296 @@
             }
         }
 
+        function getStoredEditUnlockState() {
+            const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
+            if (!expiresAt || Date.now() >= expiresAt) {
+                sessionStorage.removeItem(EDIT_UNLOCK_FLAG_KEY);
+                sessionStorage.removeItem(EDIT_UNLOCK_EXPIRES_KEY);
+                return false;
+            }
+            sessionStorage.setItem(EDIT_UNLOCK_FLAG_KEY, '1');
+            return sessionStorage.getItem(EDIT_UNLOCK_FLAG_KEY) === '1';
+        }
+
+        function scheduleEditAutoLock() {
+            if (editUnlockTimer) {
+                clearTimeout(editUnlockTimer);
+                editUnlockTimer = null;
+            }
+            if (!requiresEditUnlock || !isEditingUnlocked) return;
+            const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
+            const remaining = expiresAt - Date.now();
+            if (remaining <= 0) {
+                requestEditingUnlock(true, true);
+                return;
+            }
+            editUnlockTimer = setTimeout(() => {
+                requestEditingUnlock(true, true);
+            }, remaining);
+        }
+
+        function openEditUnlockModal(clearError = true) {
+            const modal = document.getElementById('editUnlockModal');
+            const input = document.getElementById('editUnlockPasswordInput');
+            const errorEl = document.getElementById('editUnlockError');
+            if (!modal || !input || !errorEl) return;
+            if (clearError) errorEl.textContent = '';
+            input.value = '';
+            modal.classList.remove('hidden');
+            setTimeout(() => input.focus(), 50);
+        }
+
+        function closeEditUnlockModal() {
+            const modal = document.getElementById('editUnlockModal');
+            const input = document.getElementById('editUnlockPasswordInput');
+            const errorEl = document.getElementById('editUnlockError');
+            if (modal) modal.classList.add('hidden');
+            if (input) input.value = '';
+            if (errorEl) errorEl.textContent = '';
+        }
+
+        function handleEditUnlockKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitEditUnlock();
+            }
+            if (event.key === 'Escape') {
+                closeEditUnlockModal();
+            }
+        }
+
+        function openDeleteConfirmModal(row) {
+            if (!row) return;
+            pendingDeleteRowId = row.dataset.id;
+            const name = row.querySelector('.stock-name')?.innerText || '未命名标的';
+            const nameEl = document.getElementById('deleteConfirmName');
+            const modal = document.getElementById('deleteConfirmModal');
+            if (nameEl) nameEl.innerText = name;
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            pendingDeleteRowId = null;
+            const modal = document.getElementById('deleteConfirmModal');
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (modal) modal.classList.add('hidden');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
+        async function confirmDeleteRow() {
+            const row = pendingDeleteRowId
+                ? document.querySelector(`#stockBody tr[data-id="${pendingDeleteRowId}"]`)
+                : null;
+            if (!row) {
+                closeDeleteConfirmModal();
+                return;
+            }
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (submitBtn) submitBtn.disabled = true;
+            await performDeleteRow(row);
+            closeDeleteConfirmModal();
+        }
+
+        async function loadAppSettings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/app-settings`);
+                const data = await response.json();
+                requiresEditUnlock = data.requiresEditUnlock !== false;
+            } catch (error) {
+                console.error('加载页面配置失败:', error);
+                requiresEditUnlock = true;
+            }
+        }
+
+        function updateEditLockButton() {
+            const btn = document.getElementById('editLockBtn');
+            if (!btn) return;
+            btn.textContent = isEditingUnlocked ? '🔓 已解锁' : '🔒 解锁';
+            btn.className = `toolbar-chip toolbar-chip-soft ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
+        }
+
+        function setRowSaveState(row, state) {
+            if (!row) return;
+            const pill = row.querySelector('.row-save-state');
+            if (!pill) return;
+            row.classList.remove('is-dirty', 'is-saved', 'is-error');
+            pill.classList.remove('hidden', 'is-saved', 'is-error');
+
+            if (state === 'hidden') {
+                pill.classList.add('hidden');
+                return;
+            }
+            if (state === 'saved') {
+                pill.textContent = '已保存';
+                pill.classList.add('is-saved');
+                row.classList.add('is-saved');
+                return;
+            }
+            if (state === 'error') {
+                pill.textContent = '保存失败';
+                pill.classList.add('is-error');
+                row.classList.add('is-error');
+                return;
+            }
+            pill.textContent = '未保存';
+            row.classList.add('is-dirty');
+        }
+
+        function markRowDirty(row) {
+            if (!row) return;
+            setRowSaveState(row, 'dirty');
+        }
+
+        function applyEditingLockState() {
+            const locked = requiresEditUnlock && !isEditingUnlocked;
+            document.querySelectorAll('.code-input, .shares-input, .cost-input, .target-price-input, .plan-buy-input, .alert-input').forEach(input => {
+                input.disabled = locked;
+            });
+            document.querySelectorAll('.asset-row').forEach(row => {
+                row.classList.toggle('is-locked', locked);
+            });
+            ['addStockBtn', 'addFundBtn', 'saveAllFundsBtn', 'importDataBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.disabled = locked;
+            });
+            document.querySelectorAll('.row-action-btn').forEach(btn => {
+                if (btn.textContent.includes('记录')) return;
+                btn.disabled = locked;
+            });
+            updateEditLockButton();
+            scheduleEditAutoLock();
+        }
+
+        async function submitEditUnlock() {
+            const input = document.getElementById('editUnlockPasswordInput');
+            const errorEl = document.getElementById('editUnlockError');
+            const submitBtn = document.getElementById('editUnlockSubmitBtn');
+            const password = input?.value.trim();
+            if (!password) {
+                if (errorEl) errorEl.textContent = '请输入解锁密码';
+                input?.focus();
+                return false;
+            }
+            if (submitBtn) submitBtn.disabled = true;
+            if (errorEl) errorEl.textContent = '';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/verify-unlock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    if (errorEl) errorEl.textContent = result.message || '密码错误';
+                    input?.focus();
+                    input?.select();
+                    return false;
+                }
+                isEditingUnlocked = true;
+                const expiresAt = Date.now() + EDIT_UNLOCK_DURATION_MS;
+                sessionStorage.setItem(EDIT_UNLOCK_FLAG_KEY, '1');
+                sessionStorage.setItem(EDIT_UNLOCK_EXPIRES_KEY, String(expiresAt));
+                closeEditUnlockModal();
+                applyEditingLockState();
+                showToast('编辑已解锁，30分钟后自动锁定');
+                return true;
+            } catch (error) {
+                console.error('解锁失败:', error);
+                if (errorEl) errorEl.textContent = '解锁失败，请稍后再试';
+                return false;
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        }
+
+        async function requestEditingUnlock(forceLock = false, autoLocked = false) {
+            if (forceLock) {
+                isEditingUnlocked = false;
+                sessionStorage.removeItem(EDIT_UNLOCK_FLAG_KEY);
+                sessionStorage.removeItem(EDIT_UNLOCK_EXPIRES_KEY);
+                closeEditUnlockModal();
+                applyEditingLockState();
+                showToast(autoLocked ? '编辑已自动锁定' : '已重新锁定');
+                return false;
+            }
+            if (!requiresEditUnlock) {
+                isEditingUnlocked = true;
+                sessionStorage.setItem(EDIT_UNLOCK_FLAG_KEY, '1');
+                sessionStorage.setItem(EDIT_UNLOCK_EXPIRES_KEY, String(Date.now() + EDIT_UNLOCK_DURATION_MS));
+                applyEditingLockState();
+                return true;
+            }
+            if (isEditingUnlocked) {
+                return requestEditingUnlock(true);
+            }
+            openEditUnlockModal();
+            return false;
+        }
+
+        function canEditOrNotify() {
+            if (!requiresEditUnlock || isEditingUnlocked) return true;
+            showToast('请先解锁后再编辑');
+            openEditUnlockModal(false);
+            return false;
+        }
+
+        function closeRowActionMenus() {
+            document.querySelectorAll('.row-action-menu.is-open').forEach(menu => {
+                menu.classList.remove('is-open');
+            });
+        }
+
+        function toggleRowActionMenu(button) {
+            const menu = button.closest('.row-action-menu');
+            const shouldOpen = !menu.classList.contains('is-open');
+            closeRowActionMenus();
+            if (shouldOpen) {
+                menu.classList.add('is-open');
+            }
+        }
+
+        function runRowAction(button, action) {
+            const row = button.closest('tr');
+            closeRowActionMenus();
+            if (!row) return;
+            if (!canEditOrNotify() && action !== 'history') return;
+            if (action === 'add') {
+                openAddFundModal(row);
+            } else if (action === 'history') {
+                openTradeHistoryModal(row);
+            } else if (action === 'reduce') {
+                openReduceFundModal(row);
+            } else if (action === 'save') {
+                saveRow(row);
+            } else if (action === 'delete') {
+                deleteRow(row);
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            if (!event.target.closest('.row-action-menu')) {
+                closeRowActionMenus();
+            }
+        });
+
+        document.addEventListener('focusin', (event) => {
+            const row = event.target.closest('.asset-row');
+            if (row) row.classList.add('is-active');
+        });
+
+        document.addEventListener('focusout', (event) => {
+            const row = event.target.closest('.asset-row');
+            if (!row) return;
+            setTimeout(() => {
+                if (!row.contains(document.activeElement)) {
+                    row.classList.remove('is-active');
+                }
+            }, 0);
+        });
+
         // 切换境外基金标记
         function toggleOverseas(row) {
+            if (!canEditOrNotify()) return;
             const starBtn = row.querySelector('.star-btn');
             const isOverseas = starBtn.classList.contains('text-yellow-400');
             if (isOverseas) {
@@ -498,36 +1404,60 @@
                 starBtn.classList.add('text-yellow-400');
                 row.dataset.isOverseas = '1';
             }
+            markRowDirty(row);
             saveAndCalculate();
         }
 
         // 添加行
         function addRow(item, prepend = true) {
             const tr = document.createElement('tr');
+            const isOverseas = isOverseasFundLike(item);
             tr.dataset.isFund = item.isFund;
             tr.dataset.id = item.id || Date.now() + Math.random().toString(36).substr(2, 9);
-            tr.dataset.isOverseas = item.isOverseas ? '1' : '0';
-            tr.className = "hover:bg-[var(--table-hover)] transition group border-b border-[var(--border-color)]";
+            tr.dataset.isOverseas = isOverseas ? '1' : '0';
+            tr.className = "asset-row transition group border-b border-[var(--border-color)]";
 
-            const fundBtns = item.isFund
-                ? `<button onclick="openTradeHistoryModal(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="交易记录">📋</button>
-                   <button onclick="openAddFundModal(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="加仓">➕</button>
-                   <button onclick="openReduceFundModal(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="减仓">➖</button>`
-                : '';
+            const moreMenuItems = item.isFund
+                ? `
+                    <button onclick="runRowAction(this, 'history')" class="row-action-item">记录</button>
+                    <button onclick="runRowAction(this, 'reduce')" class="row-action-item">减仓</button>
+                    <button onclick="runRowAction(this, 'delete')" class="row-action-item row-action-item-danger">删除</button>
+                `
+                : `
+                    <button onclick="runRowAction(this, 'save')" class="row-action-item">保存</button>
+                    <button onclick="runRowAction(this, 'delete')" class="row-action-item row-action-item-danger">删除</button>
+                `;
+
+            const visibleActions = item.isFund
+                ? `
+                    <button onclick="saveRow(this.closest('tr'))" class="row-action-btn">保存</button>
+                    <button onclick="openAddFundModal(this.closest('tr'))" class="row-action-btn">加仓</button>
+                    <div class="row-action-menu">
+                        <button onclick="toggleRowActionMenu(this)" class="row-action-btn">更多</button>
+                        <div class="row-action-dropdown">
+                            ${moreMenuItems}
+                        </div>
+                    </div>
+                `
+                : `
+                    <button onclick="saveRow(this.closest('tr'))" class="row-action-btn">保存</button>
+                    <button onclick="deleteRow(this.closest('tr'))" class="row-action-btn">删除</button>
+                `;
 
             tr.innerHTML = `
                 <td class="px-8 py-5">
                     <div class="flex items-center gap-2">
                         <div class="stock-name text-sm mb-0.5">${item.name || '正在获取...'}</div>
-                        <span class="star-btn cursor-pointer select-none ${item.isOverseas ? 'text-yellow-400' : 'text-slate-500 opacity-0 group-hover:opacity-100'}" onclick="toggleOverseas(this.closest('tr'))" title="境外基金" style="font-size: 12px; transition: opacity 0.2s;">★</span>
+                        <span class="star-btn cursor-pointer select-none ${isOverseas ? 'text-yellow-400' : 'text-slate-500 opacity-0 group-hover:opacity-100'}" onclick="toggleOverseas(this.closest('tr'))" title="境外基金" style="font-size: 12px; transition: opacity 0.2s;">★</span>
                     </div>
                     <div class="flex items-center gap-1 text-[10px] mono text-[var(--text-muted)]">
                         <span class="text-indigo-500 font-black italic">#</span>
-                        <input type="text" class="code-input bg-transparent border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
+                        <input type="text" class="code-input editable-field editable-field-soft border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="markRowDirty(this.closest('tr')); handleCodeInput(this)">
                     </div>
+                    <div class="mt-1"><span class="row-save-state ${item.code ? 'hidden' : ''}">未保存</span></div>
                 </td>
-                <td class="px-4 text-center"><input type="number" class="shares-input bg-transparent text-center mono text-sm w-24 outline-none" value="${parseFloat(item.shares || 0).toFixed(2)}" oninput="saveAndCalculate()" onfocus="clearZero(this)" onblur="formatSharesInput(this)" step="0.01"></td>
-                <td class="px-4 text-center"><input type="number" class="cost-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
+                <td class="px-4 text-center"><input type="number" class="shares-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${parseFloat(item.shares || 0).toFixed(2)}" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()" onfocus="clearZero(this)" onblur="formatSharesInput(this)" step="0.01"></td>
+                <td class="px-4 text-center"><input type="number" class="cost-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()" onfocus="clearZero(this)"></td>
                 <td class="px-4 text-center mono text-sm price-cell italic">¥0.000</td>
                 <td class="px-4 text-center">
                     <div class="today-profit-cell mono text-sm italic">¥0</div>
@@ -538,17 +1468,17 @@
                     <div class="ratio-cell text-[10px] font-black opacity-80">0.00%</div>
                 </td>
                 <td class="px-4 text-center"><div class="mkt-val-cell mono text-sm italic">¥0</div></td>
-                <td class="px-4 text-center"><input type="number" class="target-price-input bg-transparent text-center mono text-sm w-24 outline-none" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="saveAndCalculate()"></td>
+                <td class="px-4 text-center"><input type="number" class="target-price-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
                 <td class="px-4 text-center">
                     <div class="target-profit-cell mono text-sm italic">--</div>
                     <div class="target-ratio-cell text-[10px] font-black opacity-80">--</div>
                 </td>
-                <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input bg-transparent border-b border-indigo-500/20 text-center mono text-sm text-indigo-400 w-full outline-none focus:border-indigo-500" value="${item.planBuy || 0}" oninput="saveAndCalculate()"></td>
-                <td class="px-4 text-center"><input type="number" class="alert-input bg-transparent text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="saveAndCalculate()"></td>
+                <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input editable-field editable-field-plan text-center mono text-sm text-indigo-500 w-full outline-none" value="${item.planBuy || 0}" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
+                <td class="px-4 text-center"><input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
                 <td class="px-2 text-center">
-                    ${fundBtns}
-                    <button onclick="saveRow(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-emerald-500 opacity-0 group-hover:opacity-100 transition mr-1" data-tip="保存本行">💾</button>
-                    <button onclick="deleteRow(this.closest('tr'))" class="tooltip-btn text-slate-500 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition" data-tip="删除">✕</button>
+                    <div class="row-action-cluster flex items-center justify-center gap-2">
+                        ${visibleActions}
+                    </div>
                 </td>
             `;
             const stockBody = document.getElementById('stockBody');
@@ -557,7 +1487,7 @@
             } else {
                 stockBody.appendChild(tr);
             }
-            if(item.code) fetchPrice(tr, item.code);
+            applyEditingLockState();
             updatePagination();
 
             // 如果是新添加的行（没有code），自动聚焦到代码输入框
@@ -672,112 +1602,127 @@
             }
         }
 
-        function fetchPrice(row, code) {
-            const isF = row.dataset.isFund === 'true';
-            let sym = code.length === 5 ? 'hk' + code : (isF ? 'jj' + code : ((/^[569]/.test(code)) ? 'sh' + code : 'sz' + code));
+        function adjustFundPriceDate(priceDate, isOverseas) {
+            if (!priceDate || !isOverseas || priceDate.length !== 8) return priceDate || '';
+            const year = parseInt(priceDate.substr(0, 4), 10);
+            const month = parseInt(priceDate.substr(4, 2), 10) - 1;
+            const day = parseInt(priceDate.substr(6, 2), 10);
+            const date = new Date(year, month, day);
+            date.setDate(date.getDate() + 1);
+            return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+        }
 
-            const apiType = isF ? 's_' : 's_';
-            const vn = "v_" + apiType + sym;
-            const s = document.createElement('script');
-            s.src = `https://qt.gtimg.cn/q=${apiType}${sym}&_=${Math.random()}`;
-            s.onload = function() {
-                if (window[vn]) {
-                    const d = window[vn].split('~');
-                    row.querySelector('.stock-name').innerText = d[1].replace('[基金] ', '');
+        function getFundUpdateMeta(priceDate, isOverseas) {
+            const normalizedDate = adjustFundPriceDate(priceDate, isOverseas);
+            const now = new Date();
+            const todayStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+            const dayBefore = new Date(now);
+            dayBefore.setDate(dayBefore.getDate() - 2);
+            const dayBeforeStr = dayBefore.getFullYear().toString() + (dayBefore.getMonth() + 1).toString().padStart(2, '0') + dayBefore.getDate().toString().padStart(2, '0');
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
 
-                    let priceText = '¥' + parseFloat(d[3]).toFixed(3);
-                    let priceDate = '';
+            let showUpdated = false;
+            let labelText = '已更新';
 
-                    if (isF) {
-                        // 搜索所有字段查找日期格式 (YYYYMMDD 或 YYYY-MM-DD)
-                        for (let i = 0; i < d.length; i++) {
-                            if (d[i] && /^\d{4}[-]?\d{2}[-]?\d{2}$/.test(d[i])) {
-                                priceDate = d[i].replace(/-/g, '');
-                                break;
-                            }
-                        }
-
-                        // QDII 境外基金特殊处理：日期 +1 天
-                        const isOverseas = row.dataset.isOverseas === '1';
-                        if (isOverseas) {
-                            if (priceDate && priceDate.length === 8) {
-                                const year = parseInt(priceDate.substr(0, 4));
-                                const month = parseInt(priceDate.substr(4, 2)) - 1;
-                                const day = parseInt(priceDate.substr(6, 2));
-                                const date = new Date(year, month, day);
-                                date.setDate(date.getDate() + 1);
-                                const y = date.getFullYear();
-                                const m = (date.getMonth() + 1).toString().padStart(2, '0');
-                                const d = date.getDate().toString().padStart(2, '0');
-                                priceDate = `${y}${m}${d}`;
-                            }
-                        }
-
-                        const now = new Date();
-                        const todayStr = now.getFullYear().toString() +
-                                         (now.getMonth() + 1).toString().padStart(2, '0') +
-                                         now.getDate().toString().padStart(2, '0');
-
-                        const yesterday = new Date(now);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const yesterdayStr = yesterday.getFullYear().toString() +
-                                              (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                              yesterday.getDate().toString().padStart(2, '0');
-
-                        const dayBefore = new Date(now);
-                        dayBefore.setDate(dayBefore.getDate() - 2);
-                        const dayBeforeStr = dayBefore.getFullYear().toString() +
-                                              (dayBefore.getMonth() + 1).toString().padStart(2, '0') +
-                                              dayBefore.getDate().toString().padStart(2, '0');
-
-                        const hour = now.getHours();
-                        const minute = now.getMinutes();
-                        let showUpdated = false;
-                        let labelText = '已更新';
-
-                        // 判断是否是交易日的上午（9:30-15:00）
-                        const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
-
-                        if (priceDate) {
-                            if (priceDate === todayStr) {
-                                // 今天的数据
-                                showUpdated = true;
-                                labelText = '已更新';
-                            } else if (priceDate === yesterdayStr) {
-                                // 昨天的数据
-                                if (isTradingMorning) {
-                                    // 交易日上午（9:30-15:00）：昨天的数据算未更新
-                                    showUpdated = false;
-                                    labelText = '待更新';
-                                } else {
-                                    // 其他时间：15点前算已更新，15点后显示昨日净值
-                                    showUpdated = hour < 15;
-                                    labelText = hour < 15 ? '已更新' : '昨日净值';
-                                }
-                            } else if (priceDate === dayBeforeStr) {
-                                // 前天的数据（周末或节假日）
-                                showUpdated = true;
-                                labelText = '已更新';
-                            }
-                        }
-
-                        if (showUpdated) {
-                            priceText += `<span class="text-emerald-400 text-[10px] font-black ml-1">${labelText}</span>`;
-                        } else if (priceDate) {
-                            priceText += `<span class="text-amber-400 text-[10px] font-black ml-1">待更新</span>`;
-                        }
-                        row.dataset.isTodayUpdated = showUpdated ? '1' : '0';
-                    }
-
-                    row.querySelector('.price-cell').innerHTML = priceText;
-                    row.dataset.price = d[3]; row.dataset.change = d[5] || 0;
-                    row.dataset.priceDate = priceDate || '';
-                    saveAndCalculate();
-                    updateNetValueStatus();
+            if (normalizedDate === todayStr) {
+                showUpdated = true;
+            } else if (normalizedDate === yesterdayStr) {
+                if (isTradingMorning) {
+                    labelText = '待更新';
+                } else {
+                    showUpdated = hour < 15;
+                    labelText = hour < 15 ? '已更新' : '昨日净值';
                 }
-                document.body.removeChild(s); delete window[vn];
-            };
-            document.body.appendChild(s);
+            } else if (normalizedDate === dayBeforeStr) {
+                showUpdated = true;
+            }
+
+            return { priceDate: normalizedDate, showUpdated, labelText };
+        }
+
+        function applyQuoteToRow(row, quote) {
+            if (!row || !quote) return;
+            row.querySelector('.stock-name').innerText = quote.name || '正在获取...';
+
+            const isFund = row.dataset.isFund === 'true';
+            let priceText = '¥' + parseFloat(quote.price || 0).toFixed(3);
+            let priceDate = '';
+
+            if (isFund) {
+                const meta = getFundUpdateMeta(quote.priceDate || '', row.dataset.isOverseas === '1');
+                priceDate = meta.priceDate;
+                if (meta.showUpdated) {
+                    const badgeText = meta.labelText === '昨日净值' ? '昨' : '今';
+                    const badgeClass = meta.labelText === '昨日净值'
+                        ? 'price-status-badge price-status-badge-neutral'
+                        : 'price-status-badge price-status-badge-success';
+                    priceText += `<span class="${badgeClass}">${badgeText}</span>`;
+                } else if (priceDate) {
+                    priceText += `<span class="price-status-badge price-status-badge-warn">待更</span>`;
+                }
+                row.dataset.isTodayUpdated = meta.showUpdated ? '1' : '0';
+            } else {
+                row.dataset.isTodayUpdated = '1';
+            }
+
+            row.querySelector('.price-cell').innerHTML = priceText;
+            row.dataset.price = quote.price || 0;
+            row.dataset.change = quote.change || 0;
+            row.dataset.priceDate = priceDate;
+        }
+
+        function buildQuoteItemsFromRows(rows) {
+            const seen = new Set();
+            return rows.map(row => {
+                const code = row.querySelector('.code-input')?.value?.trim();
+                const isFund = row.dataset.isFund === 'true';
+                const key = `${code}:${isFund ? 1 : 0}`;
+                if (!code || seen.has(key)) return null;
+                seen.add(key);
+                return { code, isFund };
+            }).filter(Boolean);
+        }
+
+        async function loadQuotesForRows(rows, options = {}) {
+            const { fresh = false } = options;
+            const items = buildQuoteItemsFromRows(rows);
+            if (!items.length) {
+                saveAndCalculate();
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('items', items.map(item => `${item.code}:${item.isFund ? 1 : 0}`).join(','));
+            if (fresh) params.set('fresh', '1');
+
+            const response = await fetch(`${API_BASE_URL}/api/quotes?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`quotes request failed: ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const quotes = payload?.quotes || {};
+            rows.forEach(row => {
+                const code = row.querySelector('.code-input')?.value?.trim();
+                const isFund = row.dataset.isFund === 'true';
+                applyQuoteToRow(row, quotes[`${code}:${isFund ? 1 : 0}`]);
+            });
+            saveAndCalculate();
+            updateNetValueStatus();
+        }
+
+        async function fetchPrice(row, code) {
+            if (!row || !code) return;
+            try {
+                await loadQuotesForRows([row], { fresh: true });
+            } catch (error) {
+                console.error('获取价格失败:', code, error);
+            }
         }
 
         function updateNetValueStatus() {
@@ -991,6 +1936,7 @@
         }
 
         async function saveRow(row) {
+            if (!canEditOrNotify()) return;
             const code = row.querySelector('.code-input').value;
             const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
@@ -1012,21 +1958,25 @@
                 });
                 const result = await response.json();
                 if (result.success) {
+                    setRowSaveState(row, 'saved');
                     row.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    setTimeout(() => setRowSaveState(row, 'hidden'), 1500);
                     setTimeout(() => row.style.backgroundColor = '', 500);
                 }
             } catch (e) {
                 console.error('保存失败:', e);
+                setRowSaveState(row, 'error');
                 row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                 setTimeout(() => row.style.backgroundColor = '', 500);
             }
         }
 
         async function deleteRow(row) {
-            if (!confirm('确定要删除这条记录吗？')) {
-                return;
-            }
+            if (!canEditOrNotify()) return;
+            openDeleteConfirmModal(row);
+        }
 
+        async function performDeleteRow(row) {
             const id = row.dataset.id;
             const code = row.querySelector('.code-input')?.value || '';
             const isFund = row.dataset.isFund === 'true';
@@ -1050,22 +2000,23 @@
                 console.error('删除失败:', e);
                 row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                 setTimeout(() => row.style.backgroundColor = '', 500);
+                showToast('删除失败');
             }
         }
 
         async function saveAllFunds() {
+            if (!canEditOrNotify()) return;
             const btn = document.getElementById('saveAllFundsBtn');
             const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = '保存中...';
 
             const rows = Array.from(document.querySelectorAll('#stockBody tr'));
-            const fundRows = rows.filter(r => r.dataset.isFund === 'true');
 
             let successCount = 0;
             let failCount = 0;
 
-            for (const row of fundRows) {
+            for (const row of rows) {
                 const code = row.querySelector('.code-input').value;
                 if (!code) continue;
 
@@ -1073,10 +2024,13 @@
                 const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
                 const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
                 const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
                 const name = row.querySelector('.stock-name').innerText;
                 const id = row.dataset.id;
+                const isFund = row.dataset.isFund === 'true';
+                const isOverseas = row.dataset.isOverseas === '1';
 
-                const rowData = { id, code, name, shares, cost, isFund: true, planBuy, alert };
+                const rowData = { id, code, name, shares, cost, isFund, planBuy, alert, isOverseas, targetPrice };
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/save-row`, {
@@ -1099,7 +2053,7 @@
             }
 
             setTimeout(() => {
-                fundRows.forEach(row => row.style.backgroundColor = '');
+                rows.forEach(row => row.style.backgroundColor = '');
             }, 800);
 
             btn.disabled = false;
@@ -1144,18 +2098,21 @@
             saveAndCalculate();
         }
 
-        function refreshAllPrices() {
-            document.getElementById('refreshIcon').classList.add('refresh-spin');
-            // 刷新当前页的行
-            document.querySelectorAll('#stockBody tr').forEach(r => {
-                const code = r.querySelector('.code-input').value;
-                if(code) fetchPrice(r, code);
-            });
-            setTimeout(() => {
-                document.getElementById('refreshIcon').classList.remove('refresh-spin');
-                const seconds = parseInt(document.getElementById('autoRefreshSelect').value);
-                if(seconds > 0) remainingSeconds = seconds;
-            }, 1000);
+        async function refreshAllPrices(fresh = true, silent = false) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (!silent) refreshIcon.classList.add('refresh-spin');
+            try {
+                const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+                await loadQuotesForRows(rows, { fresh });
+            } catch (error) {
+                console.error('批量刷新价格失败:', error);
+            } finally {
+                setTimeout(() => {
+                    if (!silent) refreshIcon.classList.remove('refresh-spin');
+                    const seconds = parseInt(document.getElementById('autoRefreshSelect').value);
+                    if(seconds > 0) remainingSeconds = seconds;
+                }, silent ? 0 : 300);
+            }
         }
 
         function switchTab(t) {
@@ -1167,7 +2124,7 @@
 
             document.getElementById('addStockBtn').style.display = (t === 'all' || t === 'stock') ? '' : 'none';
             document.getElementById('addFundBtn').style.display = (t === 'all' || t === 'fund') ? '' : 'none';
-            document.getElementById('saveAllFundsBtn').style.display = (t === 'fund') ? '' : 'none';
+            document.getElementById('saveAllFundsBtn').style.display = '';
 
             currentPageNum = 1;
             updatePagination();
@@ -1195,6 +2152,10 @@
         }
 
         function importCSV(event) {
+            if (!canEditOrNotify()) {
+                event.target.value = '';
+                return;
+            }
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -1479,20 +2440,19 @@
                 const hasData = profitValue !== null;
                 const isUp = hasData && profitValue >= 0;
                 const profitClass = hasData ? (isUp ? 'up' : 'down') : '';
-
-                const bgClass = hasData ? (isUp ? 'bg-rose-500/20' : 'bg-emerald-500/20') : 'bg-[var(--bg-main)]';
-                const borderClass = hasData ? (isUp ? 'border-rose-500/30' : 'border-emerald-500/30') : 'border-[var(--border-color)]';
-                const hoverClass = hasData ? (isUp ? 'hover:bg-rose-500/30' : 'hover:bg-emerald-500/30') : 'hover:bg-[var(--table-hover)]';
+                const dayClass = hasData
+                    ? (isUp ? 'profit-calendar-day profit-calendar-positive' : 'profit-calendar-day profit-calendar-negative')
+                    : 'profit-calendar-day profit-calendar-empty';
 
                 html += `
-                    <div class="${bgClass} ${borderClass} ${hoverClass} rounded-xl p-3 text-center border min-h-[70px] md:min-h-[80px] cursor-default transition-all duration-300 hover:scale-[1.02] hover:shadow-lg flex flex-col justify-center">
-                        <div class="text-xs font-black text-[var(--text-muted)] mb-1.5">${day}</div>
+                    <div class="${dayClass} text-center cursor-default">
+                        <div class="text-[10px] font-black text-[var(--text-muted)]">${day}</div>
                         ${hasData ? `
-                            <div class="mono text-xs md:text-sm font-black ${profitClass}">
+                            <div class="mono text-[10px] md:text-[12px] font-black ${profitClass}">
                                 ${isUp ? '+' : ''}¥${Math.round(profitValue).toLocaleString()}
                             </div>
                         ` : `
-                            <div class="text-[10px] md:text-[11px] text-[var(--text-muted)]">--</div>
+                            <div class="text-[9px] text-[var(--text-muted)]">--</div>
                         `}
                     </div>
                 `;
@@ -1503,6 +2463,7 @@
 
         window.onload = async () => {
             let s = null;
+            await loadAppSettings();
 
             // 从后端获取数据
             try {
@@ -1533,19 +2494,18 @@
             document.getElementById('baseCashInput').value = s.baseInput;
             // document.getElementById('fxRateInput').value = s.fx;
             document.getElementById('autoRefreshSelect').value = s.refreshVal || "0";
-            document.getElementById('saveAllFundsBtn').style.display = 'none';
+            document.getElementById('saveAllFundsBtn').style.display = '';
             if (s.items && s.items.length) {
                 s.items.forEach(i => {
-                    // 给 017145 和 017437 默认设置境外标记
-                    if ((i.code === '017145' || i.code === '017437') && i.isOverseas === undefined) {
-                        i.isOverseas = true;
-                    }
+                    if (isOverseasFundLike(i)) i.isOverseas = true;
                     addRow(i, false);
                 });
             } else {
                 addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
             }
             switchTab('all');
+            await refreshAllPrices(false, true);
+            applyEditingLockState();
             setupAutoRefresh();
             updatePendingTradeBanner();
             // 等净值获取完成后更新状态
@@ -1707,6 +2667,7 @@
         let currentAddFundData = {};
 
         function openAddFundModal(row) {
+            if (!canEditOrNotify()) return;
             if (row.dataset.isFund !== 'true') return;
 
             currentAddFundRow = row;
@@ -1765,6 +2726,7 @@
         }
 
         async function confirmAddFund() {
+            if (!canEditOrNotify()) return;
             const amount = parseFloat(document.getElementById('modalAddAmount').value) || 0;
             if (!currentAddFundRow || amount <= 0) return;
 
@@ -1851,6 +2813,7 @@
         let currentReduceFundData = {};
 
         function openReduceFundModal(row) {
+            if (!canEditOrNotify()) return;
             if (row.dataset.isFund !== 'true') return;
 
             currentReduceFundRow = row;
@@ -1921,6 +2884,7 @@
         }
 
         async function confirmReduceFund() {
+            if (!canEditOrNotify()) return;
             const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
             if (!currentReduceFundRow || reduceShares <= 0) return;
 
@@ -2076,6 +3040,7 @@
         }
 
         async function confirmPendingTrade(tradeId) {
+            if (!canEditOrNotify()) return;
             const trades = getPendingTrades();
             const tradeIndex = trades.findIndex(t => t.id === tradeId);
             if (tradeIndex < 0) return;
@@ -2135,6 +3100,7 @@
         }
 
         async function deletePendingTrade(tradeId) {
+            if (!canEditOrNotify()) return;
             if (!confirm('确定要删除这笔待确认交易吗？')) return;
 
             await deletePendingTradeFromBackend(tradeId);
@@ -2143,6 +3109,7 @@
         }
 
         async function confirmAllPendingTrades() {
+            if (!canEditOrNotify()) return;
             const trades = getPendingTrades();
             if (trades.length === 0) return;
 

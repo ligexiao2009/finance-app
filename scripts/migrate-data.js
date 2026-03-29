@@ -3,10 +3,12 @@
 // Migrate JSON data to PostgreSQL
 const fs = require('fs');
 const path = require('path');
-const db = require('./db');
+const db = require('../src/db/db');
+const dataDir = path.join(__dirname, '..', 'data');
+const configDir = path.join(__dirname, '..', 'config');
 console.log('ENV:', process.env.DATABASE_URL);
 async function migratePositions() {
-  const dataFile = path.join(__dirname, 'data.json');
+  const dataFile = path.join(dataDir, 'data.json');
   if (!fs.existsSync(dataFile)) {
     console.log('📁 data.json not found, skipping positions migration');
     return 0;
@@ -51,7 +53,7 @@ async function migratePositions() {
 }
 
 async function migratePendingTrades() {
-  const dataFile = path.join(__dirname, 'pending-trades.json');
+  const dataFile = path.join(dataDir, 'pending-trades.json');
   if (!fs.existsSync(dataFile)) {
     console.log('📁 pending-trades.json not found, skipping pending trades migration');
     return 0;
@@ -93,7 +95,7 @@ async function migratePendingTrades() {
 }
 
 async function migrateTradeHistory() {
-  const dataFile = path.join(__dirname, 'trade-history.json');
+  const dataFile = path.join(dataDir, 'trade-history.json');
   if (!fs.existsSync(dataFile)) {
     console.log('📁 trade-history.json not found, skipping trade history migration');
     return 0;
@@ -140,7 +142,7 @@ async function migrateTradeHistory() {
 }
 
 async function migrateDailyProfits() {
-  const dataFile = path.join(__dirname, 'daily-profit.json');
+  const dataFile = path.join(dataDir, 'daily-profit.json');
   if (!fs.existsSync(dataFile)) {
     console.log('📁 daily-profit.json not found, skipping daily profits migration');
     return 0;
@@ -178,7 +180,7 @@ async function migrateDailyProfits() {
 }
 
 async function migrateConfig() {
-  const dataFile = path.join(__dirname, 'config.json');
+  const dataFile = path.join(configDir, 'config.json');
   if (!fs.existsSync(dataFile)) {
     console.log('📁 config.json not found, skipping config migration');
     return 0;
@@ -247,7 +249,7 @@ async function main() {
       console.error('\n🔧 Database connection failed. Check:');
       console.error('   - Database is running');
       console.error('   - Connection settings are correct');
-      console.error('   - Run: node init-db.js (to create tables first)');
+      console.error('   - Run: node scripts/init-db.js (to create tables first)');
     }
 
     process.exit(1);

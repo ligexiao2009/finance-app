@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Initialize PostgreSQL database tables
-const db = require('./db');
+const db = require('../src/db/db');
 
 async function main() {
   console.log('🚀 Starting database initialization...');
@@ -48,8 +48,8 @@ async function main() {
 
     console.log('\n🎉 Database initialization completed successfully!');
     console.log('\nNext steps:');
-    console.log('   1. Run: node migrate-data.js (to migrate JSON data to PostgreSQL)');
-    console.log('   2. Run: node server.js (to start the server)');
+    console.log('   1. Run: node scripts/migrate-data.js (to migrate JSON data to PostgreSQL)');
+    console.log('   2. Run: node src/server.js (to start the server)');
     console.log('\nNote: Make sure DATABASE_URL or DB_* environment variables are set.');
 
   } catch (error) {

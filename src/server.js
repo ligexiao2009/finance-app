@@ -2,14 +2,162 @@
 require('dotenv').config();
 
 const http = require('http');
+const crypto = require('crypto');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
-const db = require('./db');
+const db = require('./db/db');
+const { handleDailyProfitRoutes } = require('./routes/daily-profit');
+const { servePublicFile } = require('./utils/static-files');
 
 const PORT = 3000;
+const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
+const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
+const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);
+const responseCache = new Map();
+
+function invalidateCache(...keys) {
+  keys.forEach(key => responseCache.delete(key));
+}
+
+function invalidateCacheByPrefix(prefix) {
+  for (const key of responseCache.keys()) {
+    if (key.startsWith(prefix)) {
+      responseCache.delete(key);
+    }
+  }
+}
+
+async function getCachedJsonResponse(cacheKey, producer, options = {}) {
+  const { ttlMs = DATA_CACHE_TTL_MS, bypassCache = false } = options;
+  const now = Date.now();
+  const cached = responseCache.get(cacheKey);
+  if (!bypassCache && cached && cached.expiresAt > now) {
+    return cached;
+  }
+
+  const data = await producer();
+  const payload = JSON.stringify(data);
+  const etag = `"${crypto.createHash('sha1').update(payload).digest('hex')}"`;
+  const nextCache = {
+    expiresAt: now + ttlMs,
+    etag,
+    payload,
+  };
+
+  responseCache.set(cacheKey, nextCache);
+  return nextCache;
+}
+
+async function sendCachedJson(req, res, cacheKey, producer, options = {}) {
+  const cached = await getCachedJsonResponse(cacheKey, producer, options);
+  if (req.headers['if-none-match'] === cached.etag) {
+    res.writeHead(304, {
+      'Cache-Control': 'private, max-age=0, must-revalidate',
+      'ETag': cached.etag,
+    });
+    res.end();
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'private, max-age=0, must-revalidate',
+    'ETag': cached.etag,
+  });
+  res.end(cached.payload);
+}
+
+function buildQuoteSymbol(code, isFund) {
+  const normalizedCode = String(code || '').trim();
+  if (!normalizedCode) return '';
+  if (normalizedCode.length === 5) return `hk${normalizedCode}`;
+  if (isFund) return `jj${normalizedCode}`;
+  return /^[569]/.test(normalizedCode) ? `sh${normalizedCode}` : `sz${normalizedCode}`;
+}
+
+function parseFundPriceDate(parts) {
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] && /^\d{4}[-]?\d{2}[-]?\d{2}$/.test(parts[i])) {
+      return parts[i].replace(/-/g, '');
+    }
+  }
+  return '';
+}
+
+function parseQuoteResponse(text) {
+  const result = new Map();
+  const lines = String(text || '').split('\n');
+
+  for (const line of lines) {
+    const match = line.match(/^v_(.+?)="(.*)";?$/);
+    if (!match) continue;
+    const variableName = match[1];
+    const raw = match[2];
+    if (!raw || raw.indexOf('~') === -1) continue;
+    result.set(variableName, raw.split('~'));
+  }
+
+  return result;
+}
+
+async function decodeQtResponse(response) {
+  const buffer = await response.arrayBuffer();
+  return new TextDecoder('gb18030').decode(buffer);
+}
+
+async function fetchQuotesBatch(items) {
+  const normalizedItems = [];
+  const seen = new Set();
+
+  for (const item of items || []) {
+    const code = String(item.code || '').trim();
+    if (!code) continue;
+    const isFund = item.isFund === true || item.isFund === 'true' || item.isFund === 1 || item.isFund === '1';
+    const cacheKey = `${code}:${isFund ? 1 : 0}`;
+    if (seen.has(cacheKey)) continue;
+    seen.add(cacheKey);
+    normalizedItems.push({
+      code,
+      isFund,
+      symbol: buildQuoteSymbol(code, isFund),
+      key: cacheKey,
+    });
+  }
+
+  const quotes = {};
+  for (let i = 0; i < normalizedItems.length; i += QUOTES_BATCH_SIZE) {
+    const batch = normalizedItems.slice(i, i + QUOTES_BATCH_SIZE);
+    if (!batch.length) continue;
+
+    const query = batch.map(item => `s_${item.symbol}`).join(',');
+
+    try {
+      const response = await fetch(`https://qt.gtimg.cn/q=${query}`);
+      const text = await decodeQtResponse(response);
+      const parsed = parseQuoteResponse(text);
+
+      batch.forEach(item => {
+        const parts = parsed.get(`s_${item.symbol}`);
+        if (!parts) return;
+        quotes[item.key] = {
+          code: item.code,
+          isFund: item.isFund,
+          name: item.isFund ? (parts[1] ? parts[1].replace('[基金] ', '') : '') : (parts[1] || ''),
+          price: parseFloat(parts[3]) || 0,
+          change: parseFloat(parts[5]) || 0,
+          priceDate: item.isFund ? parseFundPriceDate(parts) : '',
+        };
+      });
+    } catch (error) {
+      console.error('批量获取行情失败:', error.message);
+    }
+  }
+
+  return quotes;
+}
 
 // ==================== 配置部分 ====================
-// Server酱配置 - 需要在 config.json 中设置或直接修改这里
+// Server酱配置 - 优先从环境变量或数据库配置读取
 let SERVERCHAN_KEY = '';
 
 // 初始化配置文件
@@ -34,6 +182,10 @@ async function initConfig() {
       const defaultValue = alertTimeFromEnv || '0 22 * * *';
       await db.setConfig('alertTime', defaultValue);
     }
+    if (!configs.editUnlockPassword) {
+      const defaultValue = process.env.EDIT_UNLOCK_PASSWORD || '8957';
+      await db.setConfig('editUnlockPassword', defaultValue);
+    }
 
     // 更新内存中的配置（优先使用环境变量，其次使用数据库配置）
     SERVERCHAN_KEY = serverchanKeyFromEnv || configs.serverchanKey || '';
@@ -45,6 +197,10 @@ async function initConfig() {
     // 设置默认值
     SERVERCHAN_KEY = '';
   }
+}
+
+async function getEditUnlockPassword() {
+  return process.env.EDIT_UNLOCK_PASSWORD || await db.getConfig('editUnlockPassword') || '8957';
 }
 
 
@@ -89,7 +245,7 @@ async function startServer() {
       console.log('\n配置说明:');
       console.log('  1. Server酱获取地址: https://sct.ftqq.com/');
       console.log('  2. 在前端页面为基金设置涨跌提醒值 (%)');
-      console.log('  3. 每日收益定时任务: 每天 23:00 自动计算并保存');
+      console.log('  3. 每日收益定时任务: 周一到周五 23:00 自动计算并保存');
       console.log('  4. 自动确认交易定时任务: 每天 09:00 自动确认昨天15点前的交易');
       console.log('  5. 配置存储在 PostgreSQL configs 表中');
       console.log('');
@@ -121,7 +277,7 @@ async function fetchStockPrice(code) {
     }
     const url = `https://qt.gtimg.cn/q=s_${sym}`;
     const response = await fetch(url);
-    const text = await response.text();
+    const text = await decodeQtResponse(response);
 
     if (text && text.indexOf('~') > -1) {
       const parts = text.split('~');
@@ -143,7 +299,7 @@ async function fetchFundNetValue(code) {
     const sym = 'jj' + code;
     const url = `https://qt.gtimg.cn/q=s_${sym}`;
     const response = await fetch(url);
-    const text = await response.text();
+    const text = await decodeQtResponse(response);
 
     if (text && text.indexOf('~') > -1) {
       const parts = text.split('~');
@@ -484,6 +640,9 @@ async function autoConfirmPendingTrades() {
   }
 
   if (confirmedCount > 0) {
+    invalidateCache('app-settings', 'data', 'pending-trades', 'trade-history');
+    invalidateCacheByPrefix('trade-history:');
+    invalidateCacheByPrefix('quotes:');
     console.log(`\n自动确认完成！共确认 ${confirmedCount} 笔交易`);
   } else {
     console.log(`\n没有需要确认的交易`);
@@ -518,8 +677,8 @@ async function setupCronJob() {
     timezone: 'Asia/Shanghai'
   });
 
-  // 每日收益计算定时任务 - 每天晚上11点执行
-  global.profitCronJob = cron.schedule('0 0 23 * * *', () => {
+  // 每日收益计算定时任务 - 周一到周五晚上11点执行
+  global.profitCronJob = cron.schedule('0 0 23 * * 1-5', () => {
     calculateAndSaveDailyProfit();
   }, {
     timezone: 'Asia/Shanghai'
@@ -533,7 +692,7 @@ async function setupCronJob() {
   });
 
   console.log(`基金提醒定时任务已设置: 每天 ${cronTime} 执行`);
-  console.log(`每日收益计算定时任务已设置: 每天 23:00 执行`);
+  console.log(`每日收益计算定时任务已设置: 周一到周五 23:00 执行`);
   console.log(`自动确认交易定时任务已设置: 每天 09:00 执行`);
   console.log('提示: 可以在 .env 文件中修改 ALERT_TIME 环境变量');
 }
@@ -550,11 +709,64 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if ((req.method === 'GET' || req.method === 'HEAD') && req.url === '/') {
+    if (servePublicFile(req, res, '/stock.html')) {
+      return;
+    }
+  }
+
+  if ((req.method === 'GET' || req.method === 'HEAD') && req.url === '/mobile') {
+    if (servePublicFile(req, res, '/index.html')) {
+      return;
+    }
+  }
+
+  if ((req.method === 'GET' || req.method === 'HEAD') && !req.url.startsWith('/api/')) {
+    if (servePublicFile(req, res, req.url)) {
+      return;
+    }
+  }
+
   // 手动触发检查 (测试用)
   if (req.method === 'GET' && req.url === '/api/trigger-check') {
     checkFundsAndAlert();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: '检查已触发' }));
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/api/app-settings') {
+    try {
+      await sendCachedJson(req, res, 'app-settings', async () => ({
+        requiresEditUnlock: true
+      }));
+    } catch (error) {
+      console.error('Error getting app settings:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get app settings' }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/verify-unlock') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { password } = JSON.parse(body || '{}');
+        const unlockPassword = await getEditUnlockPassword();
+        const success = password === unlockPassword;
+        res.writeHead(success ? 200 : 401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success,
+          message: success ? '解锁成功' : '密码错误'
+        }));
+      } catch (e) {
+        console.error('Error verifying unlock password:', e);
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
     return;
   }
 
@@ -574,13 +786,56 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && req.url.startsWith('/api/quotes')) {
+    try {
+      const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const fresh = requestUrl.searchParams.get('fresh') === '1';
+      const itemsParam = requestUrl.searchParams.get('items');
+
+      let items;
+      if (itemsParam) {
+        items = itemsParam
+          .split(',')
+          .map(entry => entry.trim())
+          .filter(Boolean)
+          .map(entry => {
+            const [code, isFundFlag] = entry.split(':');
+            return { code, isFund: isFundFlag === '1' };
+          });
+      } else {
+        const rows = await db.getPositions();
+        items = rows.map(row => ({ code: row.code, isFund: row.isFund }));
+      }
+
+      const normalizedCacheKey = items
+        .map(item => `${String(item.code || '').trim()}:${item.isFund ? 1 : 0}`)
+        .filter(Boolean)
+        .sort()
+        .join(',');
+
+      await sendCachedJson(req, res, `quotes:${normalizedCacheKey}`, async () => ({
+        quotes: await fetchQuotesBatch(items),
+        updatedAt: Date.now(),
+      }), {
+        ttlMs: QUOTES_CACHE_TTL_MS,
+        bypassCache: fresh,
+      });
+    } catch (error) {
+      console.error('Error getting quotes:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get quotes' }));
+    }
+    return;
+  }
+
   // ========== 待确认交易 API ==========
   // 获取待确认交易列表
   if (req.method === 'GET' && req.url === '/api/pending-trades') {
     try {
-      const trades = await db.getPendingTrades();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ trades }));
+      await sendCachedJson(req, res, 'pending-trades', async () => {
+        const trades = await db.getPendingTrades();
+        return { trades };
+      });
     } catch (error) {
       console.error('Error getting pending trades:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -597,6 +852,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const trade = JSON.parse(body);
         await db.createPendingTrade(trade);
+        invalidateCache('pending-trades');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -616,6 +872,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const { id } = JSON.parse(body);
         await db.deletePendingTrade(id);
+        invalidateCache('pending-trades');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (e) {
@@ -643,6 +900,7 @@ const server = http.createServer(async (req, res) => {
           await db.createPendingTrade(trade);
         }
 
+        invalidateCache('pending-trades');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
       } catch (e) {
@@ -658,9 +916,10 @@ const server = http.createServer(async (req, res) => {
   // 获取交易历史（全部）
   if (req.method === 'GET' && req.url === '/api/trade-history') {
     try {
-      const history = await db.getTradeHistory();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ history }));
+      await sendCachedJson(req, res, 'trade-history', async () => {
+        const history = await db.getTradeHistory();
+        return { history };
+      });
     } catch (error) {
       console.error('Error getting trade history:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -673,9 +932,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url.startsWith('/api/trade-history/')) {
     try {
       const rowId = req.url.split('/api/trade-history/')[1];
-      const records = await db.getTradeHistoryByRowId(rowId);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ records }));
+      await sendCachedJson(req, res, `trade-history:${rowId}`, async () => {
+        const records = await db.getTradeHistoryByRowId(rowId);
+        return { records };
+      });
     } catch (error) {
       console.error('Error getting trade history by rowId:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -714,6 +974,7 @@ const server = http.createServer(async (req, res) => {
           localDate: formattedRecord.localDate || null,
         });
 
+        invalidateCache('trade-history', `trade-history:${rowId}`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -764,6 +1025,8 @@ const server = http.createServer(async (req, res) => {
         }
 
         await db.query('COMMIT');
+        invalidateCache('trade-history');
+        invalidateCacheByPrefix('trade-history:');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
       } catch (e) {
@@ -831,6 +1094,8 @@ const server = http.createServer(async (req, res) => {
           });
         }
 
+        invalidateCache('data');
+        invalidateCacheByPrefix('quotes:');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -870,6 +1135,11 @@ const server = http.createServer(async (req, res) => {
           }
         }
 
+        if (deleted) {
+          invalidateCache('data');
+          invalidateCacheByPrefix('quotes:');
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, deleted }));
       } catch (e) {
@@ -884,9 +1154,10 @@ const server = http.createServer(async (req, res) => {
   // 获取所有数据
   if (req.method === 'GET' && req.url === '/api/data') {
     try {
-      const rows = await db.getPositions();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ rows }));
+      await sendCachedJson(req, res, 'data', async () => {
+        const rows = await db.getPositions();
+        return { rows };
+      });
     } catch (error) {
       console.error('Error getting positions:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -895,40 +1166,10 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 保存今日收益
-  if (req.method === 'POST' && req.url === '/api/save-daily-profit') {
-    let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', async () => {
-      try {
-        const profitData = JSON.parse(body);
-        await db.createDailyProfit(profitData);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, message: '保存成功' }));
-      } catch (e) {
-        console.error('Save daily profit error:', e);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: e.message }));
-      }
-    });
-    return;
-  }
-
-  // 获取每日收益历史
-  if (req.method === 'GET' && req.url === '/api/daily-profit') {
-    try {
-      const records = await db.getDailyProfits();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ records }));
-    } catch (error) {
-      console.error('Error getting daily profits:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to get daily profits' }));
-    }
+  if (await handleDailyProfitRoutes(req, res)) {
     return;
   }
 
   res.writeHead(404);
   res.end('Not Found');
 });
-

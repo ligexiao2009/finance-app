@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Drawdown Calculator</title>
+    <style>
+        :root {
+            --ios-bg: #f2f2f7;
+            --ios-card: #ffffff;
+            --ios-primary: #007aff;
+            --ios-up: #ff3b30;    /* 涨红 */
+            --ios-up-bg: rgba(255, 59, 48, 0.1);
+            --ios-down: #34c759;  /* 跌绿 */
+            --ios-down-bg: rgba(52, 199, 89, 0.1);
+            --ios-text: #000000;
+            --ios-secondary-text: #8e8e93;
+            --ios-border: #d1d1d6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --ios-bg: #000000;
+                --ios-card: #1c1c1e;
+                --ios-text: #ffffff;
+                --ios-border: #38383a;
+                --ios-up-bg: rgba(255, 69, 58, 0.15);
+                --ios-down-bg: rgba(48, 209, 88, 0.15);
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background-color: var(--ios-bg);
+            color: var(--ios-text);
+            margin: 0;
+            display: flex; justify-content: center; align-items: flex-start; 
+            height: 100vh; padding-top: 8vh; box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container { width: 92%; max-width: 400px; }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding: 0 4px;
+        }
+
+        h1 { font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+        
+        .clear-btn {
+            font-size: 14px; font-weight: 600; color: var(--ios-primary);
+            background: rgba(0, 122, 255, 0.1); border: none;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer;
+        }
+
+        /* 结果区域 - 背景色动态变化 */
+        .result-group {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 28px 16px;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 平滑过渡 */
+        }
+
+        .res-label { font-size: 13px; color: var(--ios-secondary-text); letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+        .res-value { font-size: 48px; font-weight: 800; margin: 4px 0; letter-spacing: -1.5px; }
+        .res-sub { font-size: 14px; margin-top: 10px; font-weight: 500; }
+
+        /* 输入区域 */
+        .card {
+            background: var(--ios-card);
+            border-radius: 14px;
+            padding: 0 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+
+        .input-item {
+            display: flex; align-items: center; padding: 16px 0;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .input-item:last-child { border-bottom: none; }
+
+        .label { font-size: 17px; width: 100px; }
+        input {
+            flex: 1; background: transparent; border: none; color: var(--ios-text);
+            font-size: 17px; text-align: right; outline: none;
+        }
+        .unit { color: var(--ios-secondary-text); font-size: 17px; margin-left: 6px; width: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>回撤计算</h1>
+        <button class="clear-btn" onclick="clearAll()">清除</button>
+    </div>
+
+    <div class="result-group" id="resultCard">
+        <span class="res-label" id="typeLabel">资产状态</span>
+        <div class="res-value" id="mainResult">0.00%</div>
+        <div class="res-sub" id="subResult">请输入数值</div>
+    </div>
+    
+    <div class="card">
+        <div class="input-item">
+            <span class="label">前次高点</span>
+            <input type="text" id="highVal" placeholder="0.00" inputmode="text" oninput="validateAndCalc(this)">
+            <span class="unit">%</span>
+        </div>
+        <div class="input-item">
+            <span class="label">当前数值</span>
+            <input type="text" id="currentVal" placeholder="0.00" inputmode="text" oninput="validateAndCalc(this)">
+            <span class="unit">%</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function validateAndCalc(el) {
+        let val = el.value;
+        val = val.replace(/[^\d.-]/g, ""); 
+        if (val.indexOf('-') > 0) val = val.replace('-', ''); 
+        const dots = val.split('.');
+        if (dots.length > 2) val = dots + '.' + dots.slice(1).join(''); 
+        el.value = val;
+        calculate();
+    }
+
+    function calculate() {
+        const hStr = document.getElementById('highVal').value;
+        const cStr = document.getElementById('currentVal').value;
+        const cardEl = document.getElementById('resultCard');
+        const mainEl = document.getElementById('mainResult');
+        const subEl = document.getElementById('subResult');
+        const labelEl = document.getElementById('typeLabel');
+
+        if (hStr === "" || cStr === "" || hStr === "-" || cStr === "-") {
+            resetDisplay();
+            return;
+        }
+
+        const h = parseFloat(hStr);
+        const c = parseFloat(cStr);
+        const diffPoints = (c - h).toFixed(2);
+        const highNet = 1 + (h / 100);
+        const currNet = 1 + (c / 100);
+        
+        if (currNet >= highNet) {
+            // 增长状态：背景变红
+            cardEl.style.backgroundColor = "var(--ios-up-bg)";
+            labelEl.innerText = "资产增长率";
+            const growth = ((currNet - highNet) / highNet * 100).toFixed(2);
+            mainEl.innerText = "+" + growth + "%";
+            mainEl.style.color = "var(--ios-up)";
+            subEl.innerText = "📈 较前高上涨 " + Math.abs(diffPoints) + " 个百分点";
+            subEl.style.color = "var(--ios-up)";
+        } else {
+            // 回撤状态：背景变绿
+            cardEl.style.backgroundColor = "var(--ios-down-bg)";
+            labelEl.innerText = "实际回撤率";
+            const drawdown = ((highNet - currNet) / highNet * 100).toFixed(2);
+            mainEl.innerText = "-" + drawdown + "%";
+            mainEl.style.color = "var(--ios-down)";
+            subEl.innerText = "📉 较前高跌了 " + Math.abs(diffPoints) + " 个百分点";
+            subEl.style.color = "var(--ios-down)";
+        }
+    }
+
+    function clearAll() {
+        document.getElementById('highVal').value = "";
+        document.getElementById('currentVal').value = "";
+        resetDisplay();
+    }
+
+    function resetDisplay() {
+        const cardEl = document.getElementById('resultCard');
+        const mainEl = document.getElementById('mainResult');
+        const subEl = document.getElementById('subResult');
+        cardEl.style.backgroundColor = "var(--ios-card)";
+        mainEl.innerText = "0.00%";
+        mainEl.style.color = "var(--ios-text)";
+        subEl.innerText = "请输入数值";
+        subEl.style.color = "var(--ios-secondary-text)";
+        document.getElementById('typeLabel').innerText = "资产状态";
+    }
+</script>
+
+</body>
+</html>

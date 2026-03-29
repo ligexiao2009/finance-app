@@ -1,0 +1,3410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f8fafc" id="themeColorMeta">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="持仓看板">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>持仓看板专业版 - Ultimate v2.1</title>
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="stylesheet" href="./found-tailwind.generated.css">
+    <script>
+        (function() {
+            const key = 'vDashboardMobileThemeMode';
+            const saved = localStorage.getItem(key);
+            const mode = saved === 'dark' ? 'dark' : 'light';
+            const root = document.documentElement;
+            root.classList.add(mode === 'light' ? 'mobile-light' : 'mobile-dark');
+            root.style.backgroundColor = mode === 'light' ? '#f8fafc' : '#0f172a';
+        })();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        :root {
+            --bg-main: #0f172a; --bg-card: #1e293b; --bg-table-header: #1e293b;
+            --text-main: #f1f5f9; --text-muted: #94a3b8; --border-color: #334155;
+            --up-color: #ff5252; --down-color: #00e676; --table-hover: #1e293b;
+            --indigo-accent: #6366f1;
+        }
+        body.light-mode,
+        html.mobile-light {
+            --bg-main: #f8fafc; --bg-card: #ffffff; --bg-table-header: #f1f5f9;
+            --text-main: #1e293b; --text-muted: #64748b; --border-color: #e2e8f0;
+            --up-color: #dc2626; --down-color: #059669; --table-hover: #f1f5f9;
+        }
+        html {
+            background-color: #0f172a;
+        }
+        html.mobile-light {
+            background-color: #f8fafc;
+            color-scheme: light;
+        }
+        html.mobile-dark {
+            background-color: #0f172a;
+            color-scheme: dark;
+        }
+        body { font-family: 'PingFang SC', sans-serif; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
+        .mobile-app-body {
+            padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+            padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.5rem);
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .up { color: var(--up-color) !important; font-weight: bold; } 
+        .down { color: var(--down-color) !important; font-weight: bold; } 
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 1rem; }
+        .refresh-spin { animation: spin 0.8s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .input-box { background: transparent; border-bottom: 1px solid var(--border-color); text-align: right; outline: none; transition: 0.2s; }
+        .input-box:focus { border-color: var(--indigo-accent); }
+        #refreshProgress { transition: width 1s linear; }
+        /* 自定义 tooltip */
+        .tooltip-btn {
+            position: relative;
+        }
+        .tooltip-btn:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            z-index: 100;
+            border: 1px solid #334155;
+        }
+        .tooltip-btn:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #1e293b;
+            z-index: 100;
+        }
+        body.light-mode .tooltip-btn:hover::after,
+        html.mobile-light .tooltip-btn:hover::after {
+            background: #ffffff;
+            color: #1e293b;
+            border-color: #e2e8f0;
+        }
+        body.light-mode .tooltip-btn:hover::before,
+        html.mobile-light .tooltip-btn:hover::before {
+            border-top-color: #ffffff;
+        }
+        /* 自动消失提示框 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+            border: 1px solid #334155;
+            animation: slideDown 0.3s ease;
+        }
+        body.light-mode .toast,
+        html.mobile-light .toast {
+            background: #ffffff;
+            color: #1e293b;
+            border-color: #e2e8f0;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .mobile-card-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.35;
+            min-height: 2.5em;
+        }
+        .mobile-stat-tile {
+            background: color-mix(in srgb, var(--bg-main) 78%, transparent);
+            border: 1px solid var(--border-color);
+            border-radius: 0.9rem;
+            padding: 0.48rem 0.62rem;
+        }
+        .mobile-hero-tile {
+            background: linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 68%, transparent), color-mix(in srgb, var(--bg-main) 88%, transparent));
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 0.58rem 0.72rem;
+        }
+        .mobile-code-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: color-mix(in srgb, var(--bg-main) 75%, transparent);
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+        .mobile-code-pill input {
+            width: 5.2rem;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: inherit;
+            text-transform: uppercase;
+        }
+        .toolbar-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            min-height: 2.2rem;
+            padding: 0 0.82rem;
+            border-radius: 0.85rem;
+            border: 1px solid transparent;
+            font-size: 0.75rem;
+            font-weight: 900;
+            letter-spacing: 0.01em;
+            transition: 0.2s ease;
+        }
+        .toolbar-chip-strong {
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        }
+        .toolbar-chip-soft {
+            border-color: var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+        }
+        .toolbar-chip-soft:active {
+            background: var(--table-hover);
+            color: var(--text-main);
+        }
+        .toolbar-chip-lock {
+            border-color: rgba(245, 158, 11, 0.26);
+            color: #b45309;
+            background: rgba(245, 158, 11, 0.08);
+        }
+        .toolbar-chip-unlocked {
+            border-color: rgba(5, 150, 105, 0.22);
+            color: #047857;
+            background: rgba(5, 150, 105, 0.08);
+        }
+        .toolbar-chip-unlocked.is-counting {
+            min-width: 4.2rem;
+        }
+        .toolbar-chip:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            filter: saturate(0.7);
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-height: 2.1rem;
+            padding: 0 0.75rem;
+            border-radius: 0.85rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            font-size: 0.72rem;
+            font-weight: 900;
+            color: var(--text-muted);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1.35rem;
+            padding: 0 0.45rem;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 900;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .status-badge-success {
+            color: #059669;
+            background: rgba(5, 150, 105, 0.1);
+            border-color: rgba(5, 150, 105, 0.16);
+        }
+        .status-badge-warn {
+            color: #d97706;
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.18);
+        }
+        .status-badge-neutral {
+            color: var(--text-muted);
+            background: rgba(148, 163, 184, 0.08);
+            border-color: rgba(148, 163, 184, 0.16);
+        }
+        .price-status.is-hidden {
+            display: none !important;
+        }
+        .page-title {
+            font-size: 1.08rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            line-height: 1;
+        }
+        .label-kicker {
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .metric-number {
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .modal-title {
+            font-size: 1.02rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+        .modal-label {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .modal-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .modal-muted {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .unlock-status-note {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+        .unlock-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.38rem 0.68rem;
+            border-radius: 999px;
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            background: rgba(99, 102, 241, 0.08);
+            color: #818cf8;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .delete-confirm-shell {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(244, 63, 94, 0.12), transparent 28%),
+                radial-gradient(circle at top left, rgba(248, 113, 113, 0.08), transparent 22%),
+                var(--bg-card);
+        }
+        .delete-confirm-shell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%);
+        }
+        .delete-confirm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            padding: 0.42rem 0.74rem;
+            border-radius: 999px;
+            border: 1px solid rgba(244, 63, 94, 0.18);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+        .delete-confirm-name {
+            color: var(--text-main);
+            font-size: 0.96rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .delete-confirm-note {
+            border-radius: 1rem;
+            border: 1px solid rgba(244, 63, 94, 0.16);
+            background: linear-gradient(180deg, rgba(244, 63, 94, 0.08), rgba(244, 63, 94, 0.03));
+            color: color-mix(in srgb, var(--text-main) 78%, #fb7185 22%);
+            font-size: 0.84rem;
+            line-height: 1.55;
+        }
+        .delete-confirm-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            background: color-mix(in srgb, var(--bg-main) 82%, transparent);
+            transition: 0.2s ease;
+        }
+        .delete-confirm-close:active {
+            transform: scale(0.96);
+        }
+        .delete-confirm-cancel {
+            background: color-mix(in srgb, var(--bg-main) 74%, transparent);
+        }
+        .delete-confirm-submit {
+            box-shadow: 0 14px 28px rgba(225, 29, 72, 0.2);
+        }
+        .delete-confirm-overlay {
+            animation: fadeInOverlay 0.2s ease;
+        }
+        .delete-confirm-panel {
+            animation: popInDeleteConfirm 0.22s ease;
+            transform-origin: center bottom;
+        }
+        @keyframes fadeInOverlay {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes popInDeleteConfirm {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .unlock-input {
+            width: 100%;
+            padding: 0.95rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .unlock-input:focus {
+            border-color: rgba(99, 102, 241, 0.65);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        }
+        .unlock-error {
+            min-height: 1.1rem;
+            color: #fb7185;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .mobile-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            min-height: 2.25rem;
+            border-radius: 0.85rem;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 0.75rem;
+            font-weight: 800;
+            transition: 0.2s;
+        }
+        .mobile-action-btn:active {
+            transform: scale(0.98);
+        }
+        .mobile-metric-input {
+            width: auto;
+            min-width: 0;
+            max-width: 100%;
+            background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+            border: 1px dashed color-mix(in srgb, var(--indigo-accent) 35%, var(--border-color));
+            outline: none;
+            font-size: 0.88rem;
+            line-height: 1.2;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 0.08rem;
+            padding: 0.2rem 0.45rem;
+            border-radius: 0.65rem;
+            text-align: right;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+        .mobile-metric-input:focus {
+            border-color: var(--indigo-accent);
+            background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+        }
+        .mobile-mini-field {
+            background: color-mix(in srgb, var(--bg-main) 78%, transparent);
+            border: 1px solid var(--border-color);
+            border-radius: 0.85rem;
+            padding: 0.65rem 0.75rem;
+        }
+        .mobile-mini-field input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            text-align: center;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-top: 0.2rem;
+        }
+        .mobile-expand-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+        .mobile-compact-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.85rem;
+            padding: 0.34rem 0.68rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            background: transparent;
+        }
+        .mobile-save-action {
+            justify-content: center;
+            min-width: 2.85rem;
+            transition: 0.2s ease;
+        }
+        .mobile-save-action.is-dirty {
+            color: #4f46e5;
+            border-color: rgba(99, 102, 241, 0.22);
+            background: rgba(99, 102, 241, 0.08);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.12);
+        }
+        .mobile-save-action.is-saving {
+            color: #4f46e5;
+            border-color: rgba(99, 102, 241, 0.2);
+            background: rgba(99, 102, 241, 0.06);
+        }
+        .mobile-save-action.is-saved {
+            color: #059669;
+            border-color: rgba(5, 150, 105, 0.22);
+            background: rgba(5, 150, 105, 0.08);
+        }
+        .mobile-save-action.is-error {
+            color: #e11d48;
+            border-color: rgba(244, 63, 94, 0.22);
+            background: rgba(244, 63, 94, 0.08);
+        }
+        .mobile-save-spinner {
+            width: 0.95rem;
+            height: 0.95rem;
+            border-radius: 999px;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            display: inline-block;
+            animation: spin 0.75s linear infinite;
+        }
+        .mobile-expand-icon {
+            transition: transform 0.2s ease;
+        }
+        [data-expanded="true"] .mobile-expand-icon {
+            transform: rotate(180deg);
+        }
+        .mobile-action-sheet {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 60;
+            padding: 1rem;
+        }
+        .mobile-action-sheet.hidden {
+            display: none;
+        }
+        #mobileFundActions.hidden,
+        #mobileStockActions.hidden,
+        #mobileDeleteFundAction.hidden,
+        #deleteConfirmModal.hidden {
+            display: none !important;
+        }
+        .mobile-action-panel {
+            width: 100%;
+            max-width: 32rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 1.4rem;
+            padding: 1rem;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+        }
+        .mobile-sheet-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            min-height: 3rem;
+            border-radius: 0.85rem;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 0.88rem;
+            font-weight: 800;
+        }
+        .mobile-card-locked .mobile-metric-input,
+        .mobile-card-locked .mobile-code-pill input,
+        .mobile-card-locked .mobile-mini-field input {
+            cursor: not-allowed;
+            opacity: 0.75;
+        }
+        .mobile-compact-row {
+            display: none;
+            align-items: center;
+            gap: 0.85rem;
+            grid-template-columns: minmax(0, 1fr) 5.6rem 4.9rem;
+        }
+        .mobile-compact-main {
+            min-width: 0;
+        }
+        .mobile-compact-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+        .mobile-overseas-star {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1;
+            transition: 0.2s ease;
+        }
+        .mobile-overseas-star.is-active {
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.35);
+            background: rgba(245, 158, 11, 0.12);
+            box-shadow: 0 6px 14px rgba(245, 158, 11, 0.12);
+        }
+        .mobile-overseas-star.is-hidden {
+            display: none;
+        }
+        .mobile-overseas-star.compact {
+            width: 16px;
+            height: 16px;
+            border: none;
+            background: transparent;
+            box-shadow: none;
+            font-size: 11px;
+        }
+        .mobile-compact-meta {
+            margin-top: 0.12rem;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            font-weight: 600;
+        }
+        .draft-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1.2rem;
+            padding: 0 0.42rem;
+            border-radius: 999px;
+            border: 1px dashed rgba(99, 102, 241, 0.35);
+            background: rgba(99, 102, 241, 0.08);
+            color: #6366f1;
+            font-size: 0.62rem;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .draft-pill.is-saved {
+            border-style: solid;
+            border-color: rgba(16, 185, 129, 0.28);
+            background: rgba(16, 185, 129, 0.08);
+            color: #059669;
+        }
+        .draft-pill.is-error {
+            border-style: solid;
+            border-color: rgba(244, 63, 94, 0.28);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+        }
+        .draft-pill.hidden {
+            display: none !important;
+        }
+        .card-save-flash {
+            animation: cardSaveFlash 0.9s ease;
+        }
+        @keyframes cardSaveFlash {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                border-color: var(--border-color);
+            }
+            25% {
+                box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+                border-color: rgba(16, 185, 129, 0.42);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                border-color: var(--border-color);
+            }
+        }
+        .mobile-compact-profit {
+            text-align: right;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.1;
+            justify-self: end;
+            width: 100%;
+        }
+        .mobile-compact-change {
+            text-align: right;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.1;
+            justify-self: end;
+            width: 100%;
+        }
+        .mobile-card-compact {
+            padding-top: 0.82rem;
+            padding-bottom: 0.82rem;
+            border-width: 0 0 1px 0;
+            border-radius: 0;
+            border-color: color-mix(in srgb, var(--border-color) 82%, transparent);
+            background: transparent;
+        }
+        .mobile-card-compact .price-status,
+        .mobile-card-compact .mobile-code-row,
+        .mobile-card-compact .mobile-card-header,
+        .mobile-card-compact .mobile-full-content {
+            display: none !important;
+        }
+        .mobile-card-compact .mobile-compact-row {
+            display: grid;
+        }
+        .mobile-card-compact:last-child {
+            border-bottom: 0;
+        }
+        .mobile-compact-header {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            padding: 0.58rem 0.15rem 0.7rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+            margin-bottom: 0.22rem;
+        }
+        .mobile-compact-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .mobile-compact-summary-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.84rem;
+        }
+        .mobile-compact-summary-item b {
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+        .mobile-compact-summary-item.up {
+            color: #ef4444;
+        }
+        .mobile-compact-summary-item.down {
+            color: #10b981;
+        }
+        .mobile-compact-columns {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-shrink: 0;
+        }
+        .mobile-compact-column {
+            min-width: 5.1rem;
+            text-align: center;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .mobile-compact-column.active {
+            color: var(--text-main);
+        }
+        .mobile-compact-column span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.22rem;
+            justify-content: center;
+            width: 100%;
+        }
+        .sort-arrows {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 0.72;
+            margin-left: 0.08rem;
+        }
+        .sort-arrow {
+            font-size: 0.5rem;
+            color: color-mix(in srgb, var(--text-muted) 78%, transparent);
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .sort-arrow.active {
+            color: #6366f1;
+            transform: scale(1.08);
+        }
+        .mobile-compact-column small {
+            display: block;
+            margin-top: 0.12rem;
+            font-size: 0.66rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .compact-mode-fab {
+            width: 2.35rem;
+            height: 2.35rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .compact-mode-fab.is-active {
+            background: #4f46e5;
+            border-color: #4f46e5;
+            color: white;
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.25);
+        }
+    </style>
+</head>
+<body class="mobile-app-body text-base">
+    <div class="max-w-full mx-auto px-3">
+
+        <!-- 顶部标题和快捷操作 -->
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <h1 class="page-title italic uppercase">持仓看板</h1>
+                <span class="text-indigo-500 text-xs font-extrabold">PRO</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="compactModeBtn" onclick="toggleCompactMode()" class="compact-mode-fab" title="切换简洁模式">简</button>
+                <button onclick="refreshAllPrices()" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500 text-white px-3" title="立即刷新">
+                    <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                </button>
+                <button onclick="toggleThemeMode()" class="toolbar-chip toolbar-chip-soft px-3" title="切换模式">🌓</button>
+            </div>
+        </div>
+
+        <!-- 顶部统计卡 -->
+        <div class="card p-4 mb-4">
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <div class="label-kicker mb-1">总市值</div>
+                    <div id="totalMktDisplay" class="text-lg mono italic metric-number">¥ 0</div>
+                </div>
+                <div>
+                    <div class="label-kicker mb-1">今日盈亏</div>
+                    <div id="todayProfitDisplay" class="text-lg mono metric-number">¥ 0</div>
+                </div>
+                <div>
+                    <div class="label-kicker mb-1">累计盈亏</div>
+                    <div id="overallProfitDisplay" class="text-lg mono metric-number">¥ 0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 待确认交易提示 -->
+        <div id="pendingTradeBanner" class="hidden mb-4 bg-amber-500/20 border border-amber-500/30 rounded-xl p-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-amber-400">⏰</span>
+                    <div class="text-xs">
+                        <div class="font-extrabold text-amber-400">有待确认交易</div>
+                        <div id="pendingTradeCount" class="text-xs text-[var(--text-muted)]">共 <span class="text-amber-400">0</span> 笔</div>
+                    </div>
+                </div>
+                <button onclick="showPendingTradesModal()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-black text-sm">查看</button>
+            </div>
+        </div>
+
+        <!-- Tab 和操作 -->
+        <div class="flex items-center justify-between mb-4 gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+                <div class="flex p-1 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+                    <button onclick="switchTab('all')" id="tab-all" class="px-4 py-1.5 rounded-lg font-extrabold text-sm bg-indigo-600 text-white">全部</button>
+                    <button onclick="switchTab('stock')" id="tab-stock" class="px-4 py-1.5 rounded-lg font-extrabold text-sm">股票</button>
+                    <button onclick="switchTab('fund')" id="tab-fund" class="px-4 py-1.5 rounded-lg font-extrabold text-sm">基金</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-lock">🔒</button>
+                <button id="addStockBtn" onclick="createNewAsset(false)" class="toolbar-chip toolbar-chip-strong bg-slate-800 hover:bg-slate-700">+股</button>
+                <button id="addFundBtn" onclick="createNewAsset(true)" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">+基</button>
+            </div>
+        </div>
+
+        <!-- 净值更新状态 -->
+        <div id="netValueStatusRow" class="flex items-center justify-between gap-2 text-xs text-[var(--text-muted)] font-black mb-3">
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+                <div id="netValueStatusText" class="status-pill min-w-0">
+                    <span>净值更新</span>
+                    <span id="netValueUpdateStatus" class="status-badge status-badge-success">--</span>
+                </div>
+            </div>
+            <button id="sortByMktBtn" onclick="toggleSort()" class="toolbar-chip toolbar-chip-soft ml-auto whitespace-nowrap">市值↓</button>
+        </div>
+
+        <div id="mobileCompactHeader" class="mobile-compact-header">
+            <div class="mobile-compact-summary">
+                <span class="mobile-compact-summary-item up"><b id="compactUpCount">0</b><span>↑</span></span>
+                <span class="mobile-compact-summary-item down"><b id="compactDownCount">0</b><span>↓</span></span>
+            </div>
+            <div class="mobile-compact-columns">
+                <button id="compactProfitColumn" onclick="setCompactSortMetric('today')" class="mobile-compact-column">
+                    <span>当日收益 <em class="sort-arrows"><i id="compactProfitSortArrowUp" class="sort-arrow">▲</i><i id="compactProfitSortArrowDown" class="sort-arrow">▼</i></em></span>
+                    <small id="compactHeaderDateProfit">--</small>
+                </button>
+                <button id="compactChangeColumn" onclick="setCompactSortMetric('change')" class="mobile-compact-column">
+                    <span>当日涨幅 <em class="sort-arrows"><i id="compactChangeSortArrowUp" class="sort-arrow">▲</i><i id="compactChangeSortArrowDown" class="sort-arrow">▼</i></em></span>
+                    <small id="compactHeaderDateChange">--</small>
+                </button>
+            </div>
+        </div>
+
+        <!-- 卡片列表 -->
+        <div id="stockBody" class="space-y-3"></div>
+
+        <!-- 更多操作按钮 -->
+        <div class="flex items-center justify-between mt-4 gap-2">
+            <button id="importDataBtn" onclick="document.getElementById('importFile').click()" class="toolbar-chip toolbar-chip-soft flex-1">导入</button>
+            <button onclick="exportCSV()" class="toolbar-chip toolbar-chip-soft flex-1">导出</button>
+            <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="flex items-center justify-between mt-3 pb-20">
+            <div class="text-xs text-[var(--text-muted)] font-black">
+                共 <span id="totalCount" class="text-indigo-400">0</span> 条
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="changePage('prev')" class="toolbar-chip toolbar-chip-soft px-3" id="prevBtn">上一页</button>
+                <span class="text-xs text-[var(--text-muted)] font-black px-2">
+                    <span id="currentPage" class="text-indigo-400">1</span>/<span id="totalPages" class="text-indigo-400">1</span>
+                </span>
+                <button onclick="changePage('next')" class="toolbar-chip toolbar-chip-soft px-3" id="nextBtn">下一页</button>
+            </div>
+        </div>
+
+        <!-- 加仓弹窗 -->
+        <div id="addFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="modal-title">基金加仓</h3>
+                    <button onclick="closeAddFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-sm text-[var(--text-muted)]">
+                        <span class="text-indigo-400 font-extrabold" id="modalFundName"></span>
+                        <span class="mono ml-2" id="modalFundCode"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="modal-label">当前持仓</div>
+                            <div class="modal-number" id="modalCurrentShares">0 份</div>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="modal-label">当前成本</div>
+                            <div class="modal-number" id="modalCurrentCost">¥0.000</div>
+                        </div>
+                    </div>
+                    <div class="bg-[var(--bg-main)] p-4 rounded-lg">
+                        <div class="modal-label mb-1">当前净值</div>
+                        <div class="mono font-extrabold text-xl text-indigo-400" id="modalNetValue">¥0.000</div>
+                    </div>
+                    <div>
+                        <label class="modal-label mb-2 block">交易时间</label>
+                        <div class="flex gap-2 mb-4">
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="tradeTime" id="tradeTimeBefore" value="before" checked class="accent-indigo-500">
+                                <span class="text-sm font-bold">15:00前</span>
+                            </label>
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="tradeTime" id="tradeTimeAfter" value="after" class="accent-indigo-500">
+                                <span class="text-sm font-bold">15:00后</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="modal-label">加仓金额 (CNY)</label>
+                        <input type="number" id="modalAddAmount" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-extrabold text-lg focus:border-indigo-500 outline-none" placeholder="输入加仓金额" oninput="previewAddFund()">
+                    </div>
+                    <div class="bg-indigo-500/10 p-4 rounded-lg border border-indigo-500/20">
+                        <div class="modal-label text-indigo-400 mb-2">加仓预览</div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="modal-muted">新增份额</div>
+                                <div class="modal-number" id="modalNewShares">+0 份</div>
+                            </div>
+                            <div>
+                                <div class="modal-muted">总份额</div>
+                                <div class="modal-number" id="modalTotalShares">0 份</div>
+                            </div>
+                            <div>
+                                <div class="modal-muted">新成本</div>
+                                <div class="modal-number" id="modalNewCost">¥0.000</div>
+                            </div>
+                            <div>
+                                <div class="modal-muted">总成本</div>
+                                <div class="modal-number" id="modalTotalCost">¥0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="closeAddFundModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button onclick="confirmAddFund()" class="flex-1 py-3 rounded-xl font-black text-sm bg-indigo-600 hover:bg-indigo-500 text-white">确认加仓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 减仓弹窗 -->
+        <div id="reduceFundModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="modal-title">基金减仓</h3>
+                    <button onclick="closeReduceFundModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="text-sm text-[var(--text-muted)]">
+                        <span class="text-rose-400 font-extrabold" id="reduceModalFundName"></span>
+                        <span class="mono ml-2" id="reduceModalFundCode"></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="modal-label">当前持仓</div>
+                            <div class="modal-number" id="reduceModalCurrentShares">0 份</div>
+                        </div>
+                        <div class="bg-[var(--bg-main)] p-3 rounded-lg">
+                            <div class="modal-label">成本价</div>
+                            <div class="modal-number" id="reduceModalCurrentCost">¥0.0000</div>
+                        </div>
+                    </div>
+                    <div class="bg-[var(--bg-main)] p-4 rounded-lg">
+                        <div class="modal-label mb-1">当前净值</div>
+                        <div class="mono font-extrabold text-xl text-rose-400" id="reduceModalNetValue">¥0.000</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="modal-label">减仓份额</label>
+                            <input type="number" id="reduceModalShares" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-extrabold text-lg focus:border-rose-500 outline-none" placeholder="输入份额" oninput="previewReduceFund()">
+                        </div>
+                        <div>
+                            <label class="modal-label">减仓比例</label>
+                            <select id="reduceModalPercent" class="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg p-3 text-right mono font-extrabold text-lg focus:border-rose-500 outline-none" onchange="applyReducePercent()">
+                                <option value="">选择</option>
+                                <option value="25">1/4 (25%)</option>
+                                <option value="33.33">1/3 (33%)</option>
+                                <option value="50">1/2 (50%)</option>
+                                <option value="66.67">2/3 (67%)</option>
+                                <option value="75">3/4 (75%)</option>
+                                <option value="100">全部 (100%)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-rose-500/10 p-4 rounded-lg border border-rose-500/20">
+                        <div class="modal-label text-rose-400 mb-2">减仓预览</div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="modal-muted">剩余份额</div>
+                                <div class="modal-number" id="reduceModalRemainShares">0.00 份</div>
+                            </div>
+                            <div>
+                                <div class="modal-muted">赎回金额</div>
+                                <div class="modal-number" id="reduceModalRedeemAmount">¥0</div>
+                            </div>
+                            <div>
+                                <div class="modal-muted">持仓成本</div>
+                                <div class="modal-number" id="reduceModalRemainCost">¥0.0000</div>
+                            </div>
+                            <div>
+                                <div class="modal-muted">实现盈亏</div>
+                                <div class="modal-number" id="reduceModalRealizedPL">¥0</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="closeReduceFundModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button onclick="confirmReduceFund()" class="flex-1 py-3 rounded-xl font-black text-sm bg-rose-600 hover:bg-rose-500 text-white">确认减仓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 待确认交易弹窗 -->
+        <div id="pendingTradesModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="modal-title">待确认交易</h3>
+                    <button onclick="closePendingTradesModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div id="pendingTradesList" class="space-y-3 max-h-[400px] overflow-y-auto"></div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="closePendingTradesModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                    <button onclick="confirmAllPendingTrades()" class="flex-1 py-3 rounded-xl font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white">全部确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 交易记录弹窗 -->
+        <div id="tradeHistoryModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="modal-title">交易记录</h3>
+                        <div class="modal-muted" id="tradeHistoryFundName"></div>
+                    </div>
+                    <button onclick="closeTradeHistoryModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div id="tradeHistoryList" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
+                <div class="mt-4 flex gap-3">
+                    <button onclick="closeTradeHistoryModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="editUnlockModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl">
+                <div class="flex justify-between items-start gap-4 mb-5">
+                    <div>
+                        <div class="unlock-badge mb-3">编辑保护</div>
+                        <h3 class="modal-title">输入密码后才能编辑</h3>
+                        <div class="unlock-status-note mt-2">解锁后可修改并保存数据，30 分钟后会自动重新锁定。</div>
+                    </div>
+                    <button onclick="closeEditUnlockModal()" class="text-[var(--text-muted)] hover:text-white text-2xl leading-none">&times;</button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="editUnlockPasswordInput" class="modal-label mb-2 block">解锁密码</label>
+                        <input type="password" id="editUnlockPasswordInput" class="unlock-input" placeholder="请输入密码" maxlength="32" onkeydown="handleEditUnlockKeydown(event)">
+                    </div>
+                    <div id="editUnlockError" class="unlock-error"></div>
+                    <div class="flex gap-3 pt-1">
+                        <button onclick="closeEditUnlockModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                        <button id="editUnlockSubmitBtn" onclick="submitEditUnlock()" class="flex-1 py-3 rounded-xl font-black text-sm bg-indigo-600 hover:bg-indigo-500 text-white">确认解锁</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="deleteConfirmModal" class="delete-confirm-overlay fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden" onclick="closeDeleteConfirmModal()">
+            <div class="delete-confirm-shell delete-confirm-panel rounded-[1.75rem] p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl" onclick="event.stopPropagation()">
+                <div class="relative flex justify-between items-start gap-4 mb-5">
+                    <div>
+                        <div class="delete-confirm-badge mb-3">危险操作</div>
+                        <h3 class="modal-title text-[1.65rem] leading-tight">确定要删除这条记录吗？</h3>
+                        <div id="deleteConfirmName" class="delete-confirm-name mt-3"></div>
+                    </div>
+                    <button onclick="closeDeleteConfirmModal()" class="delete-confirm-close text-2xl leading-none">&times;</button>
+                </div>
+                <div class="delete-confirm-note px-4 py-3.5">
+                    删除后会同时移除本地缓存和后端记录，无法恢复。
+                </div>
+                <div class="flex gap-3 pt-7">
+                    <button onclick="closeDeleteConfirmModal()" class="delete-confirm-cancel flex-1 py-3 rounded-2xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button id="deleteConfirmSubmitBtn" onclick="confirmDeleteRow()" class="delete-confirm-submit flex-1 py-3 rounded-2xl font-black text-sm bg-rose-600 hover:bg-rose-500 text-white">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <div id="mobileActionSheet" class="mobile-action-sheet hidden" onclick="closeMobileActionSheet()">
+            <div class="mobile-action-panel" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="modal-title text-sm">快捷操作</div>
+                        <div id="mobileActionSheetName" class="text-xs text-[var(--text-muted)] mt-1"></div>
+                    </div>
+                    <button onclick="closeMobileActionSheet()" class="text-2xl text-[var(--text-muted)]">&times;</button>
+                </div>
+                <div id="mobileFundActions" class="grid grid-cols-2 gap-2 mb-3">
+                    <button onclick="runSheetAction('history')" class="mobile-sheet-btn text-amber-500">📋 <span>记录</span></button>
+                    <button onclick="runSheetAction('add')" class="mobile-sheet-btn text-indigo-500">➕ <span>加仓</span></button>
+                    <button onclick="runSheetAction('reduce')" class="mobile-sheet-btn text-rose-500">➖ <span>减仓</span></button>
+                    <button onclick="runSheetAction('delete')" class="mobile-sheet-btn text-rose-500">✕ <span>删除</span></button>
+                </div>
+                <div id="mobileStockActions" class="grid grid-cols-2 gap-2 mb-3 hidden">
+                    <button onclick="runSheetAction('delete')" class="mobile-sheet-btn text-rose-500">✕ <span>删除</span></button>
+                </div>
+                <button onclick="closeMobileActionSheet()" class="mobile-sheet-btn text-[var(--text-muted)]">关闭</button>
+            </div>
+        </div>
+
+    <script src="./app-config.js"></script>
+    <script>
+        // ==================== 配置 ====================
+        const API_BASE_URL = window.API_BASE_URL;
+
+        const OVERSEAS_FUND_CODES = new Set(['017145', '017437']);
+
+        function isOverseasFundLike(item = {}) {
+            return !!item.isOverseas || OVERSEAS_FUND_CODES.has(String(item.code || '').trim());
+        }
+
+        let currentTab = 'all';
+        let sortDir = 1;
+        let refreshTimer = null;
+        let progressInterval = null;
+        let remainingSeconds = 0;
+        let requiresEditUnlock = true;
+        const MOBILE_THEME_MODE_KEY = 'vDashboardMobileThemeMode';
+        const MOBILE_COMPACT_MODE_KEY = 'vDashboardMobileCompactMode';
+        const MOBILE_COMPACT_SORT_KEY = 'vDashboardMobileCompactSortMetric';
+        const EDIT_UNLOCK_DURATION_MS = 30 * 60 * 1000;
+        const EDIT_UNLOCK_FLAG_KEY = 'vDashboardEditingUnlocked';
+        const EDIT_UNLOCK_EXPIRES_KEY = 'vDashboardEditingUnlockedUntil';
+        let editUnlockTimer = null;
+        let editUnlockCountdownTimer = null;
+        let isEditingUnlocked = getStoredEditUnlockState();
+        let mobileCompactMode = localStorage.getItem(MOBILE_COMPACT_MODE_KEY) === '1';
+        let mobileSortMetric = ['mkt', 'today', 'change'].includes(localStorage.getItem(MOBILE_COMPACT_SORT_KEY)) ? localStorage.getItem(MOBILE_COMPACT_SORT_KEY) : 'mkt';
+
+        // 分页相关
+        let currentPageNum = 1;
+        let pageSize = 10;
+
+        // 数据缓存
+        let pendingTradesCache = [];
+        let localTradeHistory = null;
+        let activeActionCardId = null;
+        let pendingDeleteCardId = null;
+
+        function updateThemeChrome() {
+            const isLightMode = document.documentElement.classList.contains('mobile-light');
+            const themeColor = isLightMode ? '#f8fafc' : '#0f172a';
+            const themeMeta = document.getElementById('themeColorMeta');
+            if (themeMeta) {
+                themeMeta.setAttribute('content', themeColor);
+            }
+            document.documentElement.style.backgroundColor = themeColor;
+        }
+
+        function applyThemeMode(mode) {
+            const isLightMode = mode !== 'dark';
+            document.documentElement.classList.toggle('mobile-light', isLightMode);
+            document.documentElement.classList.toggle('mobile-dark', !isLightMode);
+            if (document.body) {
+                document.body.classList.toggle('light-mode', isLightMode);
+            }
+            updateThemeChrome();
+        }
+
+        function toggleThemeMode() {
+            const isLightMode = !document.documentElement.classList.contains('mobile-light');
+            applyThemeMode(isLightMode ? 'light' : 'dark');
+            localStorage.setItem(MOBILE_THEME_MODE_KEY, isLightMode ? 'light' : 'dark');
+        }
+
+        function clearZero(input) {
+            if (parseFloat(input.value) === 0) {
+                input.value = '';
+            }
+        }
+
+        function getRemainingUnlockMs() {
+            const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
+            return Math.max(0, expiresAt - Date.now());
+        }
+
+        function getUnlockCountdownLabel() {
+            const remaining = getRemainingUnlockMs();
+            if (remaining <= 0) return '🔒';
+            const minutesLeft = Math.max(1, Math.ceil(remaining / 60000));
+            return `🔓 ${minutesLeft}m`;
+        }
+
+        function getStoredEditUnlockState() {
+            const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
+            if (!expiresAt || Date.now() >= expiresAt) {
+                sessionStorage.removeItem(EDIT_UNLOCK_FLAG_KEY);
+                sessionStorage.removeItem(EDIT_UNLOCK_EXPIRES_KEY);
+                return false;
+            }
+            sessionStorage.setItem(EDIT_UNLOCK_FLAG_KEY, '1');
+            return sessionStorage.getItem(EDIT_UNLOCK_FLAG_KEY) === '1';
+        }
+
+        function scheduleEditAutoLock() {
+            if (editUnlockTimer) {
+                clearTimeout(editUnlockTimer);
+                editUnlockTimer = null;
+            }
+            if (editUnlockCountdownTimer) {
+                clearInterval(editUnlockCountdownTimer);
+                editUnlockCountdownTimer = null;
+            }
+            if (!requiresEditUnlock || !isEditingUnlocked) return;
+            const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
+            const remaining = expiresAt - Date.now();
+            if (remaining <= 0) {
+                requestEditingUnlock(true, true);
+                return;
+            }
+            editUnlockTimer = setTimeout(() => {
+                requestEditingUnlock(true, true);
+            }, remaining);
+            editUnlockCountdownTimer = setInterval(() => {
+                if (!isEditingUnlocked || getRemainingUnlockMs() <= 0) {
+                    clearInterval(editUnlockCountdownTimer);
+                    editUnlockCountdownTimer = null;
+                }
+                updateEditLockButton();
+            }, 15000);
+        }
+
+        function openEditUnlockModal(clearError = true) {
+            const modal = document.getElementById('editUnlockModal');
+            const input = document.getElementById('editUnlockPasswordInput');
+            const errorEl = document.getElementById('editUnlockError');
+            if (!modal || !input || !errorEl) return;
+            if (clearError) errorEl.textContent = '';
+            input.value = '';
+            modal.classList.remove('hidden');
+            setTimeout(() => input.focus(), 50);
+        }
+
+        function closeEditUnlockModal() {
+            const modal = document.getElementById('editUnlockModal');
+            const input = document.getElementById('editUnlockPasswordInput');
+            const errorEl = document.getElementById('editUnlockError');
+            if (modal) modal.classList.add('hidden');
+            if (input) input.value = '';
+            if (errorEl) errorEl.textContent = '';
+        }
+
+        function handleEditUnlockKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitEditUnlock();
+            }
+            if (event.key === 'Escape') {
+                closeEditUnlockModal();
+            }
+        }
+
+        async function loadAppSettings() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/app-settings`);
+                const data = await response.json();
+                requiresEditUnlock = data.requiresEditUnlock !== false;
+            } catch (error) {
+                console.error('加载页面配置失败:', error);
+                requiresEditUnlock = true;
+            }
+        }
+
+        function updateEditLockButton() {
+            const btn = document.getElementById('editLockBtn');
+            if (!btn) return;
+            btn.textContent = isEditingUnlocked ? getUnlockCountdownLabel() : '🔒';
+            btn.className = `toolbar-chip ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
+            btn.classList.toggle('is-counting', isEditingUnlocked);
+        }
+
+        function applyEditingLockState() {
+            const locked = requiresEditUnlock && !isEditingUnlocked;
+            document.querySelectorAll('.code-input, .shares-input, .cost-input, .target-price-input, .plan-buy-input, .alert-input').forEach(input => {
+                input.disabled = locked;
+            });
+            document.querySelectorAll('#stockBody [data-id]').forEach(card => {
+                card.classList.toggle('mobile-card-locked', locked);
+            });
+            ['addStockBtn', 'addFundBtn', 'sortByMktBtn', 'importDataBtn', 'clearDataBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn && id !== 'sortByMktBtn') btn.disabled = locked;
+            });
+            document.querySelectorAll('.mobile-compact-action').forEach(btn => {
+                btn.disabled = locked;
+            });
+            updateEditLockButton();
+            scheduleEditAutoLock();
+        }
+
+        async function submitEditUnlock() {
+            const input = document.getElementById('editUnlockPasswordInput');
+            const errorEl = document.getElementById('editUnlockError');
+            const submitBtn = document.getElementById('editUnlockSubmitBtn');
+            const password = input?.value.trim();
+            if (!password) {
+                if (errorEl) errorEl.textContent = '请输入解锁密码';
+                input?.focus();
+                return false;
+            }
+            if (submitBtn) submitBtn.disabled = true;
+            if (errorEl) errorEl.textContent = '';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/verify-unlock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    if (errorEl) errorEl.textContent = result.message || '密码错误';
+                    input?.focus();
+                    input?.select();
+                    return false;
+                }
+                isEditingUnlocked = true;
+                const expiresAt = Date.now() + EDIT_UNLOCK_DURATION_MS;
+                sessionStorage.setItem(EDIT_UNLOCK_FLAG_KEY, '1');
+                sessionStorage.setItem(EDIT_UNLOCK_EXPIRES_KEY, String(expiresAt));
+                closeEditUnlockModal();
+                applyEditingLockState();
+                showToast('编辑已解锁，30分钟后自动锁定');
+                return true;
+            } catch (error) {
+                console.error('解锁失败:', error);
+                if (errorEl) errorEl.textContent = '解锁失败，请稍后再试';
+                return false;
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        }
+
+        async function requestEditingUnlock(forceLock = false, autoLocked = false) {
+            if (forceLock) {
+                isEditingUnlocked = false;
+                sessionStorage.removeItem(EDIT_UNLOCK_FLAG_KEY);
+                sessionStorage.removeItem(EDIT_UNLOCK_EXPIRES_KEY);
+                if (editUnlockCountdownTimer) {
+                    clearInterval(editUnlockCountdownTimer);
+                    editUnlockCountdownTimer = null;
+                }
+                closeEditUnlockModal();
+                applyEditingLockState();
+                showToast(autoLocked ? '编辑已自动锁定' : '已重新锁定');
+                return false;
+            }
+            if (!requiresEditUnlock) {
+                isEditingUnlocked = true;
+                sessionStorage.setItem(EDIT_UNLOCK_FLAG_KEY, '1');
+                sessionStorage.setItem(EDIT_UNLOCK_EXPIRES_KEY, String(Date.now() + EDIT_UNLOCK_DURATION_MS));
+                applyEditingLockState();
+                return true;
+            }
+            if (isEditingUnlocked) {
+                return requestEditingUnlock(true);
+            }
+            openEditUnlockModal();
+            return false;
+        }
+
+        function canEditOrNotify() {
+            if (!requiresEditUnlock || isEditingUnlocked) return true;
+            showToast('请先解锁后再编辑');
+            openEditUnlockModal(false);
+            return false;
+        }
+
+        function updateCompactModeUI() {
+            const compactBtn = document.getElementById('compactModeBtn');
+            const netValueStatusText = document.getElementById('netValueStatusText');
+            const compactHeader = document.getElementById('mobileCompactHeader');
+            const sortByMktBtn = document.getElementById('sortByMktBtn');
+
+            if (compactBtn) {
+                compactBtn.textContent = '简';
+                compactBtn.className = `compact-mode-fab${mobileCompactMode ? ' is-active' : ''}`;
+            }
+
+            if (compactHeader) {
+                compactHeader.style.display = mobileCompactMode ? 'flex' : 'none';
+            }
+
+            if (sortByMktBtn) {
+                sortByMktBtn.style.display = mobileCompactMode ? 'none' : '';
+            }
+
+            if (netValueStatusText) {
+                netValueStatusText.style.display = (mobileCompactMode || currentTab === 'stock') ? 'none' : '';
+            }
+
+            document.querySelectorAll('#stockBody [data-id]').forEach(card => {
+                card.classList.toggle('mobile-card-compact', mobileCompactMode);
+            });
+        }
+
+        function toggleCompactMode() {
+            mobileCompactMode = !mobileCompactMode;
+            localStorage.setItem(MOBILE_COMPACT_MODE_KEY, mobileCompactMode ? '1' : '0');
+            if (mobileCompactMode) {
+                mobileSortMetric = 'mkt';
+                sortDir = 1;
+                localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+            }
+            if (!mobileCompactMode) {
+                sortDir = 1;
+            }
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+            saveAndCalculate();
+        }
+
+        function createNewAsset(isFund) {
+            if (mobileCompactMode) {
+                mobileCompactMode = false;
+                localStorage.setItem(MOBILE_COMPACT_MODE_KEY, '0');
+                sortDir = 1;
+                updateCompactModeUI();
+                updateSortButton();
+                updatePagination();
+            }
+            addRow({
+                code: '',
+                name: isFund ? '新基金' : '新股票',
+                shares: 0,
+                cost: 0,
+                isFund
+            });
+        }
+
+        function setCompactSortMetric(metric) {
+            if (!['today', 'change'].includes(metric)) return;
+            if (mobileSortMetric === metric) {
+                sortDir *= -1;
+            } else {
+                mobileSortMetric = metric;
+                localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+                sortDir = 1;
+            }
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+        }
+
+        function sortCards() {
+            const body = document.getElementById('stockBody');
+            const cards = Array.from(body.querySelectorAll('[data-id]'));
+            const metric = mobileCompactMode ? mobileSortMetric : 'mkt';
+
+            cards.sort((a, b) => {
+                const aDraft = a.dataset.isDraft === '1';
+                const bDraft = b.dataset.isDraft === '1';
+                if (aDraft !== bDraft) {
+                    return aDraft ? -1 : 1;
+                }
+                const aVal = parseFloat(a.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
+                const bVal = parseFloat(b.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
+                return sortDir * (bVal - aVal);
+            });
+
+            cards.forEach(card => body.appendChild(card));
+        }
+
+        function refreshMobileOrdering() {
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+        }
+
+        function setCardSaveState(card, state) {
+            if (!card) return;
+            const pills = card.querySelectorAll('.draft-pill');
+            card.classList.remove('card-save-flash');
+            updateSaveButtonState(card, state);
+            pills.forEach(pill => {
+                pill.classList.remove('hidden', 'is-saved', 'is-error');
+                if (state === 'hidden') {
+                    pill.classList.add('hidden');
+                    return;
+                }
+                if (state === 'saved') {
+                    pill.classList.add('hidden');
+                    return;
+                }
+                if (state === 'error') {
+                    pill.textContent = '保存失败';
+                    pill.classList.add('is-error');
+                    return;
+                }
+                pill.textContent = '未保存';
+            });
+        }
+
+        function updateSaveButtonState(card, state) {
+            const btn = card?.querySelector('.mobile-save-action');
+            if (!btn) return;
+            btn.classList.remove('is-dirty', 'is-saving', 'is-saved', 'is-error');
+            if (state === 'dirty') {
+                btn.classList.add('is-dirty');
+                btn.innerHTML = '💾';
+                return;
+            }
+            if (state === 'saving') {
+                btn.classList.add('is-saving');
+                btn.innerHTML = '<span class="mobile-save-spinner" aria-hidden="true"></span>';
+                return;
+            }
+            if (state === 'saved') {
+                btn.classList.add('is-saved');
+                btn.innerHTML = '✓';
+                return;
+            }
+            if (state === 'error') {
+                btn.classList.add('is-error');
+                btn.innerHTML = '💾';
+                return;
+            }
+            btn.innerHTML = '💾';
+        }
+
+        function markCardDirty(card) {
+            if (!card) return;
+            card.dataset.isDraft = '1';
+            setCardSaveState(card, 'dirty');
+        }
+
+        function flashCardSaved(card) {
+            if (!card) return;
+            card.classList.remove('card-save-flash');
+            void card.offsetWidth;
+            card.classList.add('card-save-flash');
+            setTimeout(() => card.classList.remove('card-save-flash'), 950);
+        }
+
+        function updateMobileOverseasUI(card) {
+            if (!card) return;
+            const isFund = card.dataset.isFund === 'true';
+            const isOverseas = card.dataset.isOverseas === '1';
+            card.querySelectorAll('.mobile-overseas-star').forEach(star => {
+                star.classList.toggle('is-hidden', !isFund);
+                star.classList.toggle('is-active', isFund && isOverseas);
+                star.setAttribute('aria-pressed', isFund && isOverseas ? 'true' : 'false');
+                star.title = isFund ? (isOverseas ? '海外基金' : '标记为海外基金') : '';
+            });
+        }
+
+        function toggleMobileOverseas(card) {
+            if (!card || card.dataset.isFund !== 'true') return;
+            if (!canEditOrNotify()) return;
+            card.dataset.isOverseas = card.dataset.isOverseas === '1' ? '0' : '1';
+            updateMobileOverseasUI(card);
+            markCardDirty(card);
+            const code = card.querySelector('.code-input')?.value?.trim();
+            if (code) {
+                fetchPrice(card, code);
+            } else {
+                saveAndCalculate();
+            }
+        }
+
+        // 添加卡片
+        function addRow(item, prepend = true) {
+            const card = document.createElement('div');
+            const isOverseas = isOverseasFundLike(item);
+            card.dataset.isFund = item.isFund;
+            card.dataset.id = item.id || Date.now() + Math.random().toString(36).substr(2, 9);
+            card.dataset.isOverseas = isOverseas ? '1' : '0';
+            card.dataset.isDraft = item.code ? '0' : '1';
+            card.className = "card p-4";
+
+            card.innerHTML = `
+                <div class="mobile-card-header flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="stock-name mobile-card-title text-[15px] font-black">${item.name || '正在获取...'}</div>
+                                <div class="mt-1"><span class="draft-pill ${item.code ? 'hidden' : ''}">未保存</span></div>
+                            </div>
+                            <div class="price-status status-badge status-badge-warn shrink-0 ${item.isFund ? '' : 'is-hidden'}">${item.isFund ? '待更新' : ''}</div>
+                        </div>
+                        <div class="mobile-code-row mt-1.5 flex items-center justify-between gap-2">
+                            <div class="mobile-code-pill mono">
+                                <span class="text-indigo-500">#</span>
+                                <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="markCardDirty(this.closest('[data-id]')); handleCodeInput(this)">
+                                <button type="button" onclick="toggleMobileOverseas(this.closest('[data-id]')); event.stopPropagation();" class="mobile-overseas-star ${item.isFund ? '' : 'is-hidden'} ${isOverseas ? 'is-active' : ''}" title="${isOverseas ? '海外基金' : '标记为海外基金'}" aria-label="切换海外基金标记" aria-pressed="${isOverseas ? 'true' : 'false'}">★</button>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button onclick="saveRow(this.closest('[data-id]'))" class="mobile-compact-action mobile-save-action" title="保存">💾</button>
+                                ${item.isFund
+                                    ? `<button onclick="openMobileActionSheet(this.closest('[data-id]'))" class="mobile-compact-action" title="操作">⋯<span>操作</span></button>`
+                                    : `<button onclick="deleteRow(this.closest('[data-id]'))" class="mobile-compact-action text-rose-500" title="删除">🗑</button>`}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mobile-compact-row">
+                    <div class="mobile-compact-main">
+                        <div class="compact-name mobile-compact-name">${item.name || '正在获取...'}</div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <div class="compact-mkt-val mobile-compact-meta mono">¥0</div>
+                            <span class="draft-pill ${item.code ? 'hidden' : ''}">未保存</span>
+                        </div>
+                    </div>
+                    <div class="compact-today-profit mobile-compact-profit mono up">+0</div>
+                    <div class="compact-chg-pct mobile-compact-change up">+0.00%</div>
+                </div>
+
+                <div class="mobile-full-content">
+                <div class="mt-4 grid grid-cols-3 gap-2">
+                    <div class="mobile-stat-tile">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">持仓</div>
+                            <input type="number" class="shares-input mobile-metric-input mono text-right" value="${item.shares || 0}" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()" onfocus="clearZero(this)">
+                        </div>
+                    </div>
+                    <div class="mobile-stat-tile">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">成本</div>
+                            <input type="number" class="cost-input mobile-metric-input mono text-right" value="${item.cost || 0}" step="0.001" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()" onfocus="clearZero(this)">
+                        </div>
+                    </div>
+                    <div class="mobile-stat-tile text-right">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">今日</div>
+                            <div class="text-right">
+                                <div class="today-profit-cell mono text-[14px] font-black leading-none">+0</div>
+                                <div class="chg-pct-cell mt-0.5 text-[10px] font-black opacity-80">+0.00%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div class="mobile-hero-tile">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">市值</div>
+                            <div class="mkt-val-cell mono text-[25px] font-black leading-none">¥0</div>
+                        </div>
+                    </div>
+                    <div class="mobile-hero-tile text-right">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">累计</div>
+                            <div class="text-right">
+                                <div class="overall-profit-cell mono text-[22px] font-black leading-none">+0</div>
+                                <div class="ratio-cell mt-0.5 text-[10px] font-black opacity-80">+0.00%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3 border-t border-[var(--border-color)] pt-3" data-expanded="false">
+                    <button onclick="toggleCardDetails(this.closest('[data-expanded]'))" class="mobile-expand-btn">
+                        <span>更多参数</span>
+                        <span class="mobile-expand-icon">⌄</span>
+                    </button>
+                    <div class="mobile-details hidden mt-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="mobile-mini-field">
+                            <div class="text-[11px] font-black text-center text-[var(--text-muted)]">净值</div>
+                            <div class="price-cell mono mt-1 text-center text-sm font-black text-indigo-400">¥0.000</div>
+                        </div>
+                        <div class="mobile-mini-field">
+                            <div class="text-[11px] font-black text-center text-[var(--text-muted)]">%提醒</div>
+                            <input type="number" class="alert-input mono" value="${item.alert || ''}" placeholder="--" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()">
+                        </div>
+                    </div>
+                    <div class="mt-2 grid grid-cols-2 gap-2">
+                        <div class="mobile-mini-field">
+                            <div class="text-[11px] font-black text-center text-[var(--text-muted)]">拟加仓</div>
+                            <input type="number" class="plan-buy-input mono text-indigo-400" value="${item.planBuy || 0}" placeholder="0" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()">
+                        </div>
+                        <div class="mobile-mini-field">
+                            <div class="text-[11px] font-black text-center text-[var(--text-muted)]">目标价</div>
+                            <input type="number" class="target-price-input mono text-emerald-400" value="${item.targetPrice || ''}" step="0.001" placeholder="--" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()">
+                        </div>
+                    </div>
+                        <div class="mt-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs">
+                            <div class="text-[11px] font-black text-[var(--text-muted)]">目标收益</div>
+                            <div class="mt-1 flex items-center justify-between gap-3">
+                                <span class="target-profit-cell mono font-bold text-emerald-400">--</span>
+                                <span class="target-ratio-cell text-xs font-bold opacity-80">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            `;
+            const stockBody = document.getElementById('stockBody');
+            if (prepend && stockBody.firstChild) {
+                stockBody.insertBefore(card, stockBody.firstChild);
+            } else {
+                stockBody.appendChild(card);
+            }
+            card.querySelectorAll('input, select, textarea').forEach(input => {
+                input.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        const nextActive = document.activeElement;
+                        const stillEditingThisCard = nextActive && card.contains(nextActive) &&
+                            /^(INPUT|SELECT|TEXTAREA)$/.test(nextActive.tagName);
+                        if (!stillEditingThisCard) {
+                            refreshMobileOrdering();
+                        }
+                    }, 0);
+                });
+            });
+            applyEditingLockState();
+            updateMobileOverseasUI(card);
+            updateCompactModeUI();
+            updateSortButton();
+            setCardSaveState(card, item.code ? 'hidden' : 'dirty');
+            updatePagination();
+
+            // 如果是新添加的卡片（没有code），自动聚焦到代码输入框
+            if (!item.code) {
+                setTimeout(() => {
+                    card.querySelector('.code-input')?.focus();
+                }, 50);
+            }
+        }
+
+        // 更新分页显示
+        function updatePagination() {
+            // 先显示所有卡片
+            document.querySelectorAll('#stockBody [data-id]').forEach(card => {
+                card.style.display = '';
+            });
+
+            // 获取所有卡片，按 tab 筛选
+            const allCards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+            let filteredCards = allCards.filter(card => {
+                const isF = card.dataset.isFund === 'true';
+                if (currentTab === 'all') return true;
+                if (currentTab === 'stock') return !isF;
+                if (currentTab === 'fund') return isF;
+                return true;
+            });
+
+            const totalCount = filteredCards.length;
+            const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+            if (currentPageNum > totalPages) currentPageNum = totalPages;
+
+            const startIndex = (currentPageNum - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+
+            // 控制哪些卡片显示
+            allCards.forEach(card => {
+                const isF = card.dataset.isFund === 'true';
+                const inTab = (currentTab === 'all') ||
+                             (currentTab === 'stock' && !isF) ||
+                             (currentTab === 'fund' && isF);
+
+                if (!inTab) {
+                    card.style.display = 'none';
+                } else {
+                    const idx = filteredCards.indexOf(card);
+                    if (idx >= startIndex && idx < endIndex) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                }
+            });
+
+            // 更新分页控件
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('currentPage').textContent = currentPageNum;
+            document.getElementById('totalPages').textContent = totalPages;
+            document.getElementById('prevBtn').disabled = currentPageNum <= 1;
+            document.getElementById('nextBtn').disabled = currentPageNum >= totalPages;
+        }
+
+        // 切换页
+        function changePage(direction) {
+            const allCards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+            let filteredCards = allCards.filter(card => {
+                const isF = card.dataset.isFund === 'true';
+                if (currentTab === 'all') return true;
+                if (currentTab === 'stock') return !isF;
+                if (currentTab === 'fund') return isF;
+                return true;
+            });
+
+            const totalPages = Math.max(1, Math.ceil(filteredCards.length / pageSize));
+
+            if (direction === 'prev' && currentPageNum > 1) {
+                currentPageNum--;
+            } else if (direction === 'next' && currentPageNum < totalPages) {
+                currentPageNum++;
+            }
+            updatePagination();
+        }
+
+        // 改变每页条数
+        function changePageSize(size) {
+            pageSize = parseInt(size);
+            currentPageNum = 1;
+            updatePagination();
+        }
+
+        function handleCodeInput(el) {
+            const code = el.value.trim();
+            const card = el.closest('[data-id]');
+            const cardId = card.dataset.id;
+            const isF = card.dataset.isFund === 'true';
+
+            if (code.length >= 5) {
+                // 检查是否重复
+                const existingCards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+                const duplicate = existingCards.find(r => {
+                    if (r.dataset.id === cardId) return false; // 排除自己
+                    const rCode = r.querySelector('.code-input')?.value?.trim();
+                    const rIsF = r.dataset.isFund === 'true';
+                    return rCode === code && rIsF === isF;
+                });
+
+                if (duplicate) {
+                    const dupName = duplicate.querySelector('.stock-name')?.innerText || '该标的';
+                    showToast(`⚠️ ${dupName} (#${code}) 已存在！`);
+                }
+
+                fetchPrice(card, code);
+            }
+        }
+
+        function adjustFundPriceDate(priceDate, isOverseas) {
+            if (!priceDate || !isOverseas || priceDate.length !== 8) return priceDate || '';
+            const year = parseInt(priceDate.substr(0, 4), 10);
+            const month = parseInt(priceDate.substr(4, 2), 10) - 1;
+            const day = parseInt(priceDate.substr(6, 2), 10);
+            const date = new Date(year, month, day);
+            date.setDate(date.getDate() + 1);
+            return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function getFundUpdateMeta(priceDate, isOverseas) {
+            const normalizedDate = adjustFundPriceDate(priceDate, isOverseas);
+            const now = new Date();
+            const todayStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+            const dayBefore = new Date(now);
+            dayBefore.setDate(dayBefore.getDate() - 2);
+            const dayBeforeStr = dayBefore.getFullYear().toString() + (dayBefore.getMonth() + 1).toString().padStart(2, '0') + dayBefore.getDate().toString().padStart(2, '0');
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
+
+            let showUpdated = false;
+            let labelText = '已更新';
+
+            if (normalizedDate === todayStr) {
+                showUpdated = true;
+            } else if (normalizedDate === yesterdayStr) {
+                if (isTradingMorning) {
+                    labelText = '待更新';
+                } else {
+                    showUpdated = hour < 15;
+                    labelText = hour < 15 ? '已更新' : '昨日净值';
+                }
+            } else if (normalizedDate === dayBeforeStr) {
+                showUpdated = true;
+            }
+
+            return { priceDate: normalizedDate, showUpdated, labelText };
+        }
+
+        function applyQuoteToCard(card, quote) {
+            if (!card || !quote) return;
+            card.querySelector('.stock-name').innerText = quote.name || '正在获取...';
+            const compactNameEl = card.querySelector('.compact-name');
+            if (compactNameEl) compactNameEl.innerText = quote.name || '正在获取...';
+
+            const isFund = card.dataset.isFund === 'true';
+            let priceDate = '';
+
+            if (isFund) {
+                const meta = getFundUpdateMeta(quote.priceDate || '', card.dataset.isOverseas === '1');
+                priceDate = meta.priceDate;
+                const statusEl = card.querySelector('.price-status');
+                if (statusEl) {
+                    statusEl.classList.remove('is-hidden');
+                    if (meta.showUpdated) {
+                        statusEl.innerText = meta.labelText;
+                        statusEl.className = 'price-status status-badge status-badge-success shrink-0';
+                    } else if (priceDate) {
+                        statusEl.innerText = '待更新';
+                        statusEl.className = 'price-status status-badge status-badge-warn shrink-0';
+                    } else {
+                        statusEl.innerText = '--';
+                        statusEl.className = 'price-status status-badge status-badge-neutral shrink-0';
+                    }
+                }
+                card.dataset.isTodayUpdated = meta.showUpdated ? '1' : '0';
+            } else {
+                const statusEl = card.querySelector('.price-status');
+                if (statusEl) {
+                    statusEl.innerText = '';
+                    statusEl.className = 'price-status is-hidden';
+                }
+                card.dataset.isTodayUpdated = '1';
+            }
+
+            card.querySelector('.price-cell').innerText = '¥' + parseFloat(quote.price || 0).toFixed(3);
+            card.dataset.price = quote.price || 0;
+            card.dataset.change = quote.change || 0;
+            card.dataset.priceDate = priceDate;
+        }
+
+        function buildQuoteItemsFromCards(cards) {
+            const seen = new Set();
+            return cards.map(card => {
+                const code = card.querySelector('.code-input')?.value?.trim();
+                const isFund = card.dataset.isFund === 'true';
+                const key = `${code}:${isFund ? 1 : 0}`;
+                if (!code || seen.has(key)) return null;
+                seen.add(key);
+                return { code, isFund };
+            }).filter(Boolean);
+        }
+
+        async function loadQuotesForCards(cards, options = {}) {
+            const { fresh = false } = options;
+            const items = buildQuoteItemsFromCards(cards);
+            if (!items.length) {
+                saveAndCalculate();
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('items', items.map(item => `${item.code}:${item.isFund ? 1 : 0}`).join(','));
+            if (fresh) params.set('fresh', '1');
+
+            const response = await fetch(`${API_BASE_URL}/api/quotes?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`quotes request failed: ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const quotes = payload?.quotes || {};
+            cards.forEach(card => {
+                const code = card.querySelector('.code-input')?.value?.trim();
+                const isFund = card.dataset.isFund === 'true';
+                applyQuoteToCard(card, quotes[`${code}:${isFund ? 1 : 0}`]);
+            });
+            saveAndCalculate();
+            updateNetValueStatus();
+        }
+
+        async function fetchPrice(card, code) {
+            if (!card || !code) return;
+            try {
+                await loadQuotesForCards([card], { fresh: true });
+            } catch (error) {
+                console.error('获取价格失败:', code, error);
+            }
+        }
+
+        function updateNetValueStatus() {
+            const allCards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+            const fundCards = allCards.filter(r => r.dataset.isFund === 'true');
+
+            if (fundCards.length === 0) {
+                document.getElementById('netValueUpdateStatus').textContent = '--';
+                return;
+            }
+
+            let updatedCount = 0;
+            fundCards.forEach(card => {
+                if (card.dataset.isTodayUpdated === '1') {
+                    updatedCount++;
+                }
+            });
+
+            const statusEl = document.getElementById('netValueUpdateStatus');
+            if (updatedCount === fundCards.length) {
+                statusEl.textContent = '已全部更新';
+                statusEl.className = 'status-badge status-badge-success';
+            } else {
+                statusEl.textContent = `${updatedCount}/${fundCards.length}`;
+                statusEl.className = 'status-badge status-badge-warn';
+            }
+        }
+
+        function toggleCardDetails(section) {
+            if (!section) return;
+            const details = section.querySelector('.mobile-details');
+            if (!details) return;
+
+            const isExpanded = section.dataset.expanded === 'true';
+            section.dataset.expanded = isExpanded ? 'false' : 'true';
+            details.classList.toggle('hidden', isExpanded);
+        }
+
+        function openMobileActionSheet(card) {
+            if (!canEditOrNotify()) return;
+            if (!card) return;
+
+            activeActionCardId = card.dataset.id;
+            const isFund = card.dataset.isFund === 'true';
+            const name = card.querySelector('.stock-name')?.innerText || '未命名标的';
+
+            document.getElementById('mobileActionSheetName').innerText = name;
+            document.getElementById('mobileFundActions').classList.toggle('hidden', !isFund);
+            document.getElementById('mobileStockActions').classList.toggle('hidden', isFund);
+            document.getElementById('mobileActionSheet').classList.remove('hidden');
+        }
+
+        function closeMobileActionSheet() {
+            activeActionCardId = null;
+            document.getElementById('mobileActionSheet').classList.add('hidden');
+        }
+
+        function openDeleteConfirmModal(card) {
+            if (!card) return;
+            pendingDeleteCardId = card.dataset.id;
+            const name = card.querySelector('.stock-name')?.innerText || '未命名标的';
+            const nameEl = document.getElementById('deleteConfirmName');
+            const modal = document.getElementById('deleteConfirmModal');
+            if (nameEl) nameEl.innerText = name;
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            pendingDeleteCardId = null;
+            const modal = document.getElementById('deleteConfirmModal');
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (modal) modal.classList.add('hidden');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
+        async function confirmDeleteRow() {
+            const card = pendingDeleteCardId
+                ? document.querySelector(`#stockBody [data-id="${pendingDeleteCardId}"]`)
+                : null;
+            if (!card) {
+                closeDeleteConfirmModal();
+                return;
+            }
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (submitBtn) submitBtn.disabled = true;
+            await performDeleteRow(card);
+            closeDeleteConfirmModal();
+        }
+
+        function runSheetAction(action) {
+            const card = activeActionCardId
+                ? document.querySelector(`#stockBody [data-id="${activeActionCardId}"]`)
+                : null;
+
+            if (!card) {
+                closeMobileActionSheet();
+                return;
+            }
+
+            closeMobileActionSheet();
+
+            if (action === 'history') {
+                openTradeHistoryModal(card);
+                return;
+            }
+
+            if (action === 'add') {
+                openAddFundModal(card);
+                return;
+            }
+
+            if (action === 'reduce') {
+                openReduceFundModal(card);
+                return;
+            }
+
+            if (action === 'save') {
+                saveRow(card);
+                return;
+            }
+
+            if (action === 'delete') {
+                deleteRow(card);
+            }
+        }
+
+        function saveAndCalculate() {
+            const cards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+            // 移动端没有这些输入框，使用默认值
+            const baseInput = 300000;
+            const fx = 0.91;
+            const refreshVal = "0";
+
+            let totalMkt = 0, totalToday = 0, totalOverall = 0, totalPlan = 0;
+            let stockMkt = 0, stockToday = 0, stockOverall = 0;
+            let fundMkt = 0, fundToday = 0, fundOverall = 0;
+            let compactUpCount = 0;
+            let compactDownCount = 0;
+            const compactHeaderDate = new Date().toLocaleDateString('en-CA', { month: '2-digit', day: '2-digit' }).slice(5);
+
+            const items = cards.map(card => {
+                const code = card.querySelector('.code-input').value;
+                const shares = parseFloat(card.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(card.querySelector('.cost-input').value) || 0;
+                const price = parseFloat(card.dataset.price) || 0;
+                const change = parseFloat(card.dataset.change) || 0;
+                const planBuy = parseFloat(card.querySelector('.plan-buy-input').value) || 0;
+                const targetPrice = parseFloat(card.querySelector('.target-price-input').value) || '';
+                const isF = card.dataset.isFund === 'true';
+
+                const rate = (code.length === 5) ? fx : 1;
+                const mkt = shares * price * rate;
+                const profit = (price - cost) * shares * rate;
+
+                // 判断今日净值是否已更新
+                let today = 0;
+                let displayChange = 0;
+
+                if (!isF) {
+                    // 股票 → 正常计算
+                    today = mkt * (change / 100);
+                    displayChange = change;
+                } else {
+                    // 基金：判断净值日期
+                    const priceDate = card.dataset.priceDate || '';
+                    const now = new Date();
+                    const todayStr = now.getFullYear().toString() +
+                                     (now.getMonth() + 1).toString().padStart(2, '0') +
+                                     now.getDate().toString().padStart(2, '0');
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.getFullYear().toString() +
+                                         (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+                                         yesterday.getDate().toString().padStart(2, '0');
+                    const hour = now.getHours();
+                    const minute = now.getMinutes();
+
+                    // 判断是否是交易日的上午（9:30-15:00）
+                    const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
+
+                    let isTodayUpdated = false;
+                    if (priceDate === todayStr) {
+                        isTodayUpdated = true;
+                    } else if (priceDate === yesterdayStr) {
+                        if (isTradingMorning) {
+                            // 交易日上午（9:30-15:00）：昨天的数据算未更新
+                            isTodayUpdated = false;
+                        } else {
+                            // 其他时间：15点前算已更新
+                            isTodayUpdated = hour < 15;
+                        }
+                    }
+
+                    if (isTodayUpdated) {
+                        today = mkt * (change / 100);
+                        displayChange = change;
+                    } else {
+                        today = 0;
+                        displayChange = 0;
+                    }
+                }
+
+                if (isF) {
+                    fundMkt += mkt;
+                    fundToday += today;
+                    fundOverall += profit;
+                } else {
+                    stockMkt += mkt;
+                    stockToday += today;
+                    stockOverall += profit;
+                }
+
+                totalMkt += mkt; totalToday += today; totalOverall += profit; totalPlan += planBuy;
+                card.dataset.mktVal = mkt;
+                card.dataset.todayProfitVal = today;
+                card.dataset.changeSortVal = displayChange;
+                const inCurrentTab = currentTab === 'all' || (currentTab === 'stock' && !isF) || (currentTab === 'fund' && isF);
+
+                card.querySelector('.mkt-val-cell').innerText = '¥' + Math.round(mkt).toLocaleString();
+                const compactMktEl = card.querySelector('.compact-mkt-val');
+                if (compactMktEl) {
+                    compactMktEl.innerText = '¥' + mkt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                card.querySelector('.today-profit-cell').innerText = (today>=0?'+':'') + Math.round(today).toLocaleString();
+                card.querySelector('.today-profit-cell').className = 'today-profit-cell mono mt-1 text-base font-black ' + (today>=0?'up':'down');
+                card.querySelector('.chg-pct-cell').innerText = (displayChange>=0?'+':'') + displayChange.toFixed(2) + '%';
+                card.querySelector('.chg-pct-cell').className = 'chg-pct-cell mt-1 text-xs font-black ' + (displayChange>=0?'up':'down');
+                const compactTodayEl = card.querySelector('.compact-today-profit');
+                const compactChgEl = card.querySelector('.compact-chg-pct');
+                if (compactTodayEl) {
+                    compactTodayEl.innerText = (today>=0?'+':'') + Math.round(today).toLocaleString();
+                    compactTodayEl.className = 'compact-today-profit mobile-compact-profit mono ' + (today>=0?'up':'down');
+                }
+                if (compactChgEl) {
+                    compactChgEl.innerText = (displayChange>=0?'+':'') + displayChange.toFixed(2) + '%';
+                    const compactChangeState = displayChange > 0 ? 'up' : (displayChange < 0 ? 'down' : 'flat');
+                    compactChgEl.className = 'compact-chg-pct mobile-compact-change ' + compactChangeState;
+                }
+
+                if (inCurrentTab && displayChange > 0) compactUpCount++;
+                if (inCurrentTab && displayChange < 0) compactDownCount++;
+                card.querySelector('.overall-profit-cell').innerText = (profit>=0?'+':'') + Math.round(profit).toLocaleString();
+                card.querySelector('.overall-profit-cell').className = 'overall-profit-cell mono text-[22px] font-black leading-none ' + (profit>=0?'up':'down');
+                const ratio = cost > 0 ? ((price-cost)/cost*100).toFixed(2) : 0;
+                card.querySelector('.ratio-cell').innerText = (ratio>=0?'+':'') + ratio + '%';
+                card.querySelector('.ratio-cell').className = 'ratio-cell mt-0.5 text-[10px] font-black ' + (ratio>=0?'up':'down');
+
+                // 目标价格收益计算
+                const targetProfitEl = card.querySelector('.target-profit-cell');
+                const targetRatioEl = card.querySelector('.target-ratio-cell');
+                if (targetPrice && targetPrice > 0 && shares > 0 && cost > 0) {
+                    const targetProfit = (targetPrice - cost) * shares * rate;
+                    const targetRatio = cost > 0 ? ((targetPrice - cost) / cost * 100).toFixed(2) : 0;
+                    targetProfitEl.innerText = (targetProfit >= 0 ? '+' : '') + Math.round(targetProfit).toLocaleString();
+                    targetProfitEl.className = 'target-profit-cell mono font-bold text-emerald-400 ' + (targetProfit >= 0 ? 'up' : 'down');
+                    targetRatioEl.innerText = (targetRatio >= 0 ? '+' : '') + targetRatio + '%';
+                    targetRatioEl.className = 'target-ratio-cell text-xs font-bold opacity-80 ' + (targetRatio >= 0 ? 'up' : 'down');
+                } else {
+                    targetProfitEl.innerText = '--';
+                    targetProfitEl.className = 'target-profit-cell mono font-bold text-emerald-400';
+                    targetRatioEl.innerText = '--';
+                    targetRatioEl.className = 'target-ratio-cell text-xs font-bold opacity-80';
+                }
+
+                const alert = parseFloat(card.querySelector('.alert-input').value) || '';
+                const isOverseas = card.dataset.isOverseas === '1';
+                return { id: card.dataset.id, code, name: card.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, targetPrice, alert, isOverseas };
+            });
+
+            // 决定顶部显示哪一组数据
+            let dMkt = totalMkt, dToday = totalToday, dOverall = totalOverall;
+            if (currentTab === 'stock') { dMkt = stockMkt; dToday = stockToday; dOverall = stockOverall; }
+            if (currentTab === 'fund') { dMkt = fundMkt; dToday = fundToday; dOverall = fundOverall; }
+
+            // 移动端没有这些元素，安全检查
+            const totalMktEl = document.getElementById('totalMktDisplay');
+            const todayProfitEl = document.getElementById('todayProfitDisplay');
+            const overallProfitEl = document.getElementById('overallProfitDisplay');
+
+            if (totalMktEl) totalMktEl.innerText = '¥' + Math.round(dMkt).toLocaleString();
+            if (todayProfitEl) {
+                todayProfitEl.innerText = (dToday>=0?'+':'') + Math.round(dToday).toLocaleString();
+                todayProfitEl.className = 'text-lg font-black mono ' + (dToday>=0?'up':'down');
+            }
+            if (overallProfitEl) {
+                overallProfitEl.innerText = (dOverall>=0?'+':'') + Math.round(dOverall).toLocaleString();
+                overallProfitEl.className = 'text-lg font-black mono ' + (dOverall>=0?'up':'down');
+            }
+
+            const compactUpEl = document.getElementById('compactUpCount');
+            const compactDownEl = document.getElementById('compactDownCount');
+            const compactDateProfitEl = document.getElementById('compactHeaderDateProfit');
+            const compactDateChangeEl = document.getElementById('compactHeaderDateChange');
+            if (compactUpEl) compactUpEl.textContent = compactUpCount;
+            if (compactDownEl) compactDownEl.textContent = compactDownCount;
+            if (compactDateProfitEl) compactDateProfitEl.textContent = compactHeaderDate;
+            if (compactDateChangeEl) compactDateChangeEl.textContent = compactHeaderDate;
+
+            localStorage.setItem('vDashboard_Final_Stable', JSON.stringify({ baseInput, fx, items, refreshVal }));
+            const activeEl = document.activeElement;
+            const isEditingField = activeEl && activeEl.closest && activeEl.closest('#stockBody') &&
+                /^(INPUT|SELECT|TEXTAREA)$/.test(activeEl.tagName);
+            if (!isEditingField) {
+                refreshMobileOrdering();
+            }
+            updateNetValueStatus();
+        }
+
+        async function saveRow(el) {
+            if (!canEditOrNotify()) return;
+            setCardSaveState(el, 'saving');
+            const code = el.querySelector('.code-input').value;
+            const shares = parseFloat(el.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(el.querySelector('.cost-input').value) || 0;
+            const planBuy = parseFloat(el.querySelector('.plan-buy-input').value) || 0;
+            const targetPrice = parseFloat(el.querySelector('.target-price-input').value) || '';
+            const alert = parseFloat(el.querySelector('.alert-input').value) || '';
+            const isFund = el.dataset.isFund === 'true';
+            const isOverseas = el.dataset.isOverseas === '1';
+            const name = el.querySelector('.stock-name').innerText;
+            const id = el.dataset.id;
+
+            const rowData = { id, code, name, shares, cost, isFund, planBuy, targetPrice, alert, isOverseas };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-row`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rowData)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    el.dataset.isDraft = '0';
+                    setCardSaveState(el, 'saved');
+                    flashCardSaved(el);
+                    sortCards();
+                    updatePagination();
+                    setTimeout(() => setCardSaveState(el, 'hidden'), 1500);
+                }
+            } catch (e) {
+                console.error('保存失败:', e);
+                setCardSaveState(el, 'error');
+                el.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                setTimeout(() => el.style.backgroundColor = '', 500);
+            }
+        }
+
+        async function deleteRow(el) {
+            if (!canEditOrNotify()) return;
+            openDeleteConfirmModal(el);
+        }
+
+        async function performDeleteRow(el) {
+            const id = el.dataset.id;
+            const code = el.querySelector('.code-input')?.value || '';
+            const isFund = el.dataset.isFund === 'true';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/delete-row`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, code, isFund })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 从 DOM 移除
+                    el.remove();
+
+                    // 同步更新本地 localStorage
+                    const localData = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+                    if (localData && localData.items) {
+                        localData.items = localData.items.filter(item => {
+                            if (code && item.code === code && item.isFund === isFund) {
+                                return false;
+                            }
+                            if (item.id === id) {
+                                return false;
+                            }
+                            return true;
+                        });
+                        localStorage.setItem('vDashboard_Final_Stable', JSON.stringify(localData));
+                    }
+
+                    updatePagination();
+                    saveAndCalculate();
+                    showToast('删除成功');
+                }
+            } catch (e) {
+                console.error('删除失败:', e);
+                el.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                setTimeout(() => el.style.backgroundColor = '', 500);
+                showToast('删除失败');
+            }
+        }
+
+        async function saveAllFunds() {
+            const btn = document.getElementById('saveAllFundsBtn');
+            if (!btn) return; // 移动端没有这个按钮
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = '保存中...';
+
+            const cards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+            const fundCards = cards.filter(r => r.dataset.isFund === 'true');
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const card of fundCards) {
+                const code = card.querySelector('.code-input').value;
+                if (!code) continue;
+
+                const shares = parseFloat(card.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(card.querySelector('.cost-input').value) || 0;
+                const planBuy = parseFloat(card.querySelector('.plan-buy-input').value) || 0;
+                const alert = parseFloat(card.querySelector('.alert-input').value) || '';
+                const name = card.querySelector('.stock-name').innerText;
+                const id = card.dataset.id;
+
+                const isOverseas = card.dataset.isOverseas === '1';
+                const rowData = { id, code, name, shares, cost, isFund: true, planBuy, alert, isOverseas };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/save-row`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(rowData)
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        successCount++;
+                        card.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    } else {
+                        failCount++;
+                        card.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                    }
+                } catch (e) {
+                    failCount++;
+                    card.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                }
+            }
+
+            setTimeout(() => {
+                fundCards.forEach(card => card.style.backgroundColor = '');
+            }, 800);
+
+            btn.disabled = false;
+            btn.innerText = originalText;
+            showToast(`保存完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+        }
+
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        function setupAutoRefresh() {
+            const selectEl = document.getElementById('autoRefreshSelect');
+            if (!selectEl) return; // 移动端没有这个元素
+            const seconds = parseInt(selectEl.value);
+            clearInterval(refreshTimer);
+            clearInterval(progressInterval);
+            const progressEl = document.getElementById('refreshProgress');
+            if (progressEl) progressEl.style.width = '0%';
+
+            if (seconds > 0) {
+                remainingSeconds = seconds;
+                progressInterval = setInterval(() => {
+                    remainingSeconds--;
+                    const width = ((seconds - remainingSeconds) / seconds) * 100;
+                    if (progressEl) progressEl.style.width = width + '%';
+                    if (remainingSeconds <= 0) {
+                        refreshAllPrices();
+                        remainingSeconds = seconds;
+                    }
+                }, 1000);
+            }
+            saveAndCalculate();
+        }
+
+        async function refreshAllPrices(fresh = true, silent = false) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (!silent) refreshIcon.classList.add('refresh-spin');
+            try {
+                const cards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+                await loadQuotesForCards(cards, { fresh });
+            } catch (error) {
+                console.error('批量刷新价格失败:', error);
+            } finally {
+                setTimeout(() => {
+                    if (!silent) refreshIcon.classList.remove('refresh-spin');
+                    const selectEl = document.getElementById('autoRefreshSelect');
+                    if (selectEl) {
+                        const seconds = parseInt(selectEl.value);
+                        if(seconds > 0) remainingSeconds = seconds;
+                    }
+                }, silent ? 0 : 300);
+            }
+        }
+
+        function switchTab(t) {
+            currentTab = t;
+            document.querySelectorAll('[id^="tab-"]').forEach(b => {
+                b.classList.remove('bg-indigo-600', 'text-white');
+            });
+            document.getElementById('tab-'+t).classList.add('bg-indigo-600', 'text-white');
+
+            document.getElementById('addStockBtn').style.display = (t === 'all' || t === 'stock') ? '' : 'none';
+            document.getElementById('addFundBtn').style.display = (t === 'all' || t === 'fund') ? '' : 'none';
+            const saveAllBtn = document.getElementById('saveAllFundsBtn');
+            if (saveAllBtn) saveAllBtn.style.display = (t === 'fund') ? '' : 'none';
+
+            currentPageNum = 1;
+            updateCompactModeUI();
+            updateSortButton();
+            updatePagination();
+            saveAndCalculate();
+        }
+
+        function exportCSV() {
+            const s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
+            if (!s || !s.items) return;
+            let csv = "\uFEFF代码,名称,数量,成本,类型,拟加仓,涨跌提醒,目标价格\n";
+            s.items.forEach(d => csv += `${d.code},${d.name},${d.shares},${d.cost},${d.isFund?1:0},${d.planBuy},${d.alert || ''},${d.targetPrice || ''}\n`);
+            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = '我的资产配置.csv'; a.click();
+        }
+
+        function clearLocalData() {
+            if (!canEditOrNotify()) return;
+            if (!confirm('确定要清除浏览器本地数据吗？刷新后会从后端重新加载数据。')) {
+                return;
+            }
+            localStorage.removeItem('vDashboard_Final_Stable');
+            localStorage.removeItem('vDashboard_pendingTrades');
+            localStorage.removeItem('vDashboard_tradeHistory');
+            showToast('本地数据已清除，正在刷新...');
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+
+        function importCSV(event) {
+            if (!canEditOrNotify()) {
+                event.target.value = '';
+                return;
+            }
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const rows = e.target.result.split('\n').slice(1);
+                document.getElementById('stockBody').innerHTML = '';
+                rows.forEach(row => {
+                    const cols = row.split(',');
+                    if (cols.length >= 5) {
+                        addRow({
+                            code: cols[0].trim(), name: cols[1].trim(), shares: parseFloat(cols[2]) || 0,
+                            cost: parseFloat(cols[3]) || 0, isFund: cols[4].trim() === '1',
+                            planBuy: parseFloat(cols[5]) || 0, alert: parseFloat(cols[6]) || '',
+                            targetPrice: parseFloat(cols[7]) || ''
+                        }, false);
+                    }
+                });
+                currentPageNum = 1;
+                updatePagination();
+                saveAndCalculate();
+            };
+            reader.readAsText(file);
+        }
+
+        // 包装函数用于HTML onclick调用
+        async function showPendingTradesModal() {
+            await openPendingTradesModal();
+        }
+
+        function toggleSort() {
+            sortDir *= -1;
+            sortCards();
+            updateSortButton();
+            updatePagination();
+        }
+
+        function updateSortButton() {
+            const sortBtn = document.getElementById('sortByMktBtn');
+            const profitColumn = document.getElementById('compactProfitColumn');
+            const changeColumn = document.getElementById('compactChangeColumn');
+            const profitArrowUp = document.getElementById('compactProfitSortArrowUp');
+            const profitArrowDown = document.getElementById('compactProfitSortArrowDown');
+            const changeArrowUp = document.getElementById('compactChangeSortArrowUp');
+            const changeArrowDown = document.getElementById('compactChangeSortArrowDown');
+            if (!sortBtn && !profitColumn && !changeColumn) return;
+            const directionText = sortDir === 1 ? '↓' : '↑';
+            if (mobileCompactMode) {
+                if (profitColumn) profitColumn.classList.toggle('active', mobileSortMetric === 'today');
+                if (changeColumn) changeColumn.classList.toggle('active', mobileSortMetric === 'change');
+                [profitArrowUp, profitArrowDown, changeArrowUp, changeArrowDown].forEach(arrow => arrow?.classList.remove('active'));
+                if (mobileSortMetric === 'today') {
+                    if (sortDir === 1) {
+                        profitArrowDown?.classList.add('active');
+                    } else {
+                        profitArrowUp?.classList.add('active');
+                    }
+                }
+                if (mobileSortMetric === 'change') {
+                    if (sortDir === 1) {
+                        changeArrowDown?.classList.add('active');
+                    } else {
+                        changeArrowUp?.classList.add('active');
+                    }
+                }
+            } else {
+                if (sortBtn) sortBtn.textContent = `市值${directionText}`;
+                if (profitColumn) profitColumn.classList.remove('active');
+                if (changeColumn) changeColumn.classList.remove('active');
+                [profitArrowUp, profitArrowDown, changeArrowUp, changeArrowDown].forEach(arrow => arrow?.classList.remove('active'));
+            }
+        }
+
+        window.onload = async () => {
+            const storedThemeMode = localStorage.getItem(MOBILE_THEME_MODE_KEY);
+            applyThemeMode(storedThemeMode === 'dark' ? 'dark' : 'light');
+            sortDir = 1;
+            if (mobileCompactMode) {
+                mobileSortMetric = 'mkt';
+                localStorage.setItem(MOBILE_COMPACT_SORT_KEY, mobileSortMetric);
+            }
+            await loadAppSettings();
+            // 从后端同步数据
+            await syncPendingTradesFromServer();
+            await syncTradeHistoryFromServer();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/data`);
+                const serverData = await response.json();
+                if (serverData && serverData.rows && serverData.rows.length > 0) {
+                    // 移动端没有这些元素，安全检查
+                    const baseCashInput = document.getElementById('baseCashInput');
+                    if (baseCashInput) baseCashInput.value = 300000;
+                    const autoRefreshSelect = document.getElementById('autoRefreshSelect');
+                    if (autoRefreshSelect) autoRefreshSelect.value = "0";
+                    const saveAllBtn = document.getElementById('saveAllFundsBtn');
+                    if (saveAllBtn) saveAllBtn.style.display = 'none';
+
+                    serverData.rows.forEach(i => addRow(i, false));
+                } else {
+                    // 如果后端没有数据，添加默认行
+                    addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
+                }
+            } catch (e) {
+                console.log('从后端获取数据失败:', e);
+                // 如果失败，添加默认行
+                addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
+            }
+
+            switchTab('all');
+            await refreshAllPrices(false, true);
+            applyEditingLockState();
+            updateSortButton();
+            setupAutoRefresh();
+            updatePendingTradeBanner();
+            // 等净值获取完成后更新状态
+            setTimeout(updateNetValueStatus, 2000);
+        };
+		async function getHKDToCNY() {
+		  try {
+		    const res = await fetch("https://open.er-api.com/v6/latest/HKD");
+		    const data = await res.json();
+
+		    if (data && data.rates && data.rates.CNY) {
+		      const rate = data.rates.CNY;
+		      const fxRateInput = document.getElementById('fxRateInput');
+		      if (fxRateInput) {
+		        fxRateInput.value = rate.toFixed(2);
+		      }
+		      console.log("1 HKD ≈", rate, "CNY");
+		      return rate;
+		    }
+		  } catch (e) {
+		    console.log("获取汇率失败:", e);
+		  }
+		  return 0.91; // 默认汇率
+		}
+		// getHKDToCNY(); // 移动端没有汇率输入框
+
+        // ========== 基金加仓功能 ==========
+        let currentAddFundRow = null;
+        let currentAddFundData = {};
+
+        function openAddFundModal(row) {
+            if (!canEditOrNotify()) return;
+            if (row.dataset.isFund !== 'true') return;
+
+            currentAddFundRow = row;
+            const code = row.querySelector('.code-input').value;
+            const name = row.querySelector('.stock-name').innerText;
+            const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+            const price = parseFloat(row.dataset.price) || 0;
+            const rowId = row.dataset.id;
+
+            currentAddFundData = { code, name, shares, cost, price, rowId };
+
+            document.getElementById('modalFundName').innerText = name;
+            document.getElementById('modalFundCode').innerText = '#' + code;
+            document.getElementById('modalCurrentShares').innerText = shares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('modalCurrentCost').innerText = '¥' + cost.toFixed(4);
+            document.getElementById('modalNetValue').innerText = '¥' + price.toFixed(3);
+            document.getElementById('modalAddAmount').value = '';
+
+            // 清空预览
+            document.getElementById('modalNewShares').innerText = '+0.00 份';
+            document.getElementById('modalTotalShares').innerText = '0.00 份';
+            document.getElementById('modalNewCost').innerText = '¥0.0000';
+            document.getElementById('modalTotalCost').innerText = '¥0';
+
+            document.getElementById('addFundModal').classList.remove('hidden');
+        }
+
+        function closeAddFundModal() {
+            document.getElementById('addFundModal').classList.add('hidden');
+            currentAddFundRow = null;
+            currentAddFundData = {};
+        }
+
+        function previewAddFund() {
+            const amount = parseFloat(document.getElementById('modalAddAmount').value) || 0;
+            const { shares, cost, price } = currentAddFundData;
+
+            if (amount <= 0 || price <= 0) {
+                document.getElementById('modalNewShares').innerText = '+0.00 份';
+                document.getElementById('modalTotalShares').innerText = '0.00 份';
+                document.getElementById('modalNewCost').innerText = '¥0.0000';
+                document.getElementById('modalTotalCost').innerText = '¥0';
+                return;
+            }
+
+            const newShares = amount / price;
+            const totalShares = shares + newShares;
+            const totalCost = (shares * cost) + amount;
+            const newCost = totalCost / totalShares;
+
+            document.getElementById('modalNewShares').innerText = '+' + newShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('modalTotalShares').innerText = totalShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('modalNewCost').innerText = '¥' + newCost.toFixed(4);
+            document.getElementById('modalTotalCost').innerText = '¥' + Math.round(totalCost).toLocaleString();
+        }
+
+        async function confirmAddFund() {
+            if (!canEditOrNotify()) return;
+            const amount = parseFloat(document.getElementById('modalAddAmount').value) || 0;
+            if (!currentAddFundRow || amount <= 0) return;
+
+            const { shares, cost, price, code, name, rowId } = currentAddFundData;
+            if (price <= 0) {
+                alert('无法获取当前净值，请稍后重试');
+                return;
+            }
+
+            const isBefore15 = document.getElementById('tradeTimeBefore').checked;
+            const now = new Date();
+            const priceDate = currentAddFundRow.dataset.priceDate || '';
+
+            // 获取今天的日期字符串 YYYYMMDD
+            const todayStr = now.getFullYear().toString() +
+                            (now.getMonth() + 1).toString().padStart(2, '0') +
+                            now.getDate().toString().padStart(2, '0');
+
+            const isTodayNetValue = priceDate === todayStr;
+
+            if (!isBefore15) {
+                // 选择15点后：总是保存为待确认交易
+                const newTrade = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    rowId: rowId,
+                    code: code,
+                    name: name,
+                    amount: amount,
+                    isBefore15: isBefore15,
+                    createdAt: now.toISOString()
+                };
+                await addPendingTrade(newTrade);
+                await updatePendingTradeBanner();
+                closeAddFundModal();
+            } else if (isTodayNetValue) {
+                // 选择15点前 + 当日净值已更新 → 直接确认
+                const newShares = amount / price;
+                const totalShares = shares + newShares;
+                const totalCost = (shares * cost) + amount;
+                const newCost = totalCost / totalShares;
+
+                currentAddFundRow.querySelector('.shares-input').value = totalShares.toFixed(2);
+                currentAddFundRow.querySelector('.cost-input').value = newCost.toFixed(4);
+
+                // 扣除拟加仓金额
+                const planBuyInput = currentAddFundRow.querySelector('.plan-buy-input');
+                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                planBuyInput.value = Math.max(0, currentPlanBuy - amount);
+
+                await saveRow(currentAddFundRow);
+                saveAndCalculate();
+
+                await addTradeRecord(rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    type: 'add',
+                    amount: amount,
+                    shares: newShares,
+                    netValue: price,
+                    createdAt: now.toISOString()
+                });
+
+                closeAddFundModal();
+            } else {
+                // 选择15点前 + 当日净值未更新 → 存为待确认
+                const newTrade = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    rowId: rowId,
+                    code: code,
+                    name: name,
+                    amount: amount,
+                    isBefore15: isBefore15,
+                    createdAt: now.toISOString()
+                };
+                await addPendingTrade(newTrade);
+                await updatePendingTradeBanner();
+                closeAddFundModal();
+            }
+        }
+
+        // ========== 基金减仓功能 ==========
+        let currentReduceFundRow = null;
+        let currentReduceFundData = {};
+
+        function openReduceFundModal(row) {
+            if (!canEditOrNotify()) return;
+            if (row.dataset.isFund !== 'true') return;
+
+            currentReduceFundRow = row;
+            const code = row.querySelector('.code-input').value;
+            const name = row.querySelector('.stock-name').innerText;
+            const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
+            const price = parseFloat(row.dataset.price) || 0;
+
+            currentReduceFundData = { code, name, shares, cost, price };
+
+            document.getElementById('reduceModalFundName').innerText = name;
+            document.getElementById('reduceModalFundCode').innerText = '#' + code;
+            document.getElementById('reduceModalCurrentShares').innerText = shares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('reduceModalCurrentCost').innerText = '¥' + cost.toFixed(4);
+            document.getElementById('reduceModalNetValue').innerText = '¥' + price.toFixed(3);
+            document.getElementById('reduceModalShares').value = '';
+            document.getElementById('reduceModalPercent').value = '';
+
+            // 清空预览
+            document.getElementById('reduceModalRemainShares').innerText = '0.00 份';
+            document.getElementById('reduceModalRedeemAmount').innerText = '¥0';
+            document.getElementById('reduceModalRemainCost').innerText = '¥0.0000';
+            document.getElementById('reduceModalRealizedPL').innerText = '¥0';
+
+            document.getElementById('reduceFundModal').classList.remove('hidden');
+        }
+
+        function closeReduceFundModal() {
+            document.getElementById('reduceFundModal').classList.add('hidden');
+            currentReduceFundRow = null;
+            currentReduceFundData = {};
+        }
+
+        function applyReducePercent() {
+            const percent = parseFloat(document.getElementById('reduceModalPercent').value) || 0;
+            if (percent <= 0) return;
+
+            const { shares } = currentReduceFundData;
+            const reduceShares = shares * (percent / 100);
+            document.getElementById('reduceModalShares').value = reduceShares.toFixed(2);
+            previewReduceFund();
+        }
+
+        function previewReduceFund() {
+            const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
+            const { shares, cost, price } = currentReduceFundData;
+
+            if (reduceShares <= 0 || reduceShares > shares) {
+                document.getElementById('reduceModalRemainShares').innerText = '0.00 份';
+                document.getElementById('reduceModalRedeemAmount').innerText = '¥0';
+                document.getElementById('reduceModalRemainCost').innerText = '¥0.0000';
+                document.getElementById('reduceModalRealizedPL').innerText = '¥0';
+                return;
+            }
+
+            const remainShares = shares - reduceShares;
+            const redeemAmount = reduceShares * price;
+            const realizedPL = (price - cost) * reduceShares;
+
+            document.getElementById('reduceModalRemainShares').innerText = remainShares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' 份';
+            document.getElementById('reduceModalRedeemAmount').innerText = '¥' + Math.round(redeemAmount).toLocaleString();
+            document.getElementById('reduceModalRemainCost').innerText = '¥' + cost.toFixed(4);
+
+            const plEl = document.getElementById('reduceModalRealizedPL');
+            plEl.innerText = (realizedPL >= 0 ? '+' : '') + '¥' + Math.round(realizedPL).toLocaleString();
+            plEl.className = 'mono font-black ' + (realizedPL >= 0 ? 'up' : 'down');
+        }
+
+        async function confirmReduceFund() {
+            if (!canEditOrNotify()) return;
+            const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
+            if (!currentReduceFundRow || reduceShares <= 0) return;
+
+            const { shares, cost, price } = currentReduceFundData;
+            if (reduceShares > shares) {
+                alert('减仓份额不能超过当前持仓');
+                return;
+            }
+
+            const remainShares = shares - reduceShares;
+            const redeemAmount = reduceShares * price;
+
+            // 更新该行数据（成本价保持不变）
+            currentReduceFundRow.querySelector('.shares-input').value = remainShares.toFixed(2);
+
+            // 保存到后端
+            await saveRow(currentReduceFundRow);
+            saveAndCalculate();
+
+            // 记录交易历史
+            const rowId = currentReduceFundRow.dataset.id;
+            await addTradeRecord(rowId, {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                type: 'reduce',
+                amount: redeemAmount,
+                shares: reduceShares,
+                netValue: price,
+                createdAt: new Date().toISOString()
+            });
+
+            closeReduceFundModal();
+        }
+
+        // ========== 待确认交易功能 ==========
+        const PENDING_TRADES_KEY = 'vDashboard_pendingTrades';
+
+        // 从后端同步待确认交易
+        async function syncPendingTradesFromServer() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades`);
+                const data = await response.json();
+                if (data.trades) {
+                    pendingTradesCache = data.trades;
+                } else {
+                    pendingTradesCache = []; // 兼容旧格式
+                }
+            } catch (e) {
+                console.error('从后端同步待确认交易失败:', e);
+                pendingTradesCache = [];
+            }
+        }
+
+        // 获取待确认交易（优先使用缓存）
+        async function getPendingTrades() {
+            if (pendingTradesCache.length === 0) {
+                await syncPendingTradesFromServer();
+            }
+            return pendingTradesCache;
+        }
+
+        // 新增单条待确认交易到后端
+        async function addPendingTrade(trade) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trade)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 重新从后端同步以保持一致性
+                    await syncPendingTradesFromServer();
+                    return true;
+                }
+            } catch (e) {
+                console.error('新增待确认交易失败:', e);
+            }
+            return false;
+        }
+
+        // 从后端删除待确认交易
+        async function deletePendingTradeFromBackend(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pending-trades/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // 重新从后端同步以保持一致性
+                    await syncPendingTradesFromServer();
+                    return true;
+                }
+            } catch (e) {
+                console.error('删除待确认交易失败:', e);
+            }
+            return false;
+        }
+
+        // 保存待确认交易到后端（替换整个列表）
+        async function savePendingTrades(trades) {
+            pendingTradesCache = trades;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-pending-trades`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trades })
+                });
+                await response.json();
+            } catch (e) {
+                console.error('保存待确认交易失败:', e);
+            }
+        }
+
+        async function updatePendingTradeBanner() {
+            const trades = await getPendingTrades();
+            const banner = document.getElementById('pendingTradeBanner');
+            const countEl = document.getElementById('pendingTradeCount');
+
+            if (trades.length > 0) {
+                banner.classList.remove('hidden');
+                countEl.innerText = `共 ${trades.length} 笔待确认`;
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        async function openPendingTradesModal() {
+            const trades = await getPendingTrades();
+            const listEl = document.getElementById('pendingTradesList');
+
+            if (trades.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-[var(--text-muted)] py-8">暂无待确认交易</div>';
+            } else {
+                listEl.innerHTML = trades.map(trade => {
+                    const date = new Date(trade.createdAt);
+                    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    return `
+                        <div class="bg-[var(--bg-main)] p-4 rounded-lg border border-[var(--border-color)]">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-black">${trade.name}</div>
+                                    <div class="text-xs text-[var(--text-muted)] mono">#${trade.code}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="text-xs text-[var(--text-muted)]">${dateStr}</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="confirmPendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
+                                <button onclick="deletePendingTrade('${trade.id}')" class="flex-1 py-2 rounded-lg font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('pendingTradesModal').classList.remove('hidden');
+        }
+
+        function closePendingTradesModal() {
+            document.getElementById('pendingTradesModal').classList.add('hidden');
+        }
+
+        async function confirmPendingTrade(tradeId) {
+            if (!canEditOrNotify()) return;
+            const trades = await getPendingTrades();
+            const tradeIndex = trades.findIndex(t => t.id === tradeId);
+            if (tradeIndex < 0) return;
+
+            const trade = trades[tradeIndex];
+
+            // 找到对应的卡片
+            const card = document.querySelector(`[data-id="${trade.rowId}"]`);
+            if (!card) {
+                alert('找不到对应的基金，请先刷新页面');
+                return;
+            }
+
+            // 获取最新净值
+            const price = parseFloat(card.dataset.price) || 0;
+            if (price <= 0) {
+                alert('无法获取最新净值，请稍后重试');
+                return;
+            }
+
+            const shares = parseFloat(card.querySelector('.shares-input').value) || 0;
+            const cost = parseFloat(card.querySelector('.cost-input').value) || 0;
+
+            const newShares = trade.amount / price;
+            const totalShares = shares + newShares;
+            const totalCost = (shares * cost) + trade.amount;
+            const newCost = totalCost / totalShares;
+
+            card.querySelector('.shares-input').value = totalShares.toFixed(2);
+            card.querySelector('.cost-input').value = newCost.toFixed(4);
+
+            // 扣除拟加仓金额
+            const planBuyInput = card.querySelector('.plan-buy-input');
+            const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+            planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+
+            await saveRow(card);
+            saveAndCalculate();
+
+            // 记录交易历史
+            await addTradeRecord(trade.rowId, {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                type: 'add',
+                amount: trade.amount,
+                shares: newShares,
+                netValue: price,
+                createdAt: new Date().toISOString()
+            });
+
+            // 删除待确认交易
+            trades.splice(tradeIndex, 1);
+            await savePendingTrades(trades);
+            await updatePendingTradeBanner();
+        }
+
+        async function deletePendingTrade(tradeId) {
+            if (!canEditOrNotify()) return;
+            if (!confirm('确定要删除这笔待确认交易吗？')) return;
+
+            await deletePendingTradeFromBackend(tradeId);
+            await updatePendingTradeBanner();
+            await openPendingTradesModal();
+        }
+
+        async function confirmAllPendingTrades() {
+            if (!canEditOrNotify()) return;
+            const trades = await getPendingTrades();
+            if (trades.length === 0) return;
+
+            let successCount = 0;
+            const now = new Date();
+
+            for (const trade of trades) {
+                const card = document.querySelector(`[data-id="${trade.rowId}"]`);
+                if (!card) continue;
+
+                const price = parseFloat(card.dataset.price) || 0;
+                if (price <= 0) continue;
+
+                const shares = parseFloat(card.querySelector('.shares-input').value) || 0;
+                const cost = parseFloat(card.querySelector('.cost-input').value) || 0;
+
+                const newShares = trade.amount / price;
+                const totalShares = shares + newShares;
+                const totalCost = (shares * cost) + trade.amount;
+                const newCost = totalCost / totalShares;
+
+                card.querySelector('.shares-input').value = totalShares.toFixed(2);
+                card.querySelector('.cost-input').value = newCost.toFixed(4);
+
+                // 扣除拟加仓金额
+                const planBuyInput = card.querySelector('.plan-buy-input');
+                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+
+                await saveRow(card);
+
+                // 记录交易历史
+                await addTradeRecord(trade.rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
+                    type: 'add',
+                    amount: trade.amount,
+                    shares: newShares,
+                    netValue: price,
+                    createdAt: now.toISOString()
+                });
+
+                successCount++;
+            }
+
+            saveAndCalculate();
+            await savePendingTrades([]);
+            await updatePendingTradeBanner();
+            closePendingTradesModal();
+            alert(`已确认 ${successCount} 笔交易！`);
+        }
+
+        // ========== 交易记录功能 ==========
+        const TRADE_HISTORY_KEY = 'vDashboard_tradeHistory';
+        let currentTradeHistoryRowId = null;
+
+        // 从后端同步交易历史
+        async function syncTradeHistoryFromServer() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/trade-history`);
+                const data = await response.json();
+                if (data.history) {
+                    localTradeHistory = data.history;
+                } else {
+                    localTradeHistory = data; // 兼容旧格式
+                }
+            } catch (e) {
+                console.error('从后端同步交易历史失败:', e);
+                localTradeHistory = {};
+            }
+        }
+
+        // 获取交易历史（优先使用缓存）
+        async function getTradeHistory() {
+            if (!localTradeHistory) {
+                await syncTradeHistoryFromServer();
+            }
+            return localTradeHistory || {};
+        }
+
+        // 保存交易历史到后端
+        async function saveTradeHistory(history) {
+            localTradeHistory = history;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/save-trade-history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ history })
+                });
+                await response.json();
+            } catch (e) {
+                console.error('保存交易历史失败:', e);
+            }
+        }
+
+        async function addTradeRecord(rowId, record) {
+            const history = await getTradeHistory();
+            if (!history[rowId]) history[rowId] = [];
+            history[rowId].unshift(record);
+            await saveTradeHistory(history);
+        }
+
+        async function openTradeHistoryModal(row) {
+            if (row.dataset.isFund !== 'true') return;
+
+            currentTradeHistoryRowId = row.dataset.id;
+            const name = row.querySelector('.stock-name').innerText;
+            const code = row.querySelector('.code-input').value;
+
+            document.getElementById('tradeHistoryFundName').innerText = `${name} (#${code})`;
+
+            const history = await getTradeHistory();
+            const pendingTrades = (await getPendingTrades()).filter(t => t.rowId === currentTradeHistoryRowId);
+            const records = history[currentTradeHistoryRowId] || [];
+
+            const listEl = document.getElementById('tradeHistoryList');
+
+            if (records.length === 0 && pendingTrades.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-[var(--text-muted)] py-8">暂无交易记录</div>';
+            } else {
+                let html = '';
+
+                // 先显示待确认交易
+                pendingTrades.forEach(trade => {
+                    const date = new Date(trade.createdAt);
+                    const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    html += `
+                        <div class="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-amber-400 font-black">加仓</span>
+                                        <span class="bg-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-xs font-black">待确认</span>
+                                    </div>
+                                    <div class="text-xs text-[var(--text-muted)] mt-1">${dateStr}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mono font-black text-amber-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button onclick="confirmPendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-sm bg-emerald-600 hover:bg-emerald-500 text-white">确认</button>
+                                <button onclick="deletePendingTradeFromHistory('${trade.id}')" class="flex-1 py-1.5 rounded-lg font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">删除</button>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                // 再显示已确认交易
+                records.forEach(record => {
+                    const date = new Date(record.createdAt);
+                    const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    const isAdd = record.type === 'add';
+                    const colorClass = isAdd ? 'text-indigo-400' : 'text-rose-400';
+                    const bgClass = isAdd ? 'bg-indigo-500/10 border-indigo-500/20' : 'bg-rose-500/10 border-rose-500/20';
+
+                    html += `
+                        <div class="p-4 rounded-lg border ${bgClass}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-black ${colorClass}">${isAdd ? '加仓' : '减仓'}</span>
+                                        <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-xs font-black">已确认</span>
+                                    </div>
+                                    <div class="text-xs text-[var(--text-muted)] mt-1">成交时间: ${dateStr}</div>
+                                    <div class="text-xs text-[var(--text-muted)]">成交净值: ¥${record.netValue?.toFixed(3) || '-'}</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="mono font-black ${colorClass}">${isAdd ? '+' : '-'}${record.shares?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) || '-'} 份</div>
+                                    <div class="text-xs text-[var(--text-muted)]">${isAdd ? '+' : '-'}¥${Math.round(record.amount || 0).toLocaleString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                listEl.innerHTML = html;
+            }
+
+            document.getElementById('tradeHistoryModal').classList.remove('hidden');
+        }
+
+        function closeTradeHistoryModal() {
+            document.getElementById('tradeHistoryModal').classList.add('hidden');
+            currentTradeHistoryRowId = null;
+        }
+
+        async function confirmPendingTradeFromHistory(tradeId) {
+            await confirmPendingTrade(tradeId);
+            if (currentTradeHistoryRowId) {
+                const card = document.querySelector(`[data-id="${currentTradeHistoryRowId}"]`);
+                if (card) await openTradeHistoryModal(card);
+            }
+        }
+
+        async function deletePendingTradeFromHistory(tradeId) {
+            await deletePendingTrade(tradeId);
+            if (currentTradeHistoryRowId) {
+                const card = document.querySelector(`[data-id="${currentTradeHistoryRowId}"]`);
+                if (card) await openTradeHistoryModal(card);
+            }
+        }
+    </script>
+</body>
+</html>

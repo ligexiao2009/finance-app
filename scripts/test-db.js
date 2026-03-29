@@ -86,9 +86,9 @@ testConnection().then(success => {
   if (success) {
     console.log('\n✅ Database connection test passed!');
     console.log('\nNext steps:');
-    console.log('   1. Run: node init-db.js (to initialize tables)');
-    console.log('   2. Run: node migrate-data.js (to migrate JSON data)');
-    console.log('   3. Run: node server.js (to start the server)');
+    console.log('   1. Run: node scripts/init-db.js (to initialize tables)');
+    console.log('   2. Run: node scripts/migrate-data.js (to migrate JSON data)');
+    console.log('   3. Run: node src/server.js (to start the server)');
     process.exit(0);
   } else {
     console.log('\n❌ Database connection test failed.');

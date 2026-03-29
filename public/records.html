@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+	<!-- 关联刚才创建的清单 -->
+	<link rel="manifest" href="manifest.json">
+
+	<!-- iOS 专用配置：隐藏 Safari 地址栏和状态栏 -->
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="理财记录">
+
+	<!-- App 桌面图标 (建议换成你自己的 180x180 png 图片) -->
+	<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover">
+    <title>理财记录</title>
+    <style>
+        :root {
+            --bg-page: #F4F7FB;
+            --bg-accent: radial-gradient(circle at top left, rgba(36, 124, 255, 0.18), transparent 34%), radial-gradient(circle at top right, rgba(16, 185, 129, 0.12), transparent 26%);
+            --card-white: rgba(255, 255, 255, 0.9);
+            --group-bg: #EAF0F7;
+            --card-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+            --card-border: rgba(148, 163, 184, 0.18);
+            --profit-text: #E23D38;
+            --loss-text: #169B62;
+            --profit-bg: #FFE9E7;
+            --loss-bg: #E8FAF0;
+            --dark-profit: #FF8B72;
+            --dark-loss: #7EE0A8;
+            --ios-blue: #247CFF;
+            --ios-blue-deep: #1157C6;
+            --text-main: #0F172A;
+            --text-sub: #64748B;
+            --text-tertiary: #A5B1C2;
+            --ios-sep: rgba(148, 163, 184, 0.22);
+            --btn-gray: #F5F7FB;
+        }
+
+        :root[data-theme='dark'] {
+            --bg-page: #07111F;
+            --bg-accent: radial-gradient(circle at top left, rgba(37, 99, 235, 0.28), transparent 30%), radial-gradient(circle at top right, rgba(8, 145, 178, 0.18), transparent 24%);
+            --card-white: rgba(15, 23, 42, 0.84);
+            --group-bg: #172234;
+            --card-shadow: 0 22px 50px rgba(2, 8, 23, 0.42);
+            --card-border: rgba(71, 85, 105, 0.34);
+            --text-main: #F8FAFC;
+            --text-sub: #94A3B8;
+            --text-tertiary: #475569;
+            --ios-sep: rgba(71, 85, 105, 0.45);
+            --btn-gray: #111B2A;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            background-color: #F4F7FB;
+        }
+        html[data-theme='dark'] {
+            background-color: #07111F;
+        }
+        body {
+            font-family: -apple-system, "SF Pro Display", "SF Pro Text", "PingFang SC", Helvetica Neue, sans-serif;
+            background-color: var(--bg-page);
+            background-image: var(--bg-accent);
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            padding-top: max(10px, env(safe-area-inset-top));
+            padding-bottom: env(safe-area-inset-bottom);
+            color: var(--text-main);
+            letter-spacing: -0.3px;
+        }
+
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0 16px 20px;
+        }
+
+        /* 导航头部 */
+        .nav-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 2px 10px;
+        }
+
+        .back-btn {
+            background: color-mix(in srgb, var(--card-white) 96%, transparent);
+            border: 1px solid var(--card-border);
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--ios-blue);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            flex-shrink: 0;
+        }
+
+        .back-btn:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.8px;
+            margin: 0;
+        }
+
+        .page-subtitle {
+            margin: 4px 0 0 50px;
+            color: var(--text-sub);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* 分组卡片样式 - iOS 17 */
+        .section-header {
+            padding: 14px 4px 8px;
+            color: var(--text-sub);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+        }
+
+        .card-group {
+            background: color-mix(in srgb, var(--card-white) 94%, transparent);
+            border-radius: 24px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .card-group-inner {
+            padding: 18px;
+        }
+
+        .field-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 14px 0;
+            position: relative;
+            flex-wrap: nowrap;
+        }
+
+        .field-group:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 0.5px;
+            background: var(--ios-sep);
+            opacity: 0.6;
+        }
+
+        .label-icon {
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .brand-tag {
+            width: 26px;
+            height: 26px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            margin-right: 10px;
+            font-weight: 600;
+        }
+
+        .tag-stock { background: linear-gradient(135deg, #1677FF, #0056CC); }
+        .tag-fund { background: linear-gradient(135deg, #EE1B2D, #CC0F1F); }
+
+        input[type="date"] {
+            border: 1px solid transparent;
+            background: var(--group-bg);
+            font-weight: 600;
+            outline: none;
+            text-align: right;
+            font-size: 15px;
+            color: var(--text-main);
+            border-radius: 12px;
+            padding: 9px 12px;
+            width: 140px;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: nowrap;
+        }
+
+        input[type="number"] {
+            border: 1px solid transparent;
+            background: var(--group-bg);
+            font-weight: 600;
+            outline: none;
+            text-align: right;
+            font-size: 15px;
+            width: 120px;
+            font-variant-numeric: tabular-nums;
+            padding: 9px 12px;
+            border-radius: 12px;
+            color: var(--text-main);
+        }
+
+        input[type="date"]:focus,
+        input[type="number"]:focus {
+            border-color: color-mix(in srgb, var(--ios-blue) 28%, transparent);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--ios-blue) 12%, transparent);
+        }
+
+        .sign-btn {
+            background: var(--group-bg);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 9px 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            color: var(--ios-blue);
+        }
+
+        .sign-btn:active { opacity: 0.7; }
+
+        .save-btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--ios-blue), var(--ios-blue-deep));
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 15px 16px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 14px;
+            cursor: pointer;
+            letter-spacing: -0.2px;
+            box-shadow: 0 14px 28px rgba(36, 124, 255, 0.28);
+        }
+
+        .save-btn:active { opacity: 0.8; }
+
+        /* 统计面板 - iOS 17 风格 */
+        .stat-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .stat-item {
+            background: color-mix(in srgb, var(--card-white) 94%, transparent);
+            padding: 16px;
+            border-radius: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 82px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .stat-item.dark {
+            background: linear-gradient(135deg, #14213B, #1F4D8C);
+            color: white;
+            cursor: pointer;
+        }
+
+        [data-theme='dark'] .stat-item.dark {
+            background: linear-gradient(135deg, #2C2C2E, #3A3A3C);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .stat-item.dark .stat-label {
+            color: #98989D;
+        }
+
+        .stat-val {
+            font-size: 22px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.7px;
+        }
+
+        /* 工具按钮 */
+        .tool-btns {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .btn-flex {
+            flex: 1;
+            background: color-mix(in srgb, var(--card-white) 94%, transparent);
+            padding: 16px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--ios-blue);
+            border: 1px solid var(--card-border);
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .btn-flex:active { opacity: 0.7; }
+
+        /* 日历头部 */
+        .cal-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 0 16px;
+            flex-wrap: wrap;
+        }
+
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cal-btn {
+            background: var(--group-bg);
+            border: 1px solid transparent;
+            width: auto;
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--ios-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .cal-btn:active { opacity: 0.7; }
+
+        .v-title {
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.4px;
+        }
+
+        /* iOS 17 分段控制器 */
+        .view-switcher {
+            background: var(--group-bg);
+            padding: 4px;
+            border-radius: 12px;
+            display: flex;
+            height: 38px;
+        }
+
+        .sw-btn {
+            border: none;
+            background: transparent;
+            padding: 0 14px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            color: var(--text-sub);
+            height: 100%;
+        }
+
+        .sw-btn.active {
+            background: var(--card-white);
+            color: var(--text-main);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        /* 账户切换器 - iOS 17 风格 */
+        .account-switcher {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .ac-btn {
+            border: none;
+            background: var(--group-bg);
+            padding: 13px 8px;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            color: var(--text-sub);
+            transition: all 0.2s ease;
+        }
+
+        .ac-btn.active {
+            background: linear-gradient(135deg, var(--ios-blue), var(--ios-blue-deep));
+            color: white;
+            box-shadow: 0 12px 24px rgba(36, 124, 255, 0.24);
+        }
+
+        .ac-btn:active {
+            opacity: 0.8;
+        }
+
+        /* 日历网格 - iOS 17 风格 */
+        .grid {
+            display: grid;
+            gap: 6px;
+        }
+
+        .grid-day {
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        .grid-month {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .week {
+            font-size: 12px;
+            color: var(--text-sub);
+            text-align: center;
+            font-weight: 700;
+            padding-bottom: 8px;
+            letter-spacing: 0.04em;
+        }
+
+        .cell {
+            border-radius: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:active {
+            transform: scale(0.96);
+        }
+
+        .cell-day {
+            aspect-ratio: 1/1;
+            background: color-mix(in srgb, var(--group-bg) 50%, white);
+            border: 1px solid color-mix(in srgb, var(--ios-sep) 90%, transparent);
+        }
+
+        .cell-month {
+            height: 72px;
+            background: color-mix(in srgb, var(--group-bg) 50%, white);
+            border: 1px solid color-mix(in srgb, var(--ios-sep) 90%, transparent);
+        }
+
+        :root[data-theme='dark'] .cell-day,
+        :root[data-theme='dark'] .cell-month {
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        .cell-selected {
+            background: inherit !important;
+            z-index: 2;
+            box-shadow: 0 0 0 2px var(--ios-blue), 0 10px 24px rgba(36, 124, 255, 0.14);
+        }
+
+        .cell-p {
+            background: var(--profit-bg) !important;
+        }
+
+        .cell-p .d-num {
+            color: var(--profit-text);
+        }
+
+        .cell-p .d-val {
+            color: var(--profit-text);
+        }
+
+        .cell-l {
+            background: var(--loss-bg) !important;
+        }
+
+        .cell-l .d-num {
+            color: var(--loss-text);
+        }
+
+        .cell-l .d-val {
+            color: var(--loss-text);
+        }
+
+        .d-num {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 3px;
+            color: var(--text-main);
+        }
+
+        .d-val {
+            font-size: 11px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .is-today .d-num {
+            color: var(--ios-blue);
+            font-weight: 700;
+        }
+
+        /* 弹窗 */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.42);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .pop {
+            background: color-mix(in srgb, var(--card-white) 96%, transparent);
+            width: 100%;
+            max-width: 360px;
+            border-radius: 28px;
+            padding: 24px;
+            box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+            border: 1px solid var(--card-border);
+        }
+
+        .pop-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 0;
+            font-size: 17px;
+            position: relative;
+        }
+
+        .pop-row:not(:last-of-type)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 0.5px;
+            background: var(--ios-sep);
+            opacity: 0.6;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 13px;
+            color: var(--text-sub);
+            padding-bottom: 28px;
+        }
+
+        .danger-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--card-white) 88%, transparent);
+            border: 1px solid var(--card-border);
+            box-shadow: var(--card-shadow);
+            cursor: pointer;
+        }
+
+        #csvFile { display: none; }
+
+        .bottom-spacer {
+            height: max(20px, env(safe-area-inset-bottom));
+        }
+
+        @media (max-width: 420px) {
+            .page-title {
+                font-size: 24px;
+            }
+
+            .field-group {
+                align-items: center;
+                flex-direction: row;
+                gap: 4px;
+                flex-wrap: nowrap;
+            }
+
+            .page-subtitle {
+                margin-left: 0;
+            }
+
+            .input-row {
+                width: auto;
+            }
+
+            input[type="number"] {
+                flex: 1;
+                width: auto;
+                min-width: 90px;
+            }
+            input[type="date"] {
+                width: 100px;
+                font-size: 14px;
+                padding: 7px 10px;
+            }
+
+            .tool-btns {
+                flex-direction: column;
+            }
+
+            .cal-head {
+                align-items: stretch;
+            }
+
+            .cal-nav,
+            .view-switcher {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .sw-btn {
+                flex: 1;
+            }
+        }
+    </style>
+    <script>
+        // 在页面渲染前立即设置主题，防止闪烁
+        (function() {
+            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        })();
+    </script>
+    <script src="./app-config.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="nav-header">
+            <h1 class="page-title">收益记录</h1>
+        </div>
+
+        <!-- 录入面板 -->
+        <div class="section-header">收益录入</div>
+        <div class="card-group">
+            <div class="card-group-inner">
+                <div class="field-group">
+                    <div class="label-icon">📅 记录日期</div>
+                    <input type="date" id="targetDate" onchange="this.blur(); render();">
+                </div>
+                <div class="field-group">
+                    <div class="label-icon"><span class="brand-tag tag-stock">股</span> 股票</div>
+                    <div class="input-row">
+                        <button class="sign-btn" onclick="tSign('stockToday')">±</button>
+                        <input type="number" id="stockToday" placeholder="0.00" inputmode="decimal">
+                    </div>
+                </div>
+                <div class="field-group">
+                    <div class="label-icon"><span class="brand-tag tag-fund">基</span> 基金</div>
+                    <div class="input-row">
+                        <button class="sign-btn" onclick="tSign('fundToday')">±</button>
+                        <input type="number" id="fundToday" placeholder="0.00" inputmode="decimal">
+                    </div>
+                </div>
+                <button class="save-btn" onclick="save()">保存收益数据</button>
+            </div>
+        </div>
+
+        <!-- 统计面板 -->
+        <div class="section-header">统计总览</div>
+        <div class="stat-bar">
+            <div class="stat-item">
+                <span class="stat-label" id="mLabel">--月累计</span>
+                <div class="stat-val" id="mTotal">¥ 0.00</div>
+            </div>
+            <div class="stat-item dark" onclick="togglePrivacy()">
+                <span class="stat-label" id="yLabel">--年度收益</span>
+                <div class="stat-val" id="yTotal">¥ 0.00</div>
+            </div>
+        </div>
+
+        <!-- 主视图 -->
+        <div class="section-header">收益日历</div>
+        <div class="card-group">
+            <div class="card-group-inner">
+                <div class="cal-head">
+                    <div class="cal-nav">
+                        <button class="cal-btn" onclick="move(-1)">‹</button>
+                        <div id="vTitle" class="v-title">--</div>
+                        <button class="cal-btn" onclick="move(1)">›</button>
+                    </div>
+                    <div class="view-switcher">
+                        <button class="sw-btn active" id="sw-day" onclick="switchView('day')">日</button>
+                        <button class="sw-btn" id="sw-month" onclick="switchView('month')">月</button>
+                        <button class="sw-btn" id="sw-year" onclick="switchView('year')">年</button>
+                    </div>
+                </div>
+                <div id="mainGrid" class="grid grid-day"></div>
+            </div>
+        </div>
+
+        <!-- 账户切换 -->
+        <div class="card-group" style="margin-bottom:8px;">
+            <div class="card-group-inner">
+                <div class="account-switcher">
+                    <button class="ac-btn active" id="ac-all" onclick="switchAccount('all')">全部</button>
+                    <button class="ac-btn" id="ac-stock" onclick="switchAccount('stock')">股票</button>
+                    <button class="ac-btn" id="ac-fund" onclick="switchAccount('fund')">基金</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 功能按钮组 -->
+        <div class="section-header">数据工具</div>
+        <div class="tool-btns">
+            <input type="file" id="csvFile" onchange="impCSV(this)">
+            <button class="btn-flex" onclick="document.getElementById('csvFile').click()">📥 导入数据</button>
+            <button class="btn-flex" onclick="expCSV()">📤 导出数据</button>
+        </div>
+
+        <div class="footer"><span class="danger-link" onclick="reset()">🔄 重置本地全部数据</span></div>
+        <div class="bottom-spacer"></div>
+    </div>
+
+    <!-- 详情弹窗 -->
+    <div id="popOverlay" class="overlay" onclick="closePop()">
+        <div class="pop" onclick="event.stopPropagation()">
+            <div id="pDate" style="text-align:center; font-weight:700; margin-bottom:20px; font-size:20px; letter-spacing:-0.5px;"></div>
+            <div class="pop-row"><span>股票</span><span id="pStock" style="font-weight:600;"></span></div>
+            <div class="pop-row"><span>基金</span><span id="pFund" style="font-weight:600;"></span></div>
+            <div class="pop-row" style="border:none; padding-top:20px;"><span style="font-weight:600; color:var(--text-sub);">合计</span><span id="pAll" style="font-size:26px; font-weight:700; letter-spacing:-0.5px;"></span></div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:24px;">
+                <button class="save-btn" style="background:var(--profit-bg); color:var(--profit-text); margin:0;" id="delB">删除</button>
+                <button class="save-btn" style="background:var(--group-bg); color:var(--ios-blue); margin:0;" onclick="closePop()">完成</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let vDate = new Date(), viewMode = 'day', yearPrivate = false, accountMode = 'all';
+        let recordsCache = {};
+
+        function normalizeRecord(record) {
+            const a = parseFloat(record.stockToday || 0);
+            const t = parseFloat(record.fundToday || 0);
+            const total = parseFloat(record.totalToday ?? (a + t));
+            return {
+                a,
+                t,
+                total
+            };
+        }
+
+        async function loadRecords() {
+            const response = await fetch(`${API_BASE_URL}/api/daily-profit`);
+            if (!response.ok) {
+                throw new Error(`Failed to load daily profits: ${response.status}`);
+            }
+            const payload = await response.json();
+            recordsCache = {};
+            (payload.records || []).forEach(record => {
+                if (!record.date) return;
+                recordsCache[record.date] = normalizeRecord(record);
+            });
+        }
+
+        async function saveRecord(date, a, t) {
+            const total = parseFloat((a + t).toFixed(2));
+            const response = await fetch(`${API_BASE_URL}/api/save-daily-profit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date,
+                    stockToday: a,
+                    fundToday: t,
+                    totalToday: total
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to save daily profit: ${response.status}`);
+            }
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || '保存失败');
+            }
+            recordsCache[date] = { a, t, total };
+        }
+
+        async function deleteRecord(date) {
+            const response = await fetch(`${API_BASE_URL}/api/daily-profit/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date })
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to delete daily profit: ${response.status}`);
+            }
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || '删除失败');
+            }
+            delete recordsCache[date];
+        }
+
+        window.onload = async () => {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            document.getElementById('targetDate').value = todayStr;
+            try {
+                await loadRecords();
+            } catch (error) {
+                console.error(error);
+                alert('读取收益数据失败');
+            }
+            render();
+        };
+
+        function togglePrivacy() { yearPrivate = !yearPrivate; render(); }
+        function closePop() { document.getElementById('popOverlay').style.display='none'; }
+
+        function switchView(mode) {
+            viewMode = mode;
+            document.querySelectorAll('#sw-day, #sw-month, #sw-year').forEach(b => b.classList.remove('active'));
+            document.getElementById('sw-' + mode).classList.add('active');
+            render();
+        }
+
+        function switchAccount(mode) {
+            accountMode = mode;
+            document.querySelectorAll('.ac-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('ac-' + mode).classList.add('active');
+            render();
+        }
+
+        function getValueForAccount(record) {
+            if (accountMode === 'stock') return parseFloat(record.a || 0);
+            if (accountMode === 'fund') return parseFloat(record.t || 0);
+            return parseFloat(record.total || 0);
+        }
+
+        function tSign(id) {
+            const e = document.getElementById(id);
+            if (e.value && e.value !== "0") e.value = (parseFloat(e.value) * -1).toString();
+        }
+
+        async function save() {
+            const v1 = parseFloat(document.getElementById('stockToday').value) || 0;
+            const v2 = parseFloat(document.getElementById('fundToday').value) || 0;
+            const d = document.getElementById('targetDate').value;
+            if (!d) return;
+            try {
+                await saveRecord(d, v1, v2);
+                document.getElementById('stockToday').value = '';
+                document.getElementById('fundToday').value = '';
+                render();
+            } catch (error) {
+                console.error(error);
+                alert('保存失败');
+            }
+        }
+
+        function move(s) {
+            if (viewMode === 'day') vDate.setMonth(vDate.getMonth() + s);
+            else if (viewMode === 'month') vDate.setFullYear(vDate.getFullYear() + s);
+            else vDate.setFullYear(vDate.getFullYear() + (s * 6));
+            render();
+        }
+
+        function render() {
+            const grid = document.getElementById('mainGrid');
+            grid.innerHTML = '';
+            const db = recordsCache;
+            const curY = vDate.getFullYear(), curM = vDate.getMonth();
+            const selectedDate = document.getElementById('targetDate').value;
+
+            let mT = 0, yT = 0;
+            Object.keys(db).forEach(k => {
+                const val = getValueForAccount(db[k]);
+                if (k.startsWith(curY + '-')) {
+                    yT += val;
+                    const monthKey = `${curY}-${String(curM + 1).padStart(2, '0')}`;
+                    if (k.startsWith(monthKey)) mT += val;
+                }
+            });
+
+            const accountLabel = accountMode === 'all' ? '' : (accountMode === 'stock' ? '（股票）' : '（基金）');
+            document.getElementById('mLabel').innerText = (curM + 1) + '月累计' + accountLabel;
+            document.getElementById('yLabel').innerText = curY + '年度收益' + accountLabel;
+            const f = (v) => v.toLocaleString(undefined, { minimumFractionDigits: 2 });
+            const mValEl = document.getElementById('mTotal');
+            mValEl.innerText = '¥ ' + f(mT);
+            mValEl.style.color = mT >= 0 ? 'var(--profit-text)' : 'var(--loss-text)';
+            const yValEl = document.getElementById('yTotal');
+            if (yearPrivate) {
+                yValEl.innerText = '¥ ****';
+                yValEl.style.color = '#8E8E93';
+            } else {
+                yValEl.innerText = '¥ ' + f(yT);
+                yValEl.style.color = yT >= 0 ? 'var(--dark-profit)' : 'var(--dark-loss)';
+            }
+
+            if (viewMode === 'day') renderDay(grid, db, curY, curM, selectedDate);
+            else if (viewMode === 'month') renderMonth(grid, db, curY);
+            else renderYear(grid, db, curY);
+        }
+
+        function renderDay(grid, db, y, m, selectedDate) {
+            grid.className = 'grid grid-day';
+            ['一', '二', '三', '四', '五'].forEach(w => {
+                const d = document.createElement('div');
+                d.className = 'week';
+                d.innerText = w;
+                grid.appendChild(d);
+            });
+            document.getElementById('vTitle').innerText = `${y}年 ${m + 1}月`;
+            const firstDayOfMonth = new Date(y, m, 1).getDay();
+            const totalDays = new Date(y, m + 1, 0).getDate();
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            let offset = firstDayOfMonth === 0 ? 0 : firstDayOfMonth - 1;
+            if (firstDayOfMonth === 6 || firstDayOfMonth === 0) offset = 0;
+            for (let i = 0; i < offset && offset < 5; i++) grid.appendChild(document.createElement('div'));
+            for (let d = 1; d <= totalDays; d++) {
+                const dateObj = new Date(y, m, d);
+                const dayOfWeek = dateObj.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+                const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const r = db[ds], cell = document.createElement('div');
+                cell.className = 'cell cell-day';
+                if (ds === selectedDate) cell.classList.add('cell-selected');
+                const isT = (ds === todayStr);
+                if (isT) cell.classList.add('is-today');
+                cell.innerHTML = `<div class="d-num">${d}</div>`;
+                if (r) {
+                    const v = getValueForAccount(r);
+                    const hasValue = accountMode === 'all' ||
+                        (accountMode === 'stock' && r.a !== 0) ||
+                        (accountMode === 'fund' && r.t !== 0);
+                    if (hasValue) {
+                        cell.classList.add(v >= 0 ? 'cell-p' : 'cell-l');
+                        cell.innerHTML += `<div class="d-val">${v >= 0 ? '+' : ''}${Math.round(v)}</div>`;
+                    }
+                    cell.onclick = () => {
+                        if (ds === selectedDate) {
+                            showPop(ds, r);
+                        } else {
+                            document.getElementById('targetDate').value = ds;
+                            document.getElementById('stockToday').value = r.a !== 0 ? r.a : '';
+                            document.getElementById('fundToday').value = r.t !== 0 ? r.t : '';
+                            render();
+                        }
+                    };
+                } else {
+                    cell.onclick = () => {
+                        document.getElementById('targetDate').value = ds;
+                        document.getElementById('stockToday').value = '';
+                        document.getElementById('fundToday').value = '';
+                        render();
+                    };
+                }
+                grid.appendChild(cell);
+            }
+        }
+
+        function renderMonth(grid, db, y) {
+            grid.className = 'grid grid-month';
+            document.getElementById('vTitle').innerText = `${y}年`;
+            for (let i = 1; i <= 12; i++) {
+                let mSum = 0, has = false;
+                const mPrefix = `${y}-${String(i).padStart(2, '0')}`;
+                Object.keys(db).forEach(k => {
+                    if (k.startsWith(mPrefix)) {
+                        const v = getValueForAccount(db[k]);
+                        mSum += v;
+                        if (accountMode === 'all') has = true;
+                        else if (accountMode === 'stock' && db[k].a !== 0) has = true;
+                        else if (accountMode === 'fund' && db[k].t !== 0) has = true;
+                    }
+                });
+                const cell = document.createElement('div');
+                cell.className = 'cell cell-month';
+                if (has) cell.classList.add(mSum >= 0 ? 'cell-p' : 'cell-l');
+                cell.innerHTML = has
+                    ? `<div class="d-num" style="font-size:15px">${i}月</div><div class="d-val">${(mSum >= 0 ? '+' : '') + Math.round(mSum)}</div>`
+                    : `<div class="d-num" style="font-size:15px; color:var(--text-tertiary)">${i}月</div><div class="d-val" style="color:var(--text-tertiary)">0</div>`;
+                cell.onclick = () => { vDate.setMonth(i - 1); switchView('day'); };
+                grid.appendChild(cell);
+            }
+        }
+
+        function renderYear(grid, db, y) {
+            grid.className = 'grid grid-month';
+            document.getElementById('vTitle').innerText = `年度对比`;
+            for (let i = y - 2; i <= y + 3; i++) {
+                let ySum = 0, has = false;
+                Object.keys(db).forEach(k => {
+                    if (k.startsWith(i + '-')) {
+                        const v = getValueForAccount(db[k]);
+                        ySum += v;
+                        if (accountMode === 'all') has = true;
+                        else if (accountMode === 'stock' && db[k].a !== 0) has = true;
+                        else if (accountMode === 'fund' && db[k].t !== 0) has = true;
+                    }
+                });
+                const cell = document.createElement('div');
+                cell.className = 'cell cell-month';
+                if (has) cell.classList.add(ySum >= 0 ? 'cell-p' : 'cell-l');
+                cell.innerHTML = has
+                    ? `<div class="d-num" style="font-size:15px">${i}</div><div class="d-val">${(ySum >= 0 ? '+' : '') + Math.round(ySum)}</div>`
+                    : `<div class="d-num" style="font-size:15px; color:var(--text-tertiary)">${i}</div><div class="d-val" style="color:var(--text-tertiary)">0</div>`;
+                cell.onclick = () => { vDate.setFullYear(i); switchView('month'); };
+                grid.appendChild(cell);
+            }
+        }
+
+        function showPop(d, r) {
+            document.getElementById('pDate').innerText = d.replace(/-/g, ' / ');
+            const set = (id, v) => {
+                const e = document.getElementById(id);
+                e.innerText = (v >= 0 ? '+' : '') + parseFloat(v).toFixed(2);
+                e.style.color = v >= 0 ? 'var(--profit-text)' : 'var(--loss-text)';
+            };
+            set('pStock', r.a);
+            set('pFund', r.t);
+            set('pAll', r.total);
+            document.getElementById('delB').onclick = async () => {
+                if (!confirm('确定删除？')) return;
+                try {
+                    await deleteRecord(d);
+                    closePop();
+                    render();
+                } catch (error) {
+                    console.error(error);
+                    alert('删除失败');
+                }
+            };
+            document.getElementById('popOverlay').style.display = 'flex';
+        }
+
+        function expCSV() {
+            const keys = Object.keys(recordsCache).sort();
+            let csv = "\ufeff日期,股票,基金,合计\n";
+            keys.forEach(k => {
+                const record = recordsCache[k];
+                csv += `${k},${record.a},${record.t},${record.total}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            const today = new Date().toLocaleDateString('en-CA');
+            a.download = `理财导出_${today}.csv`;
+            a.click();
+        }
+
+        async function impCSV(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const rows = String(event.target.result || '').split('\n');
+                try {
+                    for (const row of rows.slice(1)) {
+                        const c = row.split(',');
+                        if (c.length < 4 || !c[0].trim()) continue;
+                        const date = c[0].trim();
+                        const a = parseFloat(c[1]) || 0;
+                        const t = parseFloat(c[2]) || 0;
+                        await saveRecord(date, a, t);
+                    }
+                    render();
+                    alert('导入成功');
+                } catch (error) {
+                    console.error(error);
+                    alert('导入失败');
+                } finally {
+                    input.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function reset() {
+            if (!confirm('⚠️ 确定清空全部收益数据？')) return;
+            try {
+                const dates = Object.keys(recordsCache);
+                for (const date of dates) {
+                    await deleteRecord(date);
+                }
+                render();
+            } catch (error) {
+                console.error(error);
+                alert('清空失败');
+            }
+        }
+    </script>
+</body>
+</html>

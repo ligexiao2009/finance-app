@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<!-- 关联刚才创建的清单 -->
+	<link rel="manifest" href="manifest.json">
+	
+	<!-- iOS 专用配置：隐藏 Safari 地址栏和状态栏 -->
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="投资助手">
+	
+	<!-- App 桌面图标 (建议换成你自己的 180x180 png 图片) -->
+	<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com">
+	
+	<!-- 阻止页面弹性滚动造成露底（可选，增加原生感） -->
+	<style>
+	    html, body { overscroll-behavior-y: none; }
+	</style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>基金精算助手 Pro+</title>
+    <style>
+        :root {
+            --primary: #007aff; --success: #28cd41; --danger: #ff3b30; --warning: #ff9500;
+            --bg: #f2f2f7; --card: #ffffff; --text: #1c1c1e; --sub-text: #8e8e93;
+            --border: #e5e5ea; --input-bg: #f2f2f7; --tab-bg: #e3e3e6;
+            --btn-blue-bg: rgba(0, 122, 255, 0.12); --btn-blue-text: #007aff;
+            --btn-green-bg: rgba(40, 205, 65, 0.12); --btn-green-text: #248a3d;
+        }
+        [data-theme="dark"] {
+            --bg: #000000; --card: #1c1c1e; --text: #ffffff; --sub-text: #a1a1a6;
+            --border: #38383a; --input-bg: #2c2c2e; --tab-bg: #2c2c2e;
+            --btn-blue-bg: rgba(10, 132, 255, 0.2); --btn-blue-text: #40a9ff;
+            --btn-green-bg: rgba(48, 209, 88, 0.2); --btn-green-text: #63da7e;
+        }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; padding: 12px; color: var(--text); transition: 0.3s; }
+        .container { width: 100%; max-width: 480px; background: var(--card); border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; position: relative; padding-bottom: 20px; }
+        .header { padding: 20px 20px 0; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 20px; margin: 0; font-weight: 700; }
+        .theme-toggle { font-size: 20px; cursor: pointer; padding: 5px; }
+        .tabs { display: flex; background: var(--tab-bg); padding: 4px; margin: 15px; border-radius: 14px; }
+        .tab { flex: 1; text-align: center; padding: 12px; font-size: 14px; font-weight: 600; color: var(--sub-text); cursor: pointer; border-radius: 11px; }
+        .tab.active { background: var(--card); color: var(--primary); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .content { padding: 0 20px; display: none; }
+        .content.active { display: block; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-size: 11px; color: var(--sub-text); font-weight: 700; }
+        input { width: 100%; padding: 12px; border: 1px solid transparent; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; background: var(--input-bg); color: var(--text); -webkit-appearance: none; }
+        input:focus { border-color: var(--primary); background: var(--card); }
+        .plan-box { background: rgba(255,149,0,0.08); padding: 12px; border-radius: 16px; border: 1px solid rgba(255,149,0,0.2); margin: 15px 0; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        button:active { opacity: 0.6; transform: scale(0.98); }
+        .btn-calc { background: var(--btn-blue-bg); color: var(--btn-blue-text); }
+        .btn-profit { background: var(--btn-green-bg); color: var(--btn-green-text); }
+        .res-box { margin-top: 20px; display: none; }
+        .res-card { background: var(--input-bg); border-radius: 18px; padding: 16px; margin-bottom: 15px; border: 1px solid var(--border); }
+        .res-title { font-size: 11px; font-weight: 800; color: var(--sub-text); margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .res-item { display: flex; flex-direction: column; }
+        .res-label { font-size: 11px; color: var(--sub-text); margin-bottom: 2px; }
+        .res-val { font-size: 14px; font-weight: 700; font-family: 'Monaco', monospace; }
+        .main-res { grid-column: span 2; padding: 10px; background: var(--card); border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+        .big-val { font-size: 22px; display: block; margin-top: 4px; }
+        .up-red { color: #ff3b30 !important; } 
+        .down-green { color: #34c759 !important; }
+        .high-blue { color: var(--primary); }
+        .update-time { font-size: 10px; color: var(--sub-text); text-align: center; margin-top: 8px; font-style: italic; }
+        .footer-tools { text-align: center; margin-top: 15px; }
+        .btn-clear { background: none; color: var(--sub-text); font-size: 11px; text-decoration: underline; width: auto; padding: 5px; }
+    </style>
+</head>
+<body data-theme="light">
+
+<div class="container">
+    <div class="header">
+        <h1>基金精算 Pro+</h1>
+        <div class="theme-toggle" onclick="toggleTheme()">🌓</div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">📉 补仓精算</div>
+        <div class="tab" onclick="switchTab(1)">💰 盈利预演</div>
+    </div>
+
+    <div id="tabContent0" class="content active">
+        <div class="input-grid">
+            <div style="grid-column: span 2;"><label>1. 持仓成本价格</label><input type="text" inputmode="decimal" id="c1_cost" oninput="fix(this)"></div>
+            <!-- 修复：盈亏金额使用 text 模式弹出完整键盘 -->
+            <div><label>2. 当前盈亏金额</label><input type="text" inputmode="text" id="c1_loss" placeholder="盈利正, 亏损负" oninput="fixWithMinus(this)"></div>
+            <div><label>3. 现在的价格</label><input type="text" inputmode="decimal" id="c1_now" oninput="fix(this)"></div>
+        </div>
+        <div class="plan-box">
+            <div class="input-grid" style="margin-bottom:0">
+                <div><label>4. 计划加仓金额</label><input type="text" inputmode="decimal" id="c1_add_money" oninput="fix(this)"></div>
+                <div><label>5. 计划加仓价格</label><input type="text" inputmode="decimal" id="c1_add_price" oninput="fix(this)"></div>
+            </div>
+        </div>
+        <button class="btn-calc" onclick="calcCover()">开始精算对比</button>
+        <div id="res0" class="res-box">
+            <div class="res-card">
+                <div class="res-title">● 补仓前状态</div>
+                <div class="res-grid">
+                    <div class="res-item"><span class="res-label">原持仓市值</span><span id="r0_pre_m" class="res-val"></span></div>
+                    <div class="res-item"><span class="res-label">原回本需涨</span><span id="r0_pre_up" class="res-val up-red"></span></div>
+                </div>
+            </div>
+            <div class="res-card" style="border-color: var(--primary);">
+                <div class="res-title" style="color:var(--primary)">● 补仓后预估 (基于加仓价)</div>
+                <div class="res-grid">
+                    <div class="res-item main-res"><span class="res-label">回本目标价格</span><span id="r0_new_c" class="res-val big-val high-blue"></span></div>
+                    <div class="res-item"><span class="res-label">补后需再涨</span><span id="r0_post_up" class="res-val up-red"></span></div>
+                    <div class="res-item"><span class="res-label">补后盈亏率</span><span id="r0_post_rate" class="res-val"></span></div>
+                    <div class="res-item"><span class="res-label">补后总市值</span><span id="r0_post_m" class="res-val"></span></div>
+                    <div class="res-item"><span class="res-label">补后盈亏额</span><span id="r0_post_loss" class="res-val"></span></div>
+                </div>
+                <div class="update-time" id="time0"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tabContent1" class="content">
+        <div class="input-grid">
+            <div style="grid-column: span 2;"><label>1. 持仓成本价格</label><input type="text" inputmode="decimal" id="c2_cost" oninput="fix(this)"></div>
+            <!-- 修复：盈亏金额使用 text 模式弹出完整键盘 -->
+            <div><label>2. 当前盈亏金额</label><input type="text" inputmode="text" id="c2_loss" placeholder="盈利正, 亏损负" oninput="fixWithMinus(this)"></div>
+            <div><label>3. 现在的价格</label><input type="text" inputmode="decimal" id="c2_now" oninput="fix(this)"></div>
+            <div style="grid-column: span 2;"><label>4. 预演目标价格</label><input type="text" inputmode="decimal" id="c2_target" oninput="fix(this)"></div>
+        </div>
+        <button class="btn-profit" onclick="calcProfit()">开始盈利预演</button>
+        <div id="res1" class="res-box">
+            <div class="res-card" style="border-color: var(--success);">
+                <div class="res-title" style="color:var(--success)">● 盈利预演结果</div>
+                <div class="res-grid">
+                    <div class="res-item main-res">
+                        <span class="res-label">预计净利润</span>
+                        <span id="r1_profit" class="res-val big-val"></span>
+                    </div>
+                    <div class="res-item"><span class="res-label">目标盈利率</span><span id="r1_rate" class="res-val"></span></div>
+                    <div class="res-item"><span class="res-label">距目标需涨</span><span id="r1_up" class="res-val"></span></div>
+                    <div class="res-item"><span class="res-label">持仓总本金</span><span id="r1_prin" class="res-val"></span></div>
+                    <div class="res-item"><span class="res-label">届时总市值</span><span id="r1_market" class="res-val"></span></div>
+                </div>
+                <div class="update-time" id="time1"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-tools"><button class="btn-clear" onclick="clearAllData()">🗑️ 清空历史数据</button></div>
+</div>
+
+<script>
+window.onload = function() {
+    const saved = JSON.parse(localStorage.getItem('fundDataFinalV9') || '{}');
+    for (let id in saved) { if(document.getElementById(id)) document.getElementById(id).value = saved[id]; }
+    switchTab(parseInt(localStorage.getItem('fundTabFinalV9') || 0));
+};
+function switchTab(idx) {
+    document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+    document.querySelectorAll('.content').forEach((c, i) => c.classList.toggle('active', i === idx));
+    localStorage.setItem('fundTabFinalV9', idx);
+}
+function fix(obj) { obj.value = obj.value.replace(/[^\d.]/g, "").replace(/\.{2,}/g, "."); save(); }
+
+// 修复盈亏输入的逻辑：允许第一个字符为负号，或清除多余负号
+function fixWithMinus(obj) {
+    let val = obj.value.replace(/[^\d.-]/g, ""); // 只留数字、点、负号
+    // 确保负号只出现在第一位
+    if (val.indexOf("-", 1) !== -1) val = val[0] + val.slice(1).replace(/-/g, "");
+    // 确保只有一个点
+    const parts = val.split('.');
+    if (parts.length > 2) val = parts[0] + "." + parts.slice(1).join("");
+    obj.value = val;
+    save();
+}
+
+function save() {
+    const data = {};
+    document.querySelectorAll('input').forEach(i => data[i.id] = i.value);
+    localStorage.setItem('fundDataFinalV9', JSON.stringify(data));
+}
+const fmt = (n) => n.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+function getTime() { return `计算时间: ${new Date().toLocaleString()}`; }
+
+function calcCover() {
+    const cost = parseFloat(document.getElementById('c1_cost').value), loss = parseFloat(document.getElementById('c1_loss').value);
+    const now = parseFloat(document.getElementById('c1_now').value), addMoney = parseFloat(document.getElementById('c1_add_money').value), addPrice = parseFloat(document.getElementById('c1_add_price').value);
+    if ([cost, loss, now, addMoney, addPrice].some(isNaN) || (now === cost)) return alert("输入有误");
+    const shares = loss / (now - cost), oldPrin = shares * cost, addShares = addMoney / addPrice, totalShares = shares + addShares, totalPrin = oldPrin + addMoney, newCost = totalPrin / totalShares, diff = totalShares * addPrice - totalPrin;
+    document.getElementById('r0_pre_m').innerText = "￥" + fmt(shares * now);
+    document.getElementById('r0_pre_up').innerText = ((cost/now - 1)*100).toFixed(2) + "%";
+    document.getElementById('r0_new_c').innerText = newCost.toFixed(4);
+    document.getElementById('r0_post_up').innerText = ((newCost/addPrice - 1)*100).toFixed(2) + "%";
+    document.getElementById('r0_post_m').innerText = "￥" + fmt(totalShares * addPrice);
+    const lossEl = document.getElementById('r0_post_loss'), rateEl = document.getElementById('r0_post_rate');
+    lossEl.innerText = "￥" + fmt(diff); lossEl.className = "res-val " + (diff >= 0 ? "up-red" : "down-green");
+    const r = (diff/totalPrin*100).toFixed(2); rateEl.innerText = r + "%"; rateEl.className = "res-val " + (r >= 0 ? "up-red" : "down-green");
+    document.getElementById('time0').innerText = getTime(); document.getElementById('res0').style.display = 'block';
+}
+
+function calcProfit() {
+    const cost = parseFloat(document.getElementById('c2_cost').value), loss = parseFloat(document.getElementById('c2_loss').value), now = parseFloat(document.getElementById('c2_now').value), target = parseFloat(document.getElementById('c2_target').value);
+    if ([cost, loss, now, target].some(isNaN) || (now === cost)) return alert("输入有误");
+    const shares = loss / (now - cost), principal = shares * cost, targetM = shares * target, p = targetM - principal, pRate = (p/principal*100).toFixed(2);
+    const pEl = document.getElementById('r1_profit'); pEl.innerText = "￥" + fmt(p); pEl.className = "res-val big-val " + (p >= 0 ? "up-red" : "down-green");
+    const rEl = document.getElementById('r1_rate'); rEl.innerText = pRate + "%"; rEl.className = "res-val " + (pRate >= 0 ? "up-red" : "down-green");
+    document.getElementById('r1_prin').innerText = "￥" + fmt(principal); document.getElementById('r1_market').innerText = "￥" + fmt(targetM); document.getElementById('r1_up').innerText = ((target/now - 1)*100).toFixed(2) + "%";
+    document.getElementById('time1').innerText = getTime(); document.getElementById('res1').style.display = 'block';
+}
+function toggleTheme() { document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); }
+function clearAllData() { if(confirm("确定清空？")) { localStorage.clear(); location.reload(); } }
+</script>
+</body>
+</html>

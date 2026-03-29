@@ -1208,6 +1208,11 @@
             const metric = mobileCompactMode ? mobileSortMetric : 'mkt';
 
             cards.sort((a, b) => {
+                const aDraft = a.dataset.isDraft === '1';
+                const bDraft = b.dataset.isDraft === '1';
+                if (aDraft !== bDraft) {
+                    return aDraft ? -1 : 1;
+                }
                 const aVal = parseFloat(a.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
                 const bVal = parseFloat(b.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
                 return sortDir * (bVal - aVal);
@@ -1221,6 +1226,7 @@
             const card = document.createElement('div');
             card.dataset.isFund = item.isFund;
             card.dataset.id = item.id || Date.now() + Math.random().toString(36).substr(2, 9);
+            card.dataset.isDraft = item.code ? '0' : '1';
             card.className = "card p-4";
 
             card.innerHTML = `
@@ -1872,7 +1878,10 @@
                 });
                 const result = await response.json();
                 if (result.success) {
+                    el.dataset.isDraft = '0';
                     el.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    sortCards();
+                    updatePagination();
                     setTimeout(() => el.style.backgroundColor = '', 500);
                 }
             } catch (e) {

@@ -2,12 +2,43 @@
 require('dotenv').config();
 
 const http = require('http');
+const crypto = require('crypto');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
 const db = require('./db/db');
 const { servePublicFile } = require('./utils/static-files');
 
 const PORT = 3000;
+const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
+
+const positionsCache = {
+  expiresAt: 0,
+  etag: '',
+  payload: '',
+};
+
+function invalidatePositionsCache() {
+  positionsCache.expiresAt = 0;
+  positionsCache.etag = '';
+  positionsCache.payload = '';
+}
+
+async function getCachedPositionsResponse() {
+  const now = Date.now();
+  if (positionsCache.payload && positionsCache.expiresAt > now) {
+    return positionsCache;
+  }
+
+  const rows = await db.getPositions();
+  const payload = JSON.stringify({ rows });
+  const etag = `"${crypto.createHash('sha1').update(payload).digest('hex')}"`;
+
+  positionsCache.expiresAt = now + DATA_CACHE_TTL_MS;
+  positionsCache.etag = etag;
+  positionsCache.payload = payload;
+
+  return positionsCache;
+}
 
 // ==================== 配置部分 ====================
 // Server酱配置 - 优先从环境变量或数据库配置读取
@@ -892,6 +923,7 @@ const server = http.createServer(async (req, res) => {
           });
         }
 
+        invalidatePositionsCache();
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -931,6 +963,10 @@ const server = http.createServer(async (req, res) => {
           }
         }
 
+        if (deleted) {
+          invalidatePositionsCache();
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, deleted }));
       } catch (e) {
@@ -945,9 +981,22 @@ const server = http.createServer(async (req, res) => {
   // 获取所有数据
   if (req.method === 'GET' && req.url === '/api/data') {
     try {
-      const rows = await db.getPositions();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ rows }));
+      const cached = await getCachedPositionsResponse();
+      if (req.headers['if-none-match'] === cached.etag) {
+        res.writeHead(304, {
+          'Cache-Control': 'private, max-age=0, must-revalidate',
+          'ETag': cached.etag,
+        });
+        res.end();
+        return;
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'private, max-age=0, must-revalidate',
+        'ETag': cached.etag,
+      });
+      res.end(cached.payload);
     } catch (error) {
       console.error('Error getting positions:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });

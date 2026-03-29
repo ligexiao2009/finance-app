@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#F4F6FB" id="themeColorMeta">
     <title>投资助手</title>
     
     <!-- PWA & iOS 配置 -->
@@ -12,6 +13,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="投资助手">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com">
+    <script>
+        (function() {
+            const saved = localStorage.getItem('theme');
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = saved || (systemDark ? 'dark' : 'light');
+            const root = document.documentElement;
+            root.setAttribute('data-theme', theme);
+            root.style.backgroundColor = theme === 'dark' ? '#07111F' : '#F4F6FB';
+        })();
+    </script>
 
     <style>
         :root {
@@ -62,6 +73,16 @@
             padding: 0;
         }
 
+        html[data-theme='light'] {
+            color-scheme: light;
+            background-color: #F4F6FB;
+        }
+
+        html[data-theme='dark'] {
+            color-scheme: dark;
+            background-color: #07111F;
+        }
+
         body {
             font-family: -apple-system, "SF Pro Display", "SF Pro Text", "PingFang SC", sans-serif;
             display: flex;
@@ -80,7 +101,7 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            background: color-mix(in srgb, var(--bg-color) 78%, white 22%);
+            background: var(--bg-color);
             opacity: 0;
             transition: opacity 0.22s ease;
         }
@@ -522,6 +543,12 @@
 
         function updateUI(theme) {
             html.setAttribute('data-theme', theme);
+            const themeMeta = document.getElementById('themeColorMeta');
+            const themeColor = theme === 'dark' ? '#07111F' : '#F4F6FB';
+            html.style.backgroundColor = themeColor;
+            if (themeMeta) {
+                themeMeta.setAttribute('content', themeColor);
+            }
             modeBtn.innerHTML = theme === 'dark' ? sunIcon : moonIcon;
         }
 

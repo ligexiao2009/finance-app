@@ -12,6 +12,16 @@
     <link rel="icon" type="image/png" href="./icon.png">
     <link rel="apple-touch-icon" href="./icon.png">
     <link rel="stylesheet" href="./found-tailwind.generated.css">
+    <script>
+        (function() {
+            const key = 'vDashboardMobileThemeMode';
+            const saved = localStorage.getItem(key);
+            const mode = saved === 'dark' ? 'dark' : 'light';
+            const root = document.documentElement;
+            root.classList.add(mode === 'light' ? 'mobile-light' : 'mobile-dark');
+            root.style.backgroundColor = mode === 'light' ? '#f8fafc' : '#0f172a';
+        })();
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         :root {
@@ -20,13 +30,22 @@
             --up-color: #ff5252; --down-color: #00e676; --table-hover: #1e293b;
             --indigo-accent: #6366f1;
         }
-        body.light-mode {
+        body.light-mode,
+        html.mobile-light {
             --bg-main: #f8fafc; --bg-card: #ffffff; --bg-table-header: #f1f5f9;
             --text-main: #1e293b; --text-muted: #64748b; --border-color: #e2e8f0;
             --up-color: #dc2626; --down-color: #059669; --table-hover: #f1f5f9;
         }
         html {
+            background-color: #0f172a;
+        }
+        html.mobile-light {
             background-color: #f8fafc;
+            color-scheme: light;
+        }
+        html.mobile-dark {
+            background-color: #0f172a;
+            color-scheme: dark;
         }
         body { font-family: 'PingFang SC', sans-serif; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
         .mobile-app-body {
@@ -73,12 +92,14 @@
             border-top-color: #1e293b;
             z-index: 100;
         }
-        body.light-mode .tooltip-btn:hover::after {
+        body.light-mode .tooltip-btn:hover::after,
+        html.mobile-light .tooltip-btn:hover::after {
             background: #ffffff;
             color: #1e293b;
             border-color: #e2e8f0;
         }
-        body.light-mode .tooltip-btn:hover::before {
+        body.light-mode .tooltip-btn:hover::before,
+        html.mobile-light .tooltip-btn:hover::before {
             border-top-color: #ffffff;
         }
         /* 自动消失提示框 */
@@ -97,7 +118,8 @@
             border: 1px solid #334155;
             animation: slideDown 0.3s ease;
         }
-        body.light-mode .toast {
+        body.light-mode .toast,
+        html.mobile-light .toast {
             background: #ffffff;
             color: #1e293b;
             border-color: #e2e8f0;
@@ -807,7 +829,7 @@
         }
     </style>
 </head>
-<body class="mobile-app-body light-mode text-base">
+<body class="mobile-app-body text-base">
     <div class="max-w-full mx-auto px-3">
 
         <!-- 顶部标题和快捷操作 -->
@@ -1209,7 +1231,7 @@
         let pendingDeleteCardId = null;
 
         function updateThemeChrome() {
-            const isLightMode = document.body.classList.contains('light-mode');
+            const isLightMode = document.documentElement.classList.contains('mobile-light');
             const themeColor = isLightMode ? '#f8fafc' : '#0f172a';
             const themeMeta = document.getElementById('themeColorMeta');
             if (themeMeta) {
@@ -1218,11 +1240,20 @@
             document.documentElement.style.backgroundColor = themeColor;
         }
 
-        function toggleThemeMode() {
-            document.body.classList.toggle('light-mode');
-            const isLightMode = document.body.classList.contains('light-mode');
-            localStorage.setItem(MOBILE_THEME_MODE_KEY, isLightMode ? 'light' : 'dark');
+        function applyThemeMode(mode) {
+            const isLightMode = mode !== 'dark';
+            document.documentElement.classList.toggle('mobile-light', isLightMode);
+            document.documentElement.classList.toggle('mobile-dark', !isLightMode);
+            if (document.body) {
+                document.body.classList.toggle('light-mode', isLightMode);
+            }
             updateThemeChrome();
+        }
+
+        function toggleThemeMode() {
+            const isLightMode = !document.documentElement.classList.contains('mobile-light');
+            applyThemeMode(isLightMode ? 'light' : 'dark');
+            localStorage.setItem(MOBILE_THEME_MODE_KEY, isLightMode ? 'light' : 'dark');
         }
 
         function clearZero(input) {
@@ -2642,12 +2673,7 @@
 
         window.onload = async () => {
             const storedThemeMode = localStorage.getItem(MOBILE_THEME_MODE_KEY);
-            if (storedThemeMode === 'dark') {
-                document.body.classList.remove('light-mode');
-            } else {
-                document.body.classList.add('light-mode');
-            }
-            updateThemeChrome();
+            applyThemeMode(storedThemeMode === 'dark' ? 'dark' : 'light');
             sortDir = 1;
             if (mobileCompactMode) {
                 mobileSortMetric = 'mkt';

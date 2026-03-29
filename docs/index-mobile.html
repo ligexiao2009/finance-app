@@ -443,6 +443,24 @@
             font-size: 0.68rem;
             font-weight: 600;
         }
+        .draft-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1.2rem;
+            padding: 0 0.42rem;
+            border-radius: 999px;
+            border: 1px dashed rgba(99, 102, 241, 0.35);
+            background: rgba(99, 102, 241, 0.08);
+            color: #6366f1;
+            font-size: 0.62rem;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .draft-pill.hidden {
+            display: none !important;
+        }
         .mobile-compact-profit {
             min-width: 5.2rem;
             text-align: right;
@@ -1221,6 +1239,13 @@
             cards.forEach(card => body.appendChild(card));
         }
 
+        function refreshMobileOrdering() {
+            updateCompactModeUI();
+            updateSortButton();
+            sortCards();
+            updatePagination();
+        }
+
         // 添加卡片
         function addRow(item, prepend = true) {
             const card = document.createElement('div');
@@ -1233,7 +1258,10 @@
                 <div class="mobile-card-header flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-start justify-between gap-2">
-                            <div class="stock-name mobile-card-title flex-1 text-[15px] font-black">${item.name || '正在获取...'}</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="stock-name mobile-card-title text-[15px] font-black">${item.name || '正在获取...'}</div>
+                                <div class="mt-1"><span class="draft-pill ${item.code ? 'hidden' : ''}">未保存</span></div>
+                            </div>
                             <div class="price-status status-badge status-badge-warn shrink-0 ${item.isFund ? '' : 'is-hidden'}">${item.isFund ? '待更新' : ''}</div>
                         </div>
                         <div class="mobile-code-row mt-1.5 flex items-center justify-between gap-2">
@@ -1251,7 +1279,10 @@
                 <div class="mobile-compact-row">
                     <div class="mobile-compact-main">
                         <div class="compact-name mobile-compact-name">${item.name || '正在获取...'}</div>
-                        <div class="compact-mkt-val mobile-compact-meta mono">¥0</div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <div class="compact-mkt-val mobile-compact-meta mono">¥0</div>
+                            <span class="draft-pill ${item.code ? 'hidden' : ''}">未保存</span>
+                        </div>
                     </div>
                     <div class="compact-today-profit mobile-compact-profit mono up">+0</div>
                     <div class="compact-chg-pct mobile-compact-change up">+0.00%</div>
@@ -1343,6 +1374,11 @@
             } else {
                 stockBody.appendChild(card);
             }
+            card.querySelectorAll('input, select, textarea').forEach(input => {
+                input.addEventListener('blur', () => {
+                    setTimeout(() => refreshMobileOrdering(), 0);
+                });
+            });
             applyEditingLockState();
             updateCompactModeUI();
             updateSortButton();
@@ -1849,10 +1885,12 @@
             if (compactDateChangeEl) compactDateChangeEl.textContent = compactHeaderDate;
 
             localStorage.setItem('vDashboard_Final_Stable', JSON.stringify({ baseInput, fx, items, refreshVal }));
-            updateCompactModeUI();
-            updateSortButton();
-            sortCards();
-            updatePagination();
+            const activeEl = document.activeElement;
+            const isEditingField = activeEl && activeEl.closest && activeEl.closest('#stockBody') &&
+                /^(INPUT|SELECT|TEXTAREA)$/.test(activeEl.tagName);
+            if (!isEditingField) {
+                refreshMobileOrdering();
+            }
             updateNetValueStatus();
         }
 
@@ -1879,6 +1917,7 @@
                 const result = await response.json();
                 if (result.success) {
                     el.dataset.isDraft = '0';
+                    el.querySelectorAll('.draft-pill').forEach(pill => pill.classList.add('hidden'));
                     el.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
                     sortCards();
                     updatePagination();

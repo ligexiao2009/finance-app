@@ -10,34 +10,57 @@ const { servePublicFile } = require('./utils/static-files');
 
 const PORT = 3000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
+const responseCache = new Map();
 
-const positionsCache = {
-  expiresAt: 0,
-  etag: '',
-  payload: '',
-};
-
-function invalidatePositionsCache() {
-  positionsCache.expiresAt = 0;
-  positionsCache.etag = '';
-  positionsCache.payload = '';
+function invalidateCache(...keys) {
+  keys.forEach(key => responseCache.delete(key));
 }
 
-async function getCachedPositionsResponse() {
+function invalidateCacheByPrefix(prefix) {
+  for (const key of responseCache.keys()) {
+    if (key.startsWith(prefix)) {
+      responseCache.delete(key);
+    }
+  }
+}
+
+async function getCachedJsonResponse(cacheKey, producer) {
   const now = Date.now();
-  if (positionsCache.payload && positionsCache.expiresAt > now) {
-    return positionsCache;
+  const cached = responseCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached;
   }
 
-  const rows = await db.getPositions();
-  const payload = JSON.stringify({ rows });
+  const data = await producer();
+  const payload = JSON.stringify(data);
   const etag = `"${crypto.createHash('sha1').update(payload).digest('hex')}"`;
+  const nextCache = {
+    expiresAt: now + DATA_CACHE_TTL_MS,
+    etag,
+    payload,
+  };
 
-  positionsCache.expiresAt = now + DATA_CACHE_TTL_MS;
-  positionsCache.etag = etag;
-  positionsCache.payload = payload;
+  responseCache.set(cacheKey, nextCache);
+  return nextCache;
+}
 
-  return positionsCache;
+async function sendCachedJson(req, res, cacheKey, producer) {
+  const cached = await getCachedJsonResponse(cacheKey, producer);
+  if (req.headers['if-none-match'] === cached.etag) {
+    res.writeHead(304, {
+      'Cache-Control': 'private, max-age=0, must-revalidate',
+      'ETag': cached.etag,
+    });
+    res.end();
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'private, max-age=0, must-revalidate',
+    'ETag': cached.etag,
+  });
+  res.end(cached.payload);
 }
 
 // ==================== 配置部分 ====================
@@ -524,6 +547,8 @@ async function autoConfirmPendingTrades() {
   }
 
   if (confirmedCount > 0) {
+    invalidateCache('app-settings', 'data', 'pending-trades', 'trade-history');
+    invalidateCacheByPrefix('trade-history:');
     console.log(`\n自动确认完成！共确认 ${confirmedCount} 笔交易`);
   } else {
     console.log(`\n没有需要确认的交易`);
@@ -618,8 +643,9 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && req.url === '/api/app-settings') {
     try {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ requiresEditUnlock: true }));
+      await sendCachedJson(req, res, 'app-settings', async () => ({
+        requiresEditUnlock: true
+      }));
     } catch (error) {
       console.error('Error getting app settings:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -670,9 +696,10 @@ const server = http.createServer(async (req, res) => {
   // 获取待确认交易列表
   if (req.method === 'GET' && req.url === '/api/pending-trades') {
     try {
-      const trades = await db.getPendingTrades();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ trades }));
+      await sendCachedJson(req, res, 'pending-trades', async () => {
+        const trades = await db.getPendingTrades();
+        return { trades };
+      });
     } catch (error) {
       console.error('Error getting pending trades:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -689,6 +716,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const trade = JSON.parse(body);
         await db.createPendingTrade(trade);
+        invalidateCache('pending-trades');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -708,6 +736,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const { id } = JSON.parse(body);
         await db.deletePendingTrade(id);
+        invalidateCache('pending-trades');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true }));
       } catch (e) {
@@ -735,6 +764,7 @@ const server = http.createServer(async (req, res) => {
           await db.createPendingTrade(trade);
         }
 
+        invalidateCache('pending-trades');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
       } catch (e) {
@@ -750,9 +780,10 @@ const server = http.createServer(async (req, res) => {
   // 获取交易历史（全部）
   if (req.method === 'GET' && req.url === '/api/trade-history') {
     try {
-      const history = await db.getTradeHistory();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ history }));
+      await sendCachedJson(req, res, 'trade-history', async () => {
+        const history = await db.getTradeHistory();
+        return { history };
+      });
     } catch (error) {
       console.error('Error getting trade history:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -765,9 +796,10 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url.startsWith('/api/trade-history/')) {
     try {
       const rowId = req.url.split('/api/trade-history/')[1];
-      const records = await db.getTradeHistoryByRowId(rowId);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ records }));
+      await sendCachedJson(req, res, `trade-history:${rowId}`, async () => {
+        const records = await db.getTradeHistoryByRowId(rowId);
+        return { records };
+      });
     } catch (error) {
       console.error('Error getting trade history by rowId:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -806,6 +838,7 @@ const server = http.createServer(async (req, res) => {
           localDate: formattedRecord.localDate || null,
         });
 
+        invalidateCache('trade-history', `trade-history:${rowId}`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -856,6 +889,8 @@ const server = http.createServer(async (req, res) => {
         }
 
         await db.query('COMMIT');
+        invalidateCache('trade-history');
+        invalidateCacheByPrefix('trade-history:');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
       } catch (e) {
@@ -923,7 +958,7 @@ const server = http.createServer(async (req, res) => {
           });
         }
 
-        invalidatePositionsCache();
+        invalidateCache('data');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -964,7 +999,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (deleted) {
-          invalidatePositionsCache();
+          invalidateCache('data');
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -981,22 +1016,10 @@ const server = http.createServer(async (req, res) => {
   // 获取所有数据
   if (req.method === 'GET' && req.url === '/api/data') {
     try {
-      const cached = await getCachedPositionsResponse();
-      if (req.headers['if-none-match'] === cached.etag) {
-        res.writeHead(304, {
-          'Cache-Control': 'private, max-age=0, must-revalidate',
-          'ETag': cached.etag,
-        });
-        res.end();
-        return;
-      }
-
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'private, max-age=0, must-revalidate',
-        'ETag': cached.etag,
+      await sendCachedJson(req, res, 'data', async () => {
+        const rows = await db.getPositions();
+        return { rows };
       });
-      res.end(cached.payload);
     } catch (error) {
       console.error('Error getting positions:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });

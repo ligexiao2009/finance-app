@@ -2,7 +2,12 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f8fafc" id="themeColorMeta">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="资产看板">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>资产看板专业版 - Ultimate v2.1</title>
     <link rel="stylesheet" href="./tailwind.generated.css">
     <style>
@@ -17,6 +22,9 @@
             --bg-main: #f8fafc; --bg-card: #ffffff; --bg-table-header: #f1f5f9;
             --text-main: #1e293b; --text-muted: #64748b; --border-color: #e2e8f0;
             --up-color: #dc2626; --down-color: #059669; --table-hover: #f1f5f9;
+        }
+        html {
+            background-color: #f8fafc;
         }
         body { font-family: 'PingFang SC', sans-serif; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -277,6 +285,69 @@
             font-weight: 800;
             letter-spacing: 0.04em;
             text-transform: uppercase;
+        }
+        .delete-confirm-shell {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(244, 63, 94, 0.12), transparent 28%),
+                radial-gradient(circle at top left, rgba(248, 113, 113, 0.08), transparent 22%),
+                var(--bg-card);
+        }
+        .delete-confirm-shell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%);
+        }
+        .delete-confirm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            padding: 0.42rem 0.74rem;
+            border-radius: 999px;
+            border: 1px solid rgba(244, 63, 94, 0.18);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+        .delete-confirm-name {
+            color: var(--text-main);
+            font-size: 0.96rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .delete-confirm-note {
+            border-radius: 1rem;
+            border: 1px solid rgba(244, 63, 94, 0.16);
+            background: linear-gradient(180deg, rgba(244, 63, 94, 0.08), rgba(244, 63, 94, 0.03));
+            color: color-mix(in srgb, var(--text-main) 78%, #fb7185 22%);
+            font-size: 0.84rem;
+            line-height: 1.55;
+        }
+        .delete-confirm-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            background: color-mix(in srgb, var(--bg-main) 82%, transparent);
+            transition: 0.2s ease;
+        }
+        .delete-confirm-close:active {
+            transform: scale(0.96);
+        }
+        .delete-confirm-cancel {
+            background: color-mix(in srgb, var(--bg-main) 74%, transparent);
+        }
+        .delete-confirm-submit {
+            box-shadow: 0 14px 28px rgba(225, 29, 72, 0.2);
         }
         .unlock-input {
             width: 100%;
@@ -653,7 +724,7 @@
                 <button onclick="refreshAllPrices()" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500 text-white px-3" title="立即刷新">
                     <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                 </button>
-                <button onclick="document.body.classList.toggle('light-mode')" class="toolbar-chip toolbar-chip-soft px-3" title="切换模式">🌓</button>
+                <button onclick="toggleThemeMode()" class="toolbar-chip toolbar-chip-soft px-3" title="切换模式">🌓</button>
             </div>
         </div>
 
@@ -960,21 +1031,21 @@
         </div>
 
         <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl">
-                <div class="flex justify-between items-start gap-4 mb-5">
+            <div class="delete-confirm-shell rounded-[1.75rem] p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl">
+                <div class="relative flex justify-between items-start gap-4 mb-5">
                     <div>
-                        <div class="unlock-badge mb-3">删除确认</div>
-                        <h3 class="modal-title">确定要删除这条记录吗？</h3>
-                        <div id="deleteConfirmName" class="unlock-status-note mt-2"></div>
+                        <div class="delete-confirm-badge mb-3">危险操作</div>
+                        <h3 class="modal-title text-[1.65rem] leading-tight">确定要删除这条记录吗？</h3>
+                        <div id="deleteConfirmName" class="delete-confirm-name mt-3"></div>
                     </div>
-                    <button onclick="closeDeleteConfirmModal()" class="text-[var(--text-muted)] hover:text-white text-2xl leading-none">&times;</button>
+                    <button onclick="closeDeleteConfirmModal()" class="delete-confirm-close text-2xl leading-none">&times;</button>
                 </div>
-                <div class="rounded-2xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-sm text-[var(--text-muted)]">
+                <div class="delete-confirm-note px-4 py-3.5">
                     删除后会同时移除本地缓存和后端记录，无法恢复。
                 </div>
-                <div class="flex gap-3 pt-5">
-                    <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
-                    <button id="deleteConfirmSubmitBtn" onclick="confirmDeleteRow()" class="flex-1 py-3 rounded-xl font-black text-sm bg-rose-600 hover:bg-rose-500 text-white">确认删除</button>
+                <div class="flex gap-3 pt-7">
+                    <button onclick="closeDeleteConfirmModal()" class="delete-confirm-cancel flex-1 py-3 rounded-2xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button id="deleteConfirmSubmitBtn" onclick="confirmDeleteRow()" class="delete-confirm-submit flex-1 py-3 rounded-2xl font-black text-sm bg-rose-600 hover:bg-rose-500 text-white">确认删除</button>
                 </div>
             </div>
         </div>
@@ -1013,6 +1084,7 @@
         let progressInterval = null;
         let remainingSeconds = 0;
         let requiresEditUnlock = true;
+        const MOBILE_THEME_MODE_KEY = 'vDashboardMobileThemeMode';
         const MOBILE_COMPACT_MODE_KEY = 'vDashboardMobileCompactMode';
         const MOBILE_COMPACT_SORT_KEY = 'vDashboardMobileCompactSortMetric';
         const EDIT_UNLOCK_DURATION_MS = 30 * 60 * 1000;
@@ -1033,6 +1105,23 @@
         let localTradeHistory = null;
         let activeActionCardId = null;
         let pendingDeleteCardId = null;
+
+        function updateThemeChrome() {
+            const isLightMode = document.body.classList.contains('light-mode');
+            const themeColor = isLightMode ? '#f8fafc' : '#0f172a';
+            const themeMeta = document.getElementById('themeColorMeta');
+            if (themeMeta) {
+                themeMeta.setAttribute('content', themeColor);
+            }
+            document.documentElement.style.backgroundColor = themeColor;
+        }
+
+        function toggleThemeMode() {
+            document.body.classList.toggle('light-mode');
+            const isLightMode = document.body.classList.contains('light-mode');
+            localStorage.setItem(MOBILE_THEME_MODE_KEY, isLightMode ? 'light' : 'dark');
+            updateThemeChrome();
+        }
 
         function clearZero(input) {
             if (parseFloat(input.value) === 0) {
@@ -2386,6 +2475,13 @@
         }
 
         window.onload = async () => {
+            const storedThemeMode = localStorage.getItem(MOBILE_THEME_MODE_KEY);
+            if (storedThemeMode === 'dark') {
+                document.body.classList.remove('light-mode');
+            } else {
+                document.body.classList.add('light-mode');
+            }
+            updateThemeChrome();
             sortDir = 1;
             if (mobileCompactMode) {
                 mobileSortMetric = 'mkt';

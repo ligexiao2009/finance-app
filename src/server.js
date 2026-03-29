@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const cron = require('node-cron');
 const fetch = require('node-fetch');
 const db = require('./db/db');
+const { handleDailyProfitRoutes } = require('./routes/daily-profit');
 const { servePublicFile } = require('./utils/static-files');
 
 const PORT = 3000;
@@ -1165,36 +1166,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 保存今日收益
-  if (req.method === 'POST' && req.url === '/api/save-daily-profit') {
-    let body = '';
-    req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', async () => {
-      try {
-        const profitData = JSON.parse(body);
-        await db.createDailyProfit(profitData);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, message: '保存成功' }));
-      } catch (e) {
-        console.error('Save daily profit error:', e);
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, message: e.message }));
-      }
-    });
-    return;
-  }
-
-  // 获取每日收益历史
-  if (req.method === 'GET' && req.url === '/api/daily-profit') {
-    try {
-      const records = await db.getDailyProfits();
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ records }));
-    } catch (error) {
-      console.error('Error getting daily profits:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Failed to get daily profits' }));
-    }
+  if (await handleDailyProfitRoutes(req, res)) {
     return;
   }
 

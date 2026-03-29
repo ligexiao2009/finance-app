@@ -161,8 +161,8 @@
             font-weight: 600;
         }
 
-        .tag-ali { background: linear-gradient(135deg, #1677FF, #0056CC); }
-        .tag-ths { background: linear-gradient(135deg, #EE1B2D, #CC0F1F); }
+        .tag-stock { background: linear-gradient(135deg, #1677FF, #0056CC); }
+        .tag-fund { background: linear-gradient(135deg, #EE1B2D, #CC0F1F); }
 
         input[type="date"] {
             border: none;
@@ -553,6 +553,7 @@
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
         })();
     </script>
+    <script src="./app-config.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -565,17 +566,17 @@
                     <input type="date" id="targetDate" onchange="this.blur(); render();">
                 </div>
                 <div class="field-group">
-                    <div class="label-icon"><span class="brand-tag tag-ali">支</span> 支付宝</div>
+                    <div class="label-icon"><span class="brand-tag tag-stock">股</span> 股票</div>
                     <div class="input-row">
-                        <button class="sign-btn" onclick="tSign('alipay')">±</button>
-                        <input type="number" id="alipay" placeholder="0.00" inputmode="decimal">
+                        <button class="sign-btn" onclick="tSign('stockToday')">±</button>
+                        <input type="number" id="stockToday" placeholder="0.00" inputmode="decimal">
                     </div>
                 </div>
                 <div class="field-group">
-                    <div class="label-icon"><span class="brand-tag tag-ths">同</span> 同花顺</div>
+                    <div class="label-icon"><span class="brand-tag tag-fund">基</span> 基金</div>
                     <div class="input-row">
-                        <button class="sign-btn" onclick="tSign('ths')">±</button>
-                        <input type="number" id="ths" placeholder="0.00" inputmode="decimal">
+                        <button class="sign-btn" onclick="tSign('fundToday')">±</button>
+                        <input type="number" id="fundToday" placeholder="0.00" inputmode="decimal">
                     </div>
                 </div>
                 <button class="save-btn" onclick="save()">保存收益数据</button>
@@ -618,8 +619,8 @@
             <div class="card-group-inner">
                 <div class="account-switcher">
                     <button class="ac-btn active" id="ac-all" onclick="switchAccount('all')">全部</button>
-                    <button class="ac-btn" id="ac-alipay" onclick="switchAccount('alipay')">支付宝</button>
-                    <button class="ac-btn" id="ac-ths" onclick="switchAccount('ths')">同花顺</button>
+                    <button class="ac-btn" id="ac-stock" onclick="switchAccount('stock')">股票</button>
+                    <button class="ac-btn" id="ac-fund" onclick="switchAccount('fund')">基金</button>
                 </div>
             </div>
         </div>
@@ -639,8 +640,8 @@
     <div id="popOverlay" class="overlay" onclick="closePop()">
         <div class="pop" onclick="event.stopPropagation()">
             <div id="pDate" style="text-align:center; font-weight:700; margin-bottom:20px; font-size:20px; letter-spacing:-0.5px;"></div>
-            <div class="pop-row"><span>支付宝</span><span id="pAli" style="font-weight:600;"></span></div>
-            <div class="pop-row"><span>同花顺</span><span id="pThs" style="font-weight:600;"></span></div>
+            <div class="pop-row"><span>股票</span><span id="pStock" style="font-weight:600;"></span></div>
+            <div class="pop-row"><span>基金</span><span id="pFund" style="font-weight:600;"></span></div>
             <div class="pop-row" style="border:none; padding-top:20px;"><span style="font-weight:600; color:var(--text-sub);">合计</span><span id="pAll" style="font-size:26px; font-weight:700; letter-spacing:-0.5px;"></span></div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:24px;">
                 <button class="save-btn" style="background:var(--profit-bg); color:var(--profit-text); margin:0;" id="delB">删除</button>
@@ -651,11 +652,79 @@
 
     <script>
         let vDate = new Date(), viewMode = 'day', yearPrivate = false, accountMode = 'all';
-        const KEY = 'fin_v_final_v24';
+        let recordsCache = {};
 
-        window.onload = () => {
+        function normalizeRecord(record) {
+            const a = parseFloat(record.stockToday || 0);
+            const t = parseFloat(record.fundToday || 0);
+            const total = parseFloat(record.totalToday ?? (a + t));
+            return {
+                a,
+                t,
+                total
+            };
+        }
+
+        async function loadRecords() {
+            const response = await fetch(`${API_BASE_URL}/api/daily-profit`);
+            if (!response.ok) {
+                throw new Error(`Failed to load daily profits: ${response.status}`);
+            }
+            const payload = await response.json();
+            recordsCache = {};
+            (payload.records || []).forEach(record => {
+                if (!record.date) return;
+                recordsCache[record.date] = normalizeRecord(record);
+            });
+        }
+
+        async function saveRecord(date, a, t) {
+            const total = parseFloat((a + t).toFixed(2));
+            const response = await fetch(`${API_BASE_URL}/api/save-daily-profit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date,
+                    stockToday: a,
+                    fundToday: t,
+                    totalToday: total
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to save daily profit: ${response.status}`);
+            }
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || '保存失败');
+            }
+            recordsCache[date] = { a, t, total };
+        }
+
+        async function deleteRecord(date) {
+            const response = await fetch(`${API_BASE_URL}/api/daily-profit/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date })
+            });
+            if (!response.ok) {
+                throw new Error(`Failed to delete daily profit: ${response.status}`);
+            }
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || '删除失败');
+            }
+            delete recordsCache[date];
+        }
+
+        window.onload = async () => {
             const todayStr = new Date().toLocaleDateString('en-CA');
             document.getElementById('targetDate').value = todayStr;
+            try {
+                await loadRecords();
+            } catch (error) {
+                console.error(error);
+                alert('读取收益数据失败');
+            }
             render();
         };
 
@@ -677,109 +746,127 @@
         }
 
         function getValueForAccount(record) {
-            if (accountMode === 'alipay') return parseFloat(record.a || 0);
-            if (accountMode === 'ths') return parseFloat(record.t || 0);
+            if (accountMode === 'stock') return parseFloat(record.a || 0);
+            if (accountMode === 'fund') return parseFloat(record.t || 0);
             return parseFloat(record.total || 0);
         }
 
-        function tSign(id) { const e = document.getElementById(id); if(e.value && e.value !== "0") e.value = (parseFloat(e.value)*-1).toString(); }
+        function tSign(id) {
+            const e = document.getElementById(id);
+            if (e.value && e.value !== "0") e.value = (parseFloat(e.value) * -1).toString();
+        }
 
-        function save() {
-            const v1 = parseFloat(document.getElementById('alipay').value)||0, v2 = parseFloat(document.getElementById('ths').value)||0, d = document.getElementById('targetDate').value;
-            if(!d) return;
-            let db = JSON.parse(localStorage.getItem(KEY)||'{}');
-            db[d] = { a: v1, t: v2, total: (v1+v2).toFixed(2) };
-            localStorage.setItem(KEY, JSON.stringify(db));
-            document.getElementById('alipay').value = ''; document.getElementById('ths').value = '';
-            render();
+        async function save() {
+            const v1 = parseFloat(document.getElementById('stockToday').value) || 0;
+            const v2 = parseFloat(document.getElementById('fundToday').value) || 0;
+            const d = document.getElementById('targetDate').value;
+            if (!d) return;
+            try {
+                await saveRecord(d, v1, v2);
+                document.getElementById('stockToday').value = '';
+                document.getElementById('fundToday').value = '';
+                render();
+            } catch (error) {
+                console.error(error);
+                alert('保存失败');
+            }
         }
 
         function move(s) {
-            if(viewMode === 'day') vDate.setMonth(vDate.getMonth() + s);
-            else if(viewMode === 'month') vDate.setFullYear(vDate.getFullYear() + s);
+            if (viewMode === 'day') vDate.setMonth(vDate.getMonth() + s);
+            else if (viewMode === 'month') vDate.setFullYear(vDate.getFullYear() + s);
             else vDate.setFullYear(vDate.getFullYear() + (s * 6));
             render();
         }
 
         function render() {
-            const grid = document.getElementById('mainGrid'); grid.innerHTML = '';
-            const db = JSON.parse(localStorage.getItem(KEY)||'{}');
+            const grid = document.getElementById('mainGrid');
+            grid.innerHTML = '';
+            const db = recordsCache;
             const curY = vDate.getFullYear(), curM = vDate.getMonth();
             const selectedDate = document.getElementById('targetDate').value;
 
             let mT = 0, yT = 0;
             Object.keys(db).forEach(k => {
                 const val = getValueForAccount(db[k]);
-                if(k.startsWith(curY + '-')) {
+                if (k.startsWith(curY + '-')) {
                     yT += val;
-                    const monthKey = `${curY}-${String(curM+1).padStart(2,'0')}`;
-                    if(k.startsWith(monthKey)) mT += val;
+                    const monthKey = `${curY}-${String(curM + 1).padStart(2, '0')}`;
+                    if (k.startsWith(monthKey)) mT += val;
                 }
             });
 
-            const accountLabel = accountMode === 'all' ? '' : (accountMode === 'alipay' ? '（支付宝）' : '（同花顺）');
-            document.getElementById('mLabel').innerText = (curM+1)+'月累计' + accountLabel;
-            document.getElementById('yLabel').innerText = curY+'年度收益' + accountLabel;
-            const f = (v) => v.toLocaleString(undefined,{minimumFractionDigits:2});
+            const accountLabel = accountMode === 'all' ? '' : (accountMode === 'stock' ? '（股票）' : '（基金）');
+            document.getElementById('mLabel').innerText = (curM + 1) + '月累计' + accountLabel;
+            document.getElementById('yLabel').innerText = curY + '年度收益' + accountLabel;
+            const f = (v) => v.toLocaleString(undefined, { minimumFractionDigits: 2 });
             const mValEl = document.getElementById('mTotal');
             mValEl.innerText = '¥ ' + f(mT);
             mValEl.style.color = mT >= 0 ? 'var(--profit-text)' : 'var(--loss-text)';
             const yValEl = document.getElementById('yTotal');
-            if(yearPrivate) { yValEl.innerText = '¥ ****'; yValEl.style.color = '#8E8E93'; }
-            else { yValEl.innerText = '¥ ' + f(yT); yValEl.style.color = yT >= 0 ? 'var(--dark-profit)' : 'var(--dark-loss)'; }
+            if (yearPrivate) {
+                yValEl.innerText = '¥ ****';
+                yValEl.style.color = '#8E8E93';
+            } else {
+                yValEl.innerText = '¥ ' + f(yT);
+                yValEl.style.color = yT >= 0 ? 'var(--dark-profit)' : 'var(--dark-loss)';
+            }
 
-            if(viewMode === 'day') renderDay(grid, db, curY, curM, selectedDate);
-            else if(viewMode === 'month') renderMonth(grid, db, curY);
+            if (viewMode === 'day') renderDay(grid, db, curY, curM, selectedDate);
+            else if (viewMode === 'month') renderMonth(grid, db, curY);
             else renderYear(grid, db, curY);
         }
 
         function renderDay(grid, db, y, m, selectedDate) {
             grid.className = 'grid grid-day';
-            ['一','二','三','四','五'].forEach(w => {
-                const d = document.createElement('div'); d.className = 'week'; d.innerText = w; grid.appendChild(d);
+            ['一', '二', '三', '四', '五'].forEach(w => {
+                const d = document.createElement('div');
+                d.className = 'week';
+                d.innerText = w;
+                grid.appendChild(d);
             });
-            document.getElementById('vTitle').innerText = `${y}年 ${m+1}月`;
+            document.getElementById('vTitle').innerText = `${y}年 ${m + 1}月`;
             const firstDayOfMonth = new Date(y, m, 1).getDay();
             const totalDays = new Date(y, m + 1, 0).getDate();
             const todayStr = new Date().toLocaleDateString('en-CA');
             let offset = firstDayOfMonth === 0 ? 0 : firstDayOfMonth - 1;
-            if(firstDayOfMonth === 6 || firstDayOfMonth === 0) offset = 0;
-            for(let i=0; i<offset && offset < 5; i++) grid.appendChild(document.createElement('div'));
-            for(let d=1; d<=totalDays; d++) {
+            if (firstDayOfMonth === 6 || firstDayOfMonth === 0) offset = 0;
+            for (let i = 0; i < offset && offset < 5; i++) grid.appendChild(document.createElement('div'));
+            for (let d = 1; d <= totalDays; d++) {
                 const dateObj = new Date(y, m, d);
                 const dayOfWeek = dateObj.getDay();
-                if(dayOfWeek === 0 || dayOfWeek === 6) continue;
-                const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+                const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const r = db[ds], cell = document.createElement('div');
                 cell.className = 'cell cell-day';
                 if (ds === selectedDate) cell.classList.add('cell-selected');
-                let isT = (ds === todayStr);
+                const isT = (ds === todayStr);
                 if (isT) cell.classList.add('is-today');
                 cell.innerHTML = `<div class="d-num">${d}</div>`;
-                if(r) {
+                if (r) {
                     const v = getValueForAccount(r);
                     const hasValue = accountMode === 'all' ||
-                                   (accountMode === 'alipay' && r.a !== 0) ||
-                                   (accountMode === 'ths' && r.t !== 0);
+                        (accountMode === 'stock' && r.a !== 0) ||
+                        (accountMode === 'fund' && r.t !== 0);
                     if (hasValue) {
-                        cell.classList.add(v>=0?'cell-p':'cell-l');
-                        cell.innerHTML += `<div class="d-val">${v>=0?'+':''}${Math.round(v)}</div>`;
+                        cell.classList.add(v >= 0 ? 'cell-p' : 'cell-l');
+                        cell.innerHTML += `<div class="d-val">${v >= 0 ? '+' : ''}${Math.round(v)}</div>`;
                     }
                     cell.onclick = () => {
                         if (ds === selectedDate) {
                             showPop(ds, r);
                         } else {
                             document.getElementById('targetDate').value = ds;
-                            document.getElementById('alipay').value = r.a !== 0 ? r.a : '';
-                            document.getElementById('ths').value = r.t !== 0 ? r.t : '';
+                            document.getElementById('stockToday').value = r.a !== 0 ? r.a : '';
+                            document.getElementById('fundToday').value = r.t !== 0 ? r.t : '';
                             render();
                         }
                     };
                 } else {
                     cell.onclick = () => {
                         document.getElementById('targetDate').value = ds;
-                        document.getElementById('alipay').value = '';
-                        document.getElementById('ths').value = '';
+                        document.getElementById('stockToday').value = '';
+                        document.getElementById('fundToday').value = '';
                         render();
                     };
                 }
@@ -790,22 +877,25 @@
         function renderMonth(grid, db, y) {
             grid.className = 'grid grid-month';
             document.getElementById('vTitle').innerText = `${y}年`;
-            for(let i=1; i<=12; i++) {
+            for (let i = 1; i <= 12; i++) {
                 let mSum = 0, has = false;
-                const mPrefix = `${y}-${String(i).padStart(2,'0')}`;
+                const mPrefix = `${y}-${String(i).padStart(2, '0')}`;
                 Object.keys(db).forEach(k => {
-                    if(k.startsWith(mPrefix)) {
+                    if (k.startsWith(mPrefix)) {
                         const v = getValueForAccount(db[k]);
                         mSum += v;
                         if (accountMode === 'all') has = true;
-                        else if (accountMode === 'alipay' && db[k].a !== 0) has = true;
-                        else if (accountMode === 'ths' && db[k].t !== 0) has = true;
+                        else if (accountMode === 'stock' && db[k].a !== 0) has = true;
+                        else if (accountMode === 'fund' && db[k].t !== 0) has = true;
                     }
                 });
-                const cell = document.createElement('div'); cell.className = 'cell cell-month';
-                if(has) { cell.classList.add(mSum>=0?'cell-p':'cell-l'); cell.innerHTML = `<div class="d-num" style="font-size:15px">${i}月</div><div class="d-val">${(mSum>=0?'+':'')+Math.round(mSum)}</div>`; }
-                else { cell.innerHTML = `<div class="d-num" style="font-size:15px; color:var(--text-tertiary)">${i}月</div><div class="d-val" style="color:var(--text-tertiary)">0</div>`; }
-                cell.onclick = () => { vDate.setMonth(i-1); switchView('day'); };
+                const cell = document.createElement('div');
+                cell.className = 'cell cell-month';
+                if (has) cell.classList.add(mSum >= 0 ? 'cell-p' : 'cell-l');
+                cell.innerHTML = has
+                    ? `<div class="d-num" style="font-size:15px">${i}月</div><div class="d-val">${(mSum >= 0 ? '+' : '') + Math.round(mSum)}</div>`
+                    : `<div class="d-num" style="font-size:15px; color:var(--text-tertiary)">${i}月</div><div class="d-val" style="color:var(--text-tertiary)">0</div>`;
+                cell.onclick = () => { vDate.setMonth(i - 1); switchView('day'); };
                 grid.appendChild(cell);
             }
         }
@@ -813,20 +903,23 @@
         function renderYear(grid, db, y) {
             grid.className = 'grid grid-month';
             document.getElementById('vTitle').innerText = `年度对比`;
-            for(let i = y - 2; i <= y + 3; i++) {
+            for (let i = y - 2; i <= y + 3; i++) {
                 let ySum = 0, has = false;
                 Object.keys(db).forEach(k => {
-                    if(k.startsWith(i + '-')) {
+                    if (k.startsWith(i + '-')) {
                         const v = getValueForAccount(db[k]);
                         ySum += v;
                         if (accountMode === 'all') has = true;
-                        else if (accountMode === 'alipay' && db[k].a !== 0) has = true;
-                        else if (accountMode === 'ths' && db[k].t !== 0) has = true;
+                        else if (accountMode === 'stock' && db[k].a !== 0) has = true;
+                        else if (accountMode === 'fund' && db[k].t !== 0) has = true;
                     }
                 });
-                const cell = document.createElement('div'); cell.className = 'cell cell-month';
-                if(has) { cell.classList.add(ySum>=0?'cell-p':'cell-l'); cell.innerHTML = `<div class="d-num" style="font-size:15px">${i}</div><div class="d-val">${(ySum>=0?'+':'')+Math.round(ySum)}</div>`; }
-                else { cell.innerHTML = `<div class="d-num" style="font-size:15px; color:var(--text-tertiary)">${i}</div><div class="d-val" style="color:var(--text-tertiary)">0</div>`; }
+                const cell = document.createElement('div');
+                cell.className = 'cell cell-month';
+                if (has) cell.classList.add(ySum >= 0 ? 'cell-p' : 'cell-l');
+                cell.innerHTML = has
+                    ? `<div class="d-num" style="font-size:15px">${i}</div><div class="d-val">${(ySum >= 0 ? '+' : '') + Math.round(ySum)}</div>`
+                    : `<div class="d-num" style="font-size:15px; color:var(--text-tertiary)">${i}</div><div class="d-val" style="color:var(--text-tertiary)">0</div>`;
                 cell.onclick = () => { vDate.setFullYear(i); switchView('month'); };
                 grid.appendChild(cell);
             }
@@ -834,49 +927,83 @@
 
         function showPop(d, r) {
             document.getElementById('pDate').innerText = d.replace(/-/g, ' / ');
-            const set = (id, v) => { const e = document.getElementById(id); e.innerText = (v>=0?'+':'')+parseFloat(v).toFixed(2); e.style.color = v>=0?'var(--profit-text)':'var(--loss-text)'; };
-            set('pAli', r.a); set('pThs', r.t); set('pAll', r.total);
-            document.getElementById('delB').onclick = () => { if(confirm('确定删除？')) { let db = JSON.parse(localStorage.getItem(KEY)); delete db[d]; localStorage.setItem(KEY, JSON.stringify(db)); closePop(); render(); } };
+            const set = (id, v) => {
+                const e = document.getElementById(id);
+                e.innerText = (v >= 0 ? '+' : '') + parseFloat(v).toFixed(2);
+                e.style.color = v >= 0 ? 'var(--profit-text)' : 'var(--loss-text)';
+            };
+            set('pStock', r.a);
+            set('pFund', r.t);
+            set('pAll', r.total);
+            document.getElementById('delB').onclick = async () => {
+                if (!confirm('确定删除？')) return;
+                try {
+                    await deleteRecord(d);
+                    closePop();
+                    render();
+                } catch (error) {
+                    console.error(error);
+                    alert('删除失败');
+                }
+            };
             document.getElementById('popOverlay').style.display = 'flex';
         }
 
         function expCSV() {
-            let db = JSON.parse(localStorage.getItem(KEY)||'{}'), keys = Object.keys(db).sort();
-            let csv = "\ufeff日期,支付宝,同花顺,合计\n";
-            keys.forEach(k => csv += `${k},${db[k].a},${db[k].t},${db[k].total}\n`);
-            const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            const keys = Object.keys(recordsCache).sort();
+            let csv = "\ufeff日期,股票,基金,合计\n";
+            keys.forEach(k => {
+                const record = recordsCache[k];
+                csv += `${k},${record.a},${record.t},${record.total}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
             const today = new Date().toLocaleDateString('en-CA');
-            a.download = `理财导出_${today}.csv`; a.click();
+            a.download = `理财导出_${today}.csv`;
+            a.click();
         }
 
-        function impCSV(input) {
-            const r = new FileReader();
-            r.onload = (e) => {
-                const rows = e.target.result.split('\n');
-                let db = JSON.parse(localStorage.getItem(KEY) || '{}');
-
-                rows.slice(1).forEach(row => {
-                    const c = row.split(',');
-                    // 确保行不为空且列数足够
-                    if (c.length >= 4 && c[0].trim()) {
-                        const id = c[0].trim();
-                        db[id] = {
-                            a: parseFloat(c[1]) || 0,
-                            t: parseFloat(c[2]) || 0,
-                            total: parseFloat(c[3]).toFixed(2)
-                        };
+        async function impCSV(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const rows = String(event.target.result || '').split('\n');
+                try {
+                    for (const row of rows.slice(1)) {
+                        const c = row.split(',');
+                        if (c.length < 4 || !c[0].trim()) continue;
+                        const date = c[0].trim();
+                        const a = parseFloat(c[1]) || 0;
+                        const t = parseFloat(c[2]) || 0;
+                        await saveRecord(date, a, t);
                     }
-                });
-
-                localStorage.setItem(KEY, JSON.stringify(db));
-                if (typeof render === 'function') render();
-                alert('导入成功');
+                    render();
+                    alert('导入成功');
+                } catch (error) {
+                    console.error(error);
+                    alert('导入失败');
+                } finally {
+                    input.value = '';
+                }
             };
-            if (input.files[0]) r.readAsText(input.files[0]);
+            reader.readAsText(file);
         }
 
-        function reset() { if(confirm('⚠️ 确定清空？')) { localStorage.removeItem(KEY); render(); } }
+        async function reset() {
+            if (!confirm('⚠️ 确定清空全部收益数据？')) return;
+            try {
+                const dates = Object.keys(recordsCache);
+                for (const date of dates) {
+                    await deleteRecord(date);
+                }
+                render();
+            } catch (error) {
+                console.error(error);
+                alert('清空失败');
+            }
+        }
     </script>
 </body>
 </html>

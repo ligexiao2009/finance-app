@@ -99,6 +99,45 @@
             border-color: rgba(148, 163, 184, 0.12);
             box-shadow: none;
         }
+        .asset-row.is-dirty td:first-child {
+            box-shadow: inset 3px 0 0 rgba(99, 102, 241, 0.88);
+        }
+        .asset-row.is-saved td:first-child {
+            box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.8);
+        }
+        .asset-row.is-error td:first-child {
+            box-shadow: inset 3px 0 0 rgba(244, 63, 94, 0.8);
+        }
+        .row-save-state {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 18px;
+            padding: 0 7px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 900;
+            line-height: 1;
+            border: 1px dashed rgba(99, 102, 241, 0.3);
+            background: rgba(99, 102, 241, 0.07);
+            color: #6366f1;
+            white-space: nowrap;
+        }
+        .row-save-state.hidden {
+            display: none !important;
+        }
+        .row-save-state.is-saved {
+            border-style: solid;
+            border-color: rgba(16, 185, 129, 0.22);
+            background: rgba(16, 185, 129, 0.08);
+            color: #059669;
+        }
+        .row-save-state.is-error {
+            border-style: solid;
+            border-color: rgba(244, 63, 94, 0.22);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+        }
         .price-status-badge {
             display: inline-flex;
             align-items: center;
@@ -1049,6 +1088,38 @@
             btn.className = `toolbar-chip toolbar-chip-soft ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
         }
 
+        function setRowSaveState(row, state) {
+            if (!row) return;
+            const pill = row.querySelector('.row-save-state');
+            if (!pill) return;
+            row.classList.remove('is-dirty', 'is-saved', 'is-error');
+            pill.classList.remove('hidden', 'is-saved', 'is-error');
+
+            if (state === 'hidden') {
+                pill.classList.add('hidden');
+                return;
+            }
+            if (state === 'saved') {
+                pill.textContent = '已保存';
+                pill.classList.add('is-saved');
+                row.classList.add('is-saved');
+                return;
+            }
+            if (state === 'error') {
+                pill.textContent = '保存失败';
+                pill.classList.add('is-error');
+                row.classList.add('is-error');
+                return;
+            }
+            pill.textContent = '未保存';
+            row.classList.add('is-dirty');
+        }
+
+        function markRowDirty(row) {
+            if (!row) return;
+            setRowSaveState(row, 'dirty');
+        }
+
         function applyEditingLockState() {
             const locked = requiresEditUnlock && !isEditingUnlocked;
             document.querySelectorAll('.code-input, .shares-input, .cost-input, .target-price-input, .plan-buy-input, .alert-input').forEach(input => {
@@ -1209,6 +1280,7 @@
                 starBtn.classList.add('text-yellow-400');
                 row.dataset.isOverseas = '1';
             }
+            markRowDirty(row);
             saveAndCalculate();
         }
 
@@ -1255,11 +1327,12 @@
                     </div>
                     <div class="flex items-center gap-1 text-[10px] mono text-[var(--text-muted)]">
                         <span class="text-indigo-500 font-black italic">#</span>
-                        <input type="text" class="code-input editable-field editable-field-soft border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="handleCodeInput(this)">
+                        <input type="text" class="code-input editable-field editable-field-soft border-none outline-none focus:text-indigo-500 w-20 uppercase" placeholder="输入代码" value="${item.code || ''}" oninput="markRowDirty(this.closest('tr')); handleCodeInput(this)">
                     </div>
+                    <div class="mt-1"><span class="row-save-state ${item.code ? 'hidden' : ''}">未保存</span></div>
                 </td>
-                <td class="px-4 text-center"><input type="number" class="shares-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${parseFloat(item.shares || 0).toFixed(2)}" oninput="saveAndCalculate()" onfocus="clearZero(this)" onblur="formatSharesInput(this)" step="0.01"></td>
-                <td class="px-4 text-center"><input type="number" class="cost-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="saveAndCalculate()" onfocus="clearZero(this)"></td>
+                <td class="px-4 text-center"><input type="number" class="shares-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${parseFloat(item.shares || 0).toFixed(2)}" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()" onfocus="clearZero(this)" onblur="formatSharesInput(this)" step="0.01"></td>
+                <td class="px-4 text-center"><input type="number" class="cost-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.cost || 0}" step="0.001" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()" onfocus="clearZero(this)"></td>
                 <td class="px-4 text-center mono text-sm price-cell italic">¥0.000</td>
                 <td class="px-4 text-center">
                     <div class="today-profit-cell mono text-sm italic">¥0</div>
@@ -1270,13 +1343,13 @@
                     <div class="ratio-cell text-[10px] font-black opacity-80">0.00%</div>
                 </td>
                 <td class="px-4 text-center"><div class="mkt-val-cell mono text-sm italic">¥0</div></td>
-                <td class="px-4 text-center"><input type="number" class="target-price-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="saveAndCalculate()"></td>
+                <td class="px-4 text-center"><input type="number" class="target-price-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
                 <td class="px-4 text-center">
                     <div class="target-profit-cell mono text-sm italic">--</div>
                     <div class="target-ratio-cell text-[10px] font-black opacity-80">--</div>
                 </td>
-                <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input editable-field editable-field-plan text-center mono text-sm text-indigo-500 w-full outline-none" value="${item.planBuy || 0}" oninput="saveAndCalculate()"></td>
-                <td class="px-4 text-center"><input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="saveAndCalculate()"></td>
+                <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input editable-field editable-field-plan text-center mono text-sm text-indigo-500 w-full outline-none" value="${item.planBuy || 0}" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
+                <td class="px-4 text-center"><input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
                 <td class="px-2 text-center">
                     <div class="row-action-cluster flex items-center justify-center gap-2">
                         ${visibleActions}
@@ -1750,11 +1823,14 @@
                 });
                 const result = await response.json();
                 if (result.success) {
+                    setRowSaveState(row, 'saved');
                     row.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    setTimeout(() => setRowSaveState(row, 'hidden'), 1500);
                     setTimeout(() => row.style.backgroundColor = '', 500);
                 }
             } catch (e) {
                 console.error('保存失败:', e);
+                setRowSaveState(row, 'error');
                 row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                 setTimeout(() => row.style.backgroundColor = '', 500);
             }

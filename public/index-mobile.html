@@ -169,6 +169,9 @@
             color: #047857;
             background: rgba(5, 150, 105, 0.08);
         }
+        .toolbar-chip-unlocked.is-counting {
+            min-width: 4.2rem;
+        }
         .toolbar-chip:disabled {
             opacity: 0.45;
             cursor: not-allowed;
@@ -472,6 +475,23 @@
         }
         .draft-pill.hidden {
             display: none !important;
+        }
+        .card-save-flash {
+            animation: cardSaveFlash 0.9s ease;
+        }
+        @keyframes cardSaveFlash {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                border-color: var(--border-color);
+            }
+            25% {
+                box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+                border-color: rgba(16, 185, 129, 0.42);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+                border-color: var(--border-color);
+            }
         }
         .mobile-compact-profit {
             text-align: right;
@@ -975,6 +995,7 @@
         const EDIT_UNLOCK_FLAG_KEY = 'vDashboardEditingUnlocked';
         const EDIT_UNLOCK_EXPIRES_KEY = 'vDashboardEditingUnlockedUntil';
         let editUnlockTimer = null;
+        let editUnlockCountdownTimer = null;
         let isEditingUnlocked = getStoredEditUnlockState();
         let mobileCompactMode = localStorage.getItem(MOBILE_COMPACT_MODE_KEY) === '1';
         let mobileSortMetric = ['mkt', 'today', 'change'].includes(localStorage.getItem(MOBILE_COMPACT_SORT_KEY)) ? localStorage.getItem(MOBILE_COMPACT_SORT_KEY) : 'mkt';
@@ -994,6 +1015,18 @@
             }
         }
 
+        function getRemainingUnlockMs() {
+            const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
+            return Math.max(0, expiresAt - Date.now());
+        }
+
+        function getUnlockCountdownLabel() {
+            const remaining = getRemainingUnlockMs();
+            if (remaining <= 0) return '🔒';
+            const minutesLeft = Math.max(1, Math.ceil(remaining / 60000));
+            return `🔓 ${minutesLeft}m`;
+        }
+
         function getStoredEditUnlockState() {
             const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
             if (!expiresAt || Date.now() >= expiresAt) {
@@ -1010,6 +1043,10 @@
                 clearTimeout(editUnlockTimer);
                 editUnlockTimer = null;
             }
+            if (editUnlockCountdownTimer) {
+                clearInterval(editUnlockCountdownTimer);
+                editUnlockCountdownTimer = null;
+            }
             if (!requiresEditUnlock || !isEditingUnlocked) return;
             const expiresAt = Number(sessionStorage.getItem(EDIT_UNLOCK_EXPIRES_KEY) || 0);
             const remaining = expiresAt - Date.now();
@@ -1020,6 +1057,13 @@
             editUnlockTimer = setTimeout(() => {
                 requestEditingUnlock(true, true);
             }, remaining);
+            editUnlockCountdownTimer = setInterval(() => {
+                if (!isEditingUnlocked || getRemainingUnlockMs() <= 0) {
+                    clearInterval(editUnlockCountdownTimer);
+                    editUnlockCountdownTimer = null;
+                }
+                updateEditLockButton();
+            }, 15000);
         }
 
         function openEditUnlockModal(clearError = true) {
@@ -1066,8 +1110,9 @@
         function updateEditLockButton() {
             const btn = document.getElementById('editLockBtn');
             if (!btn) return;
-            btn.textContent = isEditingUnlocked ? '🔓' : '🔒';
+            btn.textContent = isEditingUnlocked ? getUnlockCountdownLabel() : '🔒';
             btn.className = `toolbar-chip ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
+            btn.classList.toggle('is-counting', isEditingUnlocked);
         }
 
         function applyEditingLockState() {
@@ -1136,6 +1181,10 @@
                 isEditingUnlocked = false;
                 sessionStorage.removeItem(EDIT_UNLOCK_FLAG_KEY);
                 sessionStorage.removeItem(EDIT_UNLOCK_EXPIRES_KEY);
+                if (editUnlockCountdownTimer) {
+                    clearInterval(editUnlockCountdownTimer);
+                    editUnlockCountdownTimer = null;
+                }
                 closeEditUnlockModal();
                 applyEditingLockState();
                 showToast(autoLocked ? '编辑已自动锁定' : '已重新锁定');
@@ -1270,6 +1319,7 @@
         function setCardSaveState(card, state) {
             if (!card) return;
             const pills = card.querySelectorAll('.draft-pill');
+            card.classList.remove('card-save-flash');
             pills.forEach(pill => {
                 pill.classList.remove('hidden', 'is-saved', 'is-error');
                 if (state === 'hidden') {
@@ -1294,6 +1344,14 @@
             if (!card) return;
             card.dataset.isDraft = '1';
             setCardSaveState(card, 'dirty');
+        }
+
+        function flashCardSaved(card) {
+            if (!card) return;
+            card.classList.remove('card-save-flash');
+            void card.offsetWidth;
+            card.classList.add('card-save-flash');
+            setTimeout(() => card.classList.remove('card-save-flash'), 950);
         }
 
         // 添加卡片
@@ -1968,11 +2026,10 @@
                 if (result.success) {
                     el.dataset.isDraft = '0';
                     setCardSaveState(el, 'saved');
-                    el.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+                    flashCardSaved(el);
                     sortCards();
                     updatePagination();
                     setTimeout(() => setCardSaveState(el, 'hidden'), 1500);
-                    setTimeout(() => el.style.backgroundColor = '', 500);
                 }
             } catch (e) {
                 console.error('保存失败:', e);

@@ -395,6 +395,11 @@
         .mobile-action-sheet.hidden {
             display: none;
         }
+        #mobileFundActions.hidden,
+        #mobileStockActions.hidden,
+        #mobileDeleteFundAction.hidden {
+            display: none !important;
+        }
         .mobile-action-panel {
             width: 100%;
             max-width: 32rem;
@@ -966,13 +971,11 @@
                     <button onclick="runSheetAction('history')" class="mobile-sheet-btn text-amber-500">📋 <span>记录</span></button>
                     <button onclick="runSheetAction('add')" class="mobile-sheet-btn text-indigo-500">➕ <span>加仓</span></button>
                     <button onclick="runSheetAction('reduce')" class="mobile-sheet-btn text-rose-500">➖ <span>减仓</span></button>
-                    <button onclick="runSheetAction('save')" class="mobile-sheet-btn text-emerald-500">💾 <span>保存</span></button>
-                </div>
-                <div id="mobileStockActions" class="grid grid-cols-2 gap-2 mb-3 hidden">
-                    <button onclick="runSheetAction('save')" class="mobile-sheet-btn text-emerald-500">💾 <span>保存</span></button>
                     <button onclick="runSheetAction('delete')" class="mobile-sheet-btn text-rose-500">✕ <span>删除</span></button>
                 </div>
-                <button onclick="runSheetAction('delete')" class="mobile-sheet-btn text-rose-500 mb-3" id="mobileDeleteFundAction">✕ <span>删除</span></button>
+                <div id="mobileStockActions" class="grid grid-cols-2 gap-2 mb-3 hidden">
+                    <button onclick="runSheetAction('delete')" class="mobile-sheet-btn text-rose-500">✕ <span>删除</span></button>
+                </div>
                 <button onclick="closeMobileActionSheet()" class="mobile-sheet-btn text-[var(--text-muted)]">关闭</button>
             </div>
         </div>
@@ -1327,8 +1330,7 @@
                     return;
                 }
                 if (state === 'saved') {
-                    pill.textContent = '已保存';
-                    pill.classList.add('is-saved');
+                    pill.classList.add('hidden');
                     return;
                 }
                 if (state === 'error') {
@@ -1378,7 +1380,10 @@
                                 <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="markCardDirty(this.closest('[data-id]')); handleCodeInput(this)">
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <button onclick="openMobileActionSheet(this.closest('[data-id]'))" class="mobile-compact-action" title="操作">⋯<span>操作</span></button>
+                                <button onclick="saveRow(this.closest('[data-id]'))" class="mobile-compact-action" title="保存">💾</button>
+                                ${item.isFund
+                                    ? `<button onclick="openMobileActionSheet(this.closest('[data-id]'))" class="mobile-compact-action" title="操作">⋯<span>操作</span></button>`
+                                    : `<button onclick="deleteRow(this.closest('[data-id]'))" class="mobile-compact-action text-rose-500" title="删除">🗑</button>`}
                             </div>
                         </div>
                     </div>
@@ -1774,7 +1779,6 @@
 
             document.getElementById('mobileActionSheetName').innerText = name;
             document.getElementById('mobileFundActions').classList.toggle('hidden', !isFund);
-            document.getElementById('mobileDeleteFundAction').classList.toggle('hidden', !isFund);
             document.getElementById('mobileStockActions').classList.toggle('hidden', isFund);
             document.getElementById('mobileActionSheet').classList.remove('hidden');
         }

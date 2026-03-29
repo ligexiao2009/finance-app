@@ -1392,6 +1392,7 @@
 
         // 切换境外基金标记
         function toggleOverseas(row) {
+            if (!canEditOrNotify()) return;
             const starBtn = row.querySelector('.star-btn');
             const isOverseas = starBtn.classList.contains('text-yellow-400');
             if (isOverseas) {

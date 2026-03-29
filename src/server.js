@@ -10,6 +10,8 @@ const { servePublicFile } = require('./utils/static-files');
 
 const PORT = 3000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
+const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
+const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);
 const responseCache = new Map();
 
 function invalidateCache(...keys) {
@@ -24,10 +26,11 @@ function invalidateCacheByPrefix(prefix) {
   }
 }
 
-async function getCachedJsonResponse(cacheKey, producer) {
+async function getCachedJsonResponse(cacheKey, producer, options = {}) {
+  const { ttlMs = DATA_CACHE_TTL_MS, bypassCache = false } = options;
   const now = Date.now();
   const cached = responseCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
+  if (!bypassCache && cached && cached.expiresAt > now) {
     return cached;
   }
 
@@ -35,7 +38,7 @@ async function getCachedJsonResponse(cacheKey, producer) {
   const payload = JSON.stringify(data);
   const etag = `"${crypto.createHash('sha1').update(payload).digest('hex')}"`;
   const nextCache = {
-    expiresAt: now + DATA_CACHE_TTL_MS,
+    expiresAt: now + ttlMs,
     etag,
     payload,
   };
@@ -44,8 +47,8 @@ async function getCachedJsonResponse(cacheKey, producer) {
   return nextCache;
 }
 
-async function sendCachedJson(req, res, cacheKey, producer) {
-  const cached = await getCachedJsonResponse(cacheKey, producer);
+async function sendCachedJson(req, res, cacheKey, producer, options = {}) {
+  const cached = await getCachedJsonResponse(cacheKey, producer, options);
   if (req.headers['if-none-match'] === cached.etag) {
     res.writeHead(304, {
       'Cache-Control': 'private, max-age=0, must-revalidate',
@@ -61,6 +64,95 @@ async function sendCachedJson(req, res, cacheKey, producer) {
     'ETag': cached.etag,
   });
   res.end(cached.payload);
+}
+
+function buildQuoteSymbol(code, isFund) {
+  const normalizedCode = String(code || '').trim();
+  if (!normalizedCode) return '';
+  if (normalizedCode.length === 5) return `hk${normalizedCode}`;
+  if (isFund) return `jj${normalizedCode}`;
+  return /^[569]/.test(normalizedCode) ? `sh${normalizedCode}` : `sz${normalizedCode}`;
+}
+
+function parseFundPriceDate(parts) {
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] && /^\d{4}[-]?\d{2}[-]?\d{2}$/.test(parts[i])) {
+      return parts[i].replace(/-/g, '');
+    }
+  }
+  return '';
+}
+
+function parseQuoteResponse(text) {
+  const result = new Map();
+  const lines = String(text || '').split('\n');
+
+  for (const line of lines) {
+    const match = line.match(/^v_(.+?)="(.*)";?$/);
+    if (!match) continue;
+    const variableName = match[1];
+    const raw = match[2];
+    if (!raw || raw.indexOf('~') === -1) continue;
+    result.set(variableName, raw.split('~'));
+  }
+
+  return result;
+}
+
+async function decodeQtResponse(response) {
+  const buffer = await response.arrayBuffer();
+  return new TextDecoder('gb18030').decode(buffer);
+}
+
+async function fetchQuotesBatch(items) {
+  const normalizedItems = [];
+  const seen = new Set();
+
+  for (const item of items || []) {
+    const code = String(item.code || '').trim();
+    if (!code) continue;
+    const isFund = item.isFund === true || item.isFund === 'true' || item.isFund === 1 || item.isFund === '1';
+    const cacheKey = `${code}:${isFund ? 1 : 0}`;
+    if (seen.has(cacheKey)) continue;
+    seen.add(cacheKey);
+    normalizedItems.push({
+      code,
+      isFund,
+      symbol: buildQuoteSymbol(code, isFund),
+      key: cacheKey,
+    });
+  }
+
+  const quotes = {};
+  for (let i = 0; i < normalizedItems.length; i += QUOTES_BATCH_SIZE) {
+    const batch = normalizedItems.slice(i, i + QUOTES_BATCH_SIZE);
+    if (!batch.length) continue;
+
+    const query = batch.map(item => `s_${item.symbol}`).join(',');
+
+    try {
+      const response = await fetch(`https://qt.gtimg.cn/q=${query}`);
+      const text = await decodeQtResponse(response);
+      const parsed = parseQuoteResponse(text);
+
+      batch.forEach(item => {
+        const parts = parsed.get(`s_${item.symbol}`);
+        if (!parts) return;
+        quotes[item.key] = {
+          code: item.code,
+          isFund: item.isFund,
+          name: item.isFund ? (parts[1] ? parts[1].replace('[基金] ', '') : '') : (parts[1] || ''),
+          price: parseFloat(parts[3]) || 0,
+          change: parseFloat(parts[5]) || 0,
+          priceDate: item.isFund ? parseFundPriceDate(parts) : '',
+        };
+      });
+    } catch (error) {
+      console.error('批量获取行情失败:', error.message);
+    }
+  }
+
+  return quotes;
 }
 
 // ==================== 配置部分 ====================
@@ -184,7 +276,7 @@ async function fetchStockPrice(code) {
     }
     const url = `https://qt.gtimg.cn/q=s_${sym}`;
     const response = await fetch(url);
-    const text = await response.text();
+    const text = await decodeQtResponse(response);
 
     if (text && text.indexOf('~') > -1) {
       const parts = text.split('~');
@@ -206,7 +298,7 @@ async function fetchFundNetValue(code) {
     const sym = 'jj' + code;
     const url = `https://qt.gtimg.cn/q=s_${sym}`;
     const response = await fetch(url);
-    const text = await response.text();
+    const text = await decodeQtResponse(response);
 
     if (text && text.indexOf('~') > -1) {
       const parts = text.split('~');
@@ -549,6 +641,7 @@ async function autoConfirmPendingTrades() {
   if (confirmedCount > 0) {
     invalidateCache('app-settings', 'data', 'pending-trades', 'trade-history');
     invalidateCacheByPrefix('trade-history:');
+    invalidateCacheByPrefix('quotes:');
     console.log(`\n自动确认完成！共确认 ${confirmedCount} 笔交易`);
   } else {
     console.log(`\n没有需要确认的交易`);
@@ -689,6 +782,48 @@ const server = http.createServer(async (req, res) => {
     autoConfirmPendingTrades();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ success: true, message: '自动确认交易已触发' }));
+    return;
+  }
+
+  if (req.method === 'GET' && req.url.startsWith('/api/quotes')) {
+    try {
+      const requestUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const fresh = requestUrl.searchParams.get('fresh') === '1';
+      const itemsParam = requestUrl.searchParams.get('items');
+
+      let items;
+      if (itemsParam) {
+        items = itemsParam
+          .split(',')
+          .map(entry => entry.trim())
+          .filter(Boolean)
+          .map(entry => {
+            const [code, isFundFlag] = entry.split(':');
+            return { code, isFund: isFundFlag === '1' };
+          });
+      } else {
+        const rows = await db.getPositions();
+        items = rows.map(row => ({ code: row.code, isFund: row.isFund }));
+      }
+
+      const normalizedCacheKey = items
+        .map(item => `${String(item.code || '').trim()}:${item.isFund ? 1 : 0}`)
+        .filter(Boolean)
+        .sort()
+        .join(',');
+
+      await sendCachedJson(req, res, `quotes:${normalizedCacheKey}`, async () => ({
+        quotes: await fetchQuotesBatch(items),
+        updatedAt: Date.now(),
+      }), {
+        ttlMs: QUOTES_CACHE_TTL_MS,
+        bypassCache: fresh,
+      });
+    } catch (error) {
+      console.error('Error getting quotes:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get quotes' }));
+    }
     return;
   }
 
@@ -959,6 +1094,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         invalidateCache('data');
+        invalidateCacheByPrefix('quotes:');
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -1000,6 +1136,7 @@ const server = http.createServer(async (req, res) => {
 
         if (deleted) {
           invalidateCache('data');
+          invalidateCacheByPrefix('quotes:');
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });

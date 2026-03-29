@@ -1488,7 +1488,6 @@
                 stockBody.appendChild(tr);
             }
             applyEditingLockState();
-            if(item.code) fetchPrice(tr, item.code);
             updatePagination();
 
             // 如果是新添加的行（没有code），自动聚焦到代码输入框
@@ -1603,116 +1602,127 @@
             }
         }
 
-        function fetchPrice(row, code) {
-            const isF = row.dataset.isFund === 'true';
-            let sym = code.length === 5 ? 'hk' + code : (isF ? 'jj' + code : ((/^[569]/.test(code)) ? 'sh' + code : 'sz' + code));
+        function adjustFundPriceDate(priceDate, isOverseas) {
+            if (!priceDate || !isOverseas || priceDate.length !== 8) return priceDate || '';
+            const year = parseInt(priceDate.substr(0, 4), 10);
+            const month = parseInt(priceDate.substr(4, 2), 10) - 1;
+            const day = parseInt(priceDate.substr(6, 2), 10);
+            const date = new Date(year, month, day);
+            date.setDate(date.getDate() + 1);
+            return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+        }
 
-            const apiType = isF ? 's_' : 's_';
-            const vn = "v_" + apiType + sym;
-            const s = document.createElement('script');
-            s.src = `https://qt.gtimg.cn/q=${apiType}${sym}&_=${Math.random()}`;
-            s.onload = function() {
-                if (window[vn]) {
-                    const d = window[vn].split('~');
-                    row.querySelector('.stock-name').innerText = d[1].replace('[基金] ', '');
+        function getFundUpdateMeta(priceDate, isOverseas) {
+            const normalizedDate = adjustFundPriceDate(priceDate, isOverseas);
+            const now = new Date();
+            const todayStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+            const dayBefore = new Date(now);
+            dayBefore.setDate(dayBefore.getDate() - 2);
+            const dayBeforeStr = dayBefore.getFullYear().toString() + (dayBefore.getMonth() + 1).toString().padStart(2, '0') + dayBefore.getDate().toString().padStart(2, '0');
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
 
-                    let priceText = '¥' + parseFloat(d[3]).toFixed(3);
-                    let priceDate = '';
+            let showUpdated = false;
+            let labelText = '已更新';
 
-                    if (isF) {
-                        // 搜索所有字段查找日期格式 (YYYYMMDD 或 YYYY-MM-DD)
-                        for (let i = 0; i < d.length; i++) {
-                            if (d[i] && /^\d{4}[-]?\d{2}[-]?\d{2}$/.test(d[i])) {
-                                priceDate = d[i].replace(/-/g, '');
-                                break;
-                            }
-                        }
-
-                        // QDII 境外基金特殊处理：日期 +1 天
-                        const isOverseas = row.dataset.isOverseas === '1';
-                        if (isOverseas) {
-                            if (priceDate && priceDate.length === 8) {
-                                const year = parseInt(priceDate.substr(0, 4));
-                                const month = parseInt(priceDate.substr(4, 2)) - 1;
-                                const day = parseInt(priceDate.substr(6, 2));
-                                const date = new Date(year, month, day);
-                                date.setDate(date.getDate() + 1);
-                                const y = date.getFullYear();
-                                const m = (date.getMonth() + 1).toString().padStart(2, '0');
-                                const d = date.getDate().toString().padStart(2, '0');
-                                priceDate = `${y}${m}${d}`;
-                            }
-                        }
-
-                        const now = new Date();
-                        const todayStr = now.getFullYear().toString() +
-                                         (now.getMonth() + 1).toString().padStart(2, '0') +
-                                         now.getDate().toString().padStart(2, '0');
-
-                        const yesterday = new Date(now);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const yesterdayStr = yesterday.getFullYear().toString() +
-                                              (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                              yesterday.getDate().toString().padStart(2, '0');
-
-                        const dayBefore = new Date(now);
-                        dayBefore.setDate(dayBefore.getDate() - 2);
-                        const dayBeforeStr = dayBefore.getFullYear().toString() +
-                                              (dayBefore.getMonth() + 1).toString().padStart(2, '0') +
-                                              dayBefore.getDate().toString().padStart(2, '0');
-
-                        const hour = now.getHours();
-                        const minute = now.getMinutes();
-                        let showUpdated = false;
-                        let labelText = '已更新';
-
-                        // 判断是否是交易日的上午（9:30-15:00）
-                        const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
-
-                        if (priceDate) {
-                            if (priceDate === todayStr) {
-                                // 今天的数据
-                                showUpdated = true;
-                                labelText = '已更新';
-                            } else if (priceDate === yesterdayStr) {
-                                // 昨天的数据
-                                if (isTradingMorning) {
-                                    // 交易日上午（9:30-15:00）：昨天的数据算未更新
-                                    showUpdated = false;
-                                    labelText = '待更新';
-                                } else {
-                                    // 其他时间：15点前算已更新，15点后显示昨日净值
-                                    showUpdated = hour < 15;
-                                    labelText = hour < 15 ? '已更新' : '昨日净值';
-                                }
-                            } else if (priceDate === dayBeforeStr) {
-                                // 前天的数据（周末或节假日）
-                                showUpdated = true;
-                                labelText = '已更新';
-                            }
-                        }
-
-                        if (showUpdated) {
-                            const badgeText = labelText === '昨日净值' ? '昨' : '今';
-                            const badgeClass = labelText === '昨日净值'
-                                ? 'price-status-badge price-status-badge-neutral'
-                                : 'price-status-badge price-status-badge-success';
-                            priceText += `<span class="${badgeClass}">${badgeText}</span>`;
-                        } else if (priceDate) {
-                            priceText += `<span class="price-status-badge price-status-badge-warn">待更</span>`;
-                        }
-                        row.dataset.isTodayUpdated = showUpdated ? '1' : '0';
-                    }
-
-                    row.querySelector('.price-cell').innerHTML = priceText;
-                    row.dataset.price = d[3]; row.dataset.change = d[5] || 0;
-                    row.dataset.priceDate = priceDate || '';
-                    saveAndCalculate();
-                    updateNetValueStatus();
+            if (normalizedDate === todayStr) {
+                showUpdated = true;
+            } else if (normalizedDate === yesterdayStr) {
+                if (isTradingMorning) {
+                    labelText = '待更新';
+                } else {
+                    showUpdated = hour < 15;
+                    labelText = hour < 15 ? '已更新' : '昨日净值';
                 }
-                document.body.removeChild(s); delete window[vn];
-            };
-            document.body.appendChild(s);
+            } else if (normalizedDate === dayBeforeStr) {
+                showUpdated = true;
+            }
+
+            return { priceDate: normalizedDate, showUpdated, labelText };
+        }
+
+        function applyQuoteToRow(row, quote) {
+            if (!row || !quote) return;
+            row.querySelector('.stock-name').innerText = quote.name || '正在获取...';
+
+            const isFund = row.dataset.isFund === 'true';
+            let priceText = '¥' + parseFloat(quote.price || 0).toFixed(3);
+            let priceDate = '';
+
+            if (isFund) {
+                const meta = getFundUpdateMeta(quote.priceDate || '', row.dataset.isOverseas === '1');
+                priceDate = meta.priceDate;
+                if (meta.showUpdated) {
+                    const badgeText = meta.labelText === '昨日净值' ? '昨' : '今';
+                    const badgeClass = meta.labelText === '昨日净值'
+                        ? 'price-status-badge price-status-badge-neutral'
+                        : 'price-status-badge price-status-badge-success';
+                    priceText += `<span class="${badgeClass}">${badgeText}</span>`;
+                } else if (priceDate) {
+                    priceText += `<span class="price-status-badge price-status-badge-warn">待更</span>`;
+                }
+                row.dataset.isTodayUpdated = meta.showUpdated ? '1' : '0';
+            } else {
+                row.dataset.isTodayUpdated = '1';
+            }
+
+            row.querySelector('.price-cell').innerHTML = priceText;
+            row.dataset.price = quote.price || 0;
+            row.dataset.change = quote.change || 0;
+            row.dataset.priceDate = priceDate;
+        }
+
+        function buildQuoteItemsFromRows(rows) {
+            const seen = new Set();
+            return rows.map(row => {
+                const code = row.querySelector('.code-input')?.value?.trim();
+                const isFund = row.dataset.isFund === 'true';
+                const key = `${code}:${isFund ? 1 : 0}`;
+                if (!code || seen.has(key)) return null;
+                seen.add(key);
+                return { code, isFund };
+            }).filter(Boolean);
+        }
+
+        async function loadQuotesForRows(rows, options = {}) {
+            const { fresh = false } = options;
+            const items = buildQuoteItemsFromRows(rows);
+            if (!items.length) {
+                saveAndCalculate();
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('items', items.map(item => `${item.code}:${item.isFund ? 1 : 0}`).join(','));
+            if (fresh) params.set('fresh', '1');
+
+            const response = await fetch(`${API_BASE_URL}/api/quotes?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`quotes request failed: ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const quotes = payload?.quotes || {};
+            rows.forEach(row => {
+                const code = row.querySelector('.code-input')?.value?.trim();
+                const isFund = row.dataset.isFund === 'true';
+                applyQuoteToRow(row, quotes[`${code}:${isFund ? 1 : 0}`]);
+            });
+            saveAndCalculate();
+            updateNetValueStatus();
+        }
+
+        async function fetchPrice(row, code) {
+            if (!row || !code) return;
+            try {
+                await loadQuotesForRows([row], { fresh: true });
+            } catch (error) {
+                console.error('获取价格失败:', code, error);
+            }
         }
 
         function updateNetValueStatus() {
@@ -2088,18 +2098,21 @@
             saveAndCalculate();
         }
 
-        function refreshAllPrices() {
-            document.getElementById('refreshIcon').classList.add('refresh-spin');
-            // 刷新当前页的行
-            document.querySelectorAll('#stockBody tr').forEach(r => {
-                const code = r.querySelector('.code-input').value;
-                if(code) fetchPrice(r, code);
-            });
-            setTimeout(() => {
-                document.getElementById('refreshIcon').classList.remove('refresh-spin');
-                const seconds = parseInt(document.getElementById('autoRefreshSelect').value);
-                if(seconds > 0) remainingSeconds = seconds;
-            }, 1000);
+        async function refreshAllPrices(fresh = true, silent = false) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (!silent) refreshIcon.classList.add('refresh-spin');
+            try {
+                const rows = Array.from(document.querySelectorAll('#stockBody tr'));
+                await loadQuotesForRows(rows, { fresh });
+            } catch (error) {
+                console.error('批量刷新价格失败:', error);
+            } finally {
+                setTimeout(() => {
+                    if (!silent) refreshIcon.classList.remove('refresh-spin');
+                    const seconds = parseInt(document.getElementById('autoRefreshSelect').value);
+                    if(seconds > 0) remainingSeconds = seconds;
+                }, silent ? 0 : 300);
+            }
         }
 
         function switchTab(t) {
@@ -2491,6 +2504,7 @@
                 addRow({code:'300058', name:'蓝色光标', shares:100, cost:14.51, isFund:false, planBuy:0}, false);
             }
             switchTab('all');
+            await refreshAllPrices(false, true);
             applyEditingLockState();
             setupAutoRefresh();
             updatePendingTradeBanner();

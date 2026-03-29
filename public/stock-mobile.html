@@ -1805,7 +1805,6 @@
             updateCompactModeUI();
             updateSortButton();
             setCardSaveState(card, item.code ? 'hidden' : 'dirty');
-            if(item.code) fetchPrice(card, item.code);
             updatePagination();
 
             // 如果是新添加的卡片（没有code），自动聚焦到代码输入框
@@ -1920,128 +1919,138 @@
             }
         }
 
-        function fetchPrice(card, code) {
-            const isF = card.dataset.isFund === 'true';
-            let sym = code.length === 5 ? 'hk' + code : (isF ? 'jj' + code : ((/^[569]/.test(code)) ? 'sh' + code : 'sz' + code));
+        function adjustFundPriceDate(priceDate, isOverseas) {
+            if (!priceDate || !isOverseas || priceDate.length !== 8) return priceDate || '';
+            const year = parseInt(priceDate.substr(0, 4), 10);
+            const month = parseInt(priceDate.substr(4, 2), 10) - 1;
+            const day = parseInt(priceDate.substr(6, 2), 10);
+            const date = new Date(year, month, day);
+            date.setDate(date.getDate() + 1);
+            return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+        }
 
-            const apiType = isF ? 's_' : 's_';
-            const vn = "v_" + apiType + sym;
-            const s = document.createElement('script');
-            s.src = `https://qt.gtimg.cn/q=${apiType}${sym}&_=${Math.random()}`;
-            s.onload = function() {
-                if (window[vn]) {
-                    const d = window[vn].split('~');
-                    card.querySelector('.stock-name').innerText = d[1].replace('[基金] ', '');
-                    const compactNameEl = card.querySelector('.compact-name');
-                    if (compactNameEl) compactNameEl.innerText = d[1].replace('[基金] ', '');
+        function getFundUpdateMeta(priceDate, isOverseas) {
+            const normalizedDate = adjustFundPriceDate(priceDate, isOverseas);
+            const now = new Date();
+            const todayStr = now.getFullYear().toString() + (now.getMonth() + 1).toString().padStart(2, '0') + now.getDate().toString().padStart(2, '0');
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+            const dayBefore = new Date(now);
+            dayBefore.setDate(dayBefore.getDate() - 2);
+            const dayBeforeStr = dayBefore.getFullYear().toString() + (dayBefore.getMonth() + 1).toString().padStart(2, '0') + dayBefore.getDate().toString().padStart(2, '0');
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
 
-                    let priceText = '¥' + parseFloat(d[3]).toFixed(3);
-                    let priceDate = '';
+            let showUpdated = false;
+            let labelText = '已更新';
 
-                    if (isF) {
-                        // 搜索所有字段查找日期格式 (YYYYMMDD 或 YYYY-MM-DD)
-                        for (let i = 0; i < d.length; i++) {
-                            if (d[i] && /^\d{4}[-]?\d{2}[-]?\d{2}$/.test(d[i])) {
-                                priceDate = d[i].replace(/-/g, '');
-                                break;
-                            }
-                        }
-
-                        // QDII 境外基金特殊处理：日期 +1 天
-                        const isOverseas = card.dataset.isOverseas === '1';
-                        if (isOverseas) {
-                            if (priceDate && priceDate.length === 8) {
-                                const year = parseInt(priceDate.substr(0, 4));
-                                const month = parseInt(priceDate.substr(4, 2)) - 1;
-                                const day = parseInt(priceDate.substr(6, 2));
-                                const date = new Date(year, month, day);
-                                date.setDate(date.getDate() + 1);
-                                const y = date.getFullYear();
-                                const m = (date.getMonth() + 1).toString().padStart(2, '0');
-                                const d = date.getDate().toString().padStart(2, '0');
-                                priceDate = `${y}${m}${d}`;
-                            }
-                        }
-
-                        const now = new Date();
-                        const todayStr = now.getFullYear().toString() +
-                                         (now.getMonth() + 1).toString().padStart(2, '0') +
-                                         now.getDate().toString().padStart(2, '0');
-
-                        const yesterday = new Date(now);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const yesterdayStr = yesterday.getFullYear().toString() +
-                                              (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                              yesterday.getDate().toString().padStart(2, '0');
-
-                        const dayBefore = new Date(now);
-                        dayBefore.setDate(dayBefore.getDate() - 2);
-                        const dayBeforeStr = dayBefore.getFullYear().toString() +
-                                              (dayBefore.getMonth() + 1).toString().padStart(2, '0') +
-                                              dayBefore.getDate().toString().padStart(2, '0');
-
-                        const hour = now.getHours();
-                        const minute = now.getMinutes();
-                        let showUpdated = false;
-                        let labelText = '已更新';
-
-                        // 判断是否是交易日的上午（9:30-15:00）
-                        const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
-
-                        if (priceDate) {
-                            if (priceDate === todayStr) {
-                                // 今天的数据
-                                showUpdated = true;
-                                labelText = '已更新';
-                            } else if (priceDate === yesterdayStr) {
-                                // 昨天的数据
-                                if (isTradingMorning) {
-                                    // 交易日上午（9:30-15:00）：昨天的数据算未更新
-                                    showUpdated = false;
-                                    labelText = '待更新';
-                                } else {
-                                    // 其他时间：15点前算已更新，15点后显示昨日净值
-                                    showUpdated = hour < 15;
-                                    labelText = hour < 15 ? '已更新' : '昨日净值';
-                                }
-                            } else if (priceDate === dayBeforeStr) {
-                                // 前天的数据（周末或节假日）
-                                showUpdated = true;
-                                labelText = '已更新';
-                            }
-                        }
-
-                        const statusEl = card.querySelector('.price-status');
-                        if (statusEl) {
-                            if (isF) {
-                                statusEl.classList.remove('is-hidden');
-                                if (showUpdated) {
-                                    statusEl.innerText = labelText;
-                                    statusEl.className = 'price-status status-badge status-badge-success shrink-0';
-                                } else if (priceDate) {
-                                    statusEl.innerText = '待更新';
-                                    statusEl.className = 'price-status status-badge status-badge-warn shrink-0';
-                                } else {
-                                    statusEl.innerText = '--';
-                                    statusEl.className = 'price-status status-badge status-badge-neutral shrink-0';
-                                }
-                            } else {
-                                statusEl.innerText = '';
-                                statusEl.className = 'price-status is-hidden';
-                            }
-                        }
-                        card.dataset.isTodayUpdated = showUpdated ? '1' : '0';
-                    }
-
-                    card.querySelector('.price-cell').innerText = priceText;
-                    card.dataset.price = d[3]; card.dataset.change = d[5] || 0;
-                    card.dataset.priceDate = priceDate || '';
-                    saveAndCalculate();
-                    updateNetValueStatus();
+            if (normalizedDate === todayStr) {
+                showUpdated = true;
+            } else if (normalizedDate === yesterdayStr) {
+                if (isTradingMorning) {
+                    labelText = '待更新';
+                } else {
+                    showUpdated = hour < 15;
+                    labelText = hour < 15 ? '已更新' : '昨日净值';
                 }
-                document.body.removeChild(s); delete window[vn];
-            };
-            document.body.appendChild(s);
+            } else if (normalizedDate === dayBeforeStr) {
+                showUpdated = true;
+            }
+
+            return { priceDate: normalizedDate, showUpdated, labelText };
+        }
+
+        function applyQuoteToCard(card, quote) {
+            if (!card || !quote) return;
+            card.querySelector('.stock-name').innerText = quote.name || '正在获取...';
+            const compactNameEl = card.querySelector('.compact-name');
+            if (compactNameEl) compactNameEl.innerText = quote.name || '正在获取...';
+
+            const isFund = card.dataset.isFund === 'true';
+            let priceDate = '';
+
+            if (isFund) {
+                const meta = getFundUpdateMeta(quote.priceDate || '', card.dataset.isOverseas === '1');
+                priceDate = meta.priceDate;
+                const statusEl = card.querySelector('.price-status');
+                if (statusEl) {
+                    statusEl.classList.remove('is-hidden');
+                    if (meta.showUpdated) {
+                        statusEl.innerText = meta.labelText;
+                        statusEl.className = 'price-status status-badge status-badge-success shrink-0';
+                    } else if (priceDate) {
+                        statusEl.innerText = '待更新';
+                        statusEl.className = 'price-status status-badge status-badge-warn shrink-0';
+                    } else {
+                        statusEl.innerText = '--';
+                        statusEl.className = 'price-status status-badge status-badge-neutral shrink-0';
+                    }
+                }
+                card.dataset.isTodayUpdated = meta.showUpdated ? '1' : '0';
+            } else {
+                const statusEl = card.querySelector('.price-status');
+                if (statusEl) {
+                    statusEl.innerText = '';
+                    statusEl.className = 'price-status is-hidden';
+                }
+                card.dataset.isTodayUpdated = '1';
+            }
+
+            card.querySelector('.price-cell').innerText = '¥' + parseFloat(quote.price || 0).toFixed(3);
+            card.dataset.price = quote.price || 0;
+            card.dataset.change = quote.change || 0;
+            card.dataset.priceDate = priceDate;
+        }
+
+        function buildQuoteItemsFromCards(cards) {
+            const seen = new Set();
+            return cards.map(card => {
+                const code = card.querySelector('.code-input')?.value?.trim();
+                const isFund = card.dataset.isFund === 'true';
+                const key = `${code}:${isFund ? 1 : 0}`;
+                if (!code || seen.has(key)) return null;
+                seen.add(key);
+                return { code, isFund };
+            }).filter(Boolean);
+        }
+
+        async function loadQuotesForCards(cards, options = {}) {
+            const { fresh = false } = options;
+            const items = buildQuoteItemsFromCards(cards);
+            if (!items.length) {
+                saveAndCalculate();
+                return;
+            }
+
+            const params = new URLSearchParams();
+            params.set('items', items.map(item => `${item.code}:${item.isFund ? 1 : 0}`).join(','));
+            if (fresh) params.set('fresh', '1');
+
+            const response = await fetch(`${API_BASE_URL}/api/quotes?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`quotes request failed: ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const quotes = payload?.quotes || {};
+            cards.forEach(card => {
+                const code = card.querySelector('.code-input')?.value?.trim();
+                const isFund = card.dataset.isFund === 'true';
+                applyQuoteToCard(card, quotes[`${code}:${isFund ? 1 : 0}`]);
+            });
+            saveAndCalculate();
+            updateNetValueStatus();
+        }
+
+        async function fetchPrice(card, code) {
+            if (!card || !code) return;
+            try {
+                await loadQuotesForCards([card], { fresh: true });
+            } catch (error) {
+                console.error('获取价格失败:', code, error);
+            }
         }
 
         function updateNetValueStatus() {
@@ -2533,21 +2542,24 @@
             saveAndCalculate();
         }
 
-        function refreshAllPrices() {
-            document.getElementById('refreshIcon').classList.add('refresh-spin');
-            // 刷新当前页的卡片
-            document.querySelectorAll('#stockBody [data-id]').forEach(r => {
-                const code = r.querySelector('.code-input').value;
-                if(code) fetchPrice(r, code);
-            });
-            setTimeout(() => {
-                document.getElementById('refreshIcon').classList.remove('refresh-spin');
-                const selectEl = document.getElementById('autoRefreshSelect');
-                if (selectEl) {
-                    const seconds = parseInt(selectEl.value);
-                    if(seconds > 0) remainingSeconds = seconds;
-                }
-            }, 1000);
+        async function refreshAllPrices(fresh = true, silent = false) {
+            const refreshIcon = document.getElementById('refreshIcon');
+            if (!silent) refreshIcon.classList.add('refresh-spin');
+            try {
+                const cards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
+                await loadQuotesForCards(cards, { fresh });
+            } catch (error) {
+                console.error('批量刷新价格失败:', error);
+            } finally {
+                setTimeout(() => {
+                    if (!silent) refreshIcon.classList.remove('refresh-spin');
+                    const selectEl = document.getElementById('autoRefreshSelect');
+                    if (selectEl) {
+                        const seconds = parseInt(selectEl.value);
+                        if(seconds > 0) remainingSeconds = seconds;
+                    }
+                }, silent ? 0 : 300);
+            }
         }
 
         function switchTab(t) {
@@ -2708,6 +2720,7 @@
             }
 
             switchTab('all');
+            await refreshAllPrices(false, true);
             applyEditingLockState();
             updateSortButton();
             setupAutoRefresh();

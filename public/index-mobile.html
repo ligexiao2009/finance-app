@@ -397,7 +397,8 @@
         }
         #mobileFundActions.hidden,
         #mobileStockActions.hidden,
-        #mobileDeleteFundAction.hidden {
+        #mobileDeleteFundAction.hidden,
+        #deleteConfirmModal.hidden {
             display: none !important;
         }
         .mobile-action-panel {
@@ -958,6 +959,27 @@
             </div>
         </div>
 
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl">
+                <div class="flex justify-between items-start gap-4 mb-5">
+                    <div>
+                        <div class="unlock-badge mb-3">删除确认</div>
+                        <h3 class="modal-title">确定要删除这条记录吗？</h3>
+                        <div id="deleteConfirmName" class="unlock-status-note mt-2"></div>
+                    </div>
+                    <button onclick="closeDeleteConfirmModal()" class="text-[var(--text-muted)] hover:text-white text-2xl leading-none">&times;</button>
+                </div>
+                <div class="rounded-2xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-sm text-[var(--text-muted)]">
+                    删除后会同时移除本地缓存和后端记录，无法恢复。
+                </div>
+                <div class="flex gap-3 pt-5">
+                    <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button id="deleteConfirmSubmitBtn" onclick="confirmDeleteRow()" class="flex-1 py-3 rounded-xl font-black text-sm bg-rose-600 hover:bg-rose-500 text-white">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
         <div id="mobileActionSheet" class="mobile-action-sheet hidden" onclick="closeMobileActionSheet()">
             <div class="mobile-action-panel" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-between mb-4">
@@ -979,7 +1001,6 @@
                 <button onclick="closeMobileActionSheet()" class="mobile-sheet-btn text-[var(--text-muted)]">关闭</button>
             </div>
         </div>
-    </div>
 
     <script src="./app-config.js"></script>
     <script>
@@ -1011,6 +1032,7 @@
         let pendingTradesCache = [];
         let localTradeHistory = null;
         let activeActionCardId = null;
+        let pendingDeleteCardId = null;
 
         function clearZero(input) {
             if (parseFloat(input.value) === 0) {
@@ -1489,7 +1511,14 @@
             }
             card.querySelectorAll('input, select, textarea').forEach(input => {
                 input.addEventListener('blur', () => {
-                    setTimeout(() => refreshMobileOrdering(), 0);
+                    setTimeout(() => {
+                        const nextActive = document.activeElement;
+                        const stillEditingThisCard = nextActive && card.contains(nextActive) &&
+                            /^(INPUT|SELECT|TEXTAREA)$/.test(nextActive.tagName);
+                        if (!stillEditingThisCard) {
+                            refreshMobileOrdering();
+                        }
+                    }, 0);
                 });
             });
             applyEditingLockState();
@@ -1788,6 +1817,38 @@
             document.getElementById('mobileActionSheet').classList.add('hidden');
         }
 
+        function openDeleteConfirmModal(card) {
+            if (!card) return;
+            pendingDeleteCardId = card.dataset.id;
+            const name = card.querySelector('.stock-name')?.innerText || '未命名标的';
+            const nameEl = document.getElementById('deleteConfirmName');
+            const modal = document.getElementById('deleteConfirmModal');
+            if (nameEl) nameEl.innerText = name;
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            pendingDeleteCardId = null;
+            const modal = document.getElementById('deleteConfirmModal');
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (modal) modal.classList.add('hidden');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
+        async function confirmDeleteRow() {
+            const card = pendingDeleteCardId
+                ? document.querySelector(`#stockBody [data-id="${pendingDeleteCardId}"]`)
+                : null;
+            if (!card) {
+                closeDeleteConfirmModal();
+                return;
+            }
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (submitBtn) submitBtn.disabled = true;
+            await performDeleteRow(card);
+            closeDeleteConfirmModal();
+        }
+
         function runSheetAction(action) {
             const card = activeActionCardId
                 ? document.querySelector(`#stockBody [data-id="${activeActionCardId}"]`)
@@ -2045,10 +2106,10 @@
 
         async function deleteRow(el) {
             if (!canEditOrNotify()) return;
-            if (!confirm('确定要删除这条记录吗？')) {
-                return;
-            }
+            openDeleteConfirmModal(el);
+        }
 
+        async function performDeleteRow(el) {
             const id = el.dataset.id;
             const code = el.querySelector('.code-input')?.value || '';
             const isFund = el.dataset.isFund === 'true';
@@ -2087,6 +2148,7 @@
                 console.error('删除失败:', e);
                 el.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                 setTimeout(() => el.style.backgroundColor = '', 500);
+                showToast('删除失败');
             }
         }
 

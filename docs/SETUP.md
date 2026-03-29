@@ -78,8 +78,8 @@ node scripts/migrate-data.js
 
 1. **`.env` 文件已添加到 `.gitignore`** - 不会提交到版本控制
 2. **连接字符串包含密码** - 不要分享或公开
-3. **Pages 测试说明** - 推送到 `dev` 分支后会触发 GitHub Pages 部署
-3. **如需重置密码** - 到 Supabase 控制台重置
+3. **Pages 测试说明** - 推送到 `dev` 分支后会重新触发 GitHub Pages 部署
+4. **如需重置密码** - 到 Supabase 控制台重置
 
 ## 📞 故障排除
 

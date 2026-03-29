@@ -11,7 +11,7 @@
     <title>持仓看板专业版 - Ultimate v2.1</title>
     <link rel="icon" type="image/png" href="./icon.png">
     <link rel="apple-touch-icon" href="./icon.png">
-    <link rel="stylesheet" href="./tailwind.generated.css">
+    <link rel="stylesheet" href="./found-tailwind.generated.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         :root {
@@ -29,6 +29,10 @@
             background-color: #f8fafc;
         }
         body { font-family: 'PingFang SC', sans-serif; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
+        .mobile-app-body {
+            padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem);
+            padding-bottom: max(env(safe-area-inset-bottom, 0px), 1.5rem);
+        }
         .mono { font-family: 'JetBrains Mono', monospace; }
         .up { color: var(--up-color) !important; font-weight: bold; } 
         .down { color: var(--down-color) !important; font-weight: bold; } 
@@ -803,7 +807,7 @@
         }
     </style>
 </head>
-<body class="py-6 light-mode text-base">
+<body class="mobile-app-body light-mode text-base">
     <div class="max-w-full mx-auto px-3">
 
         <!-- 顶部标题和快捷操作 -->

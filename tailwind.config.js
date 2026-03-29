@@ -1,7 +1,7 @@
 module.exports = {
   content: [
+    './public/stock.html',
     './public/index.html',
-    './public/index-mobile.html',
   ],
   theme: {
     extend: {},

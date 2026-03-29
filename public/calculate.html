@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="manifest" href="manifest.json">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="基金加仓分析">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>基金加仓分析</title>
+    <style>
+        :root {
+            --ios-blue: #007AFF;
+            --ios-red: #FF3B30;
+            --ios-green: #34C759;
+            --ios-bg: #F2F2F7;
+            --ios-card: #FFFFFF;
+            --ios-input: #E9E9EB;
+            --ios-label: #8E8E93;
+            --ios-orange: #FF9500;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background-color: var(--ios-bg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: env(safe-area-inset-top) 20px 40px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: var(--ios-card);
+            border-radius: 28px;
+            padding: 24px 20px;
+            margin-top: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+        }
+
+        h1 { font-size: 24px; font-weight: 800; margin: 4px 0 20px; letter-spacing: -0.5px; }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .label-text { font-size: 13px; font-weight: 600; color: var(--ios-label); margin-bottom: 6px; display: block; }
+
+        .input-field {
+            background: var(--ios-input);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #1C1C1E;
+            outline: none;
+            width: 100%;
+            -webkit-appearance: none;
+        }
+
+        .record-section {
+            background: #FFF9F2;
+            border-radius: 18px;
+            padding: 14px;
+            margin-bottom: 15px;
+        }
+
+        .orange-label { color: var(--ios-orange); font-size: 12px; font-weight: 700; margin-bottom: 8px; display: block; }
+
+        .record-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(255,149,0,0.05);
+        }
+
+        .card-del-btn {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 20px;
+            height: 20px;
+            background: #D1D1D6;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-add-outline {
+            width: 100%;
+            background: transparent;
+            color: var(--ios-orange);
+            border: 1.5px dashed #FFD6A5;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .res-panel { margin-top: 10px; border-top: 0.5px solid #F2F2F7; padding-top: 15px; }
+        .res-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; }
+        .res-row b { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16px; }
+
+        .reset-link {
+            text-align: center;
+            display: block;
+            margin-top: 20px;
+            color: var(--ios-label);
+            font-size: 13px;
+            text-decoration: none;
+            opacity: 0.8;
+        }
+        .single-gain, .single-loss { font-size: 11px; font-weight: 700; margin-left: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>基金加仓分析</h1>
+
+        <div class="input-grid">
+            <div class="input-box">
+                <span class="label-text">1. 当前市场价格</span>
+                <input type="number" id="currentPrice" class="input-field" value="1.0000" step="0.0001" oninput="calculate(true)">
+            </div>
+            <div class="input-box">
+                <span class="label-text">2. 持有总股数</span>
+                <input type="number" id="display_total_shares" class="input-field" value="0" readonly style="color:#8E8E93">
+            </div>
+        </div>
+
+        <div class="record-section">
+            <span class="orange-label">3. 历史买入记录</span>
+            <div id="buy-list"></div>
+            <button class="btn-add-outline" onclick="addRecord()">+ 添加成交记录</button>
+        </div>
+
+        <div class="res-panel">
+            <div class="res-row"><span>总投入成本</span><b id="res-totalA">¥0.00</b></div>
+            <div class="res-row"><span>平均持仓成本</span><b id="res-avgP" style="color:var(--ios-blue)">0.0000</b></div>
+            <div class="res-row"><span>当前盈亏金额</span><b id="res-loss">0.00</b></div>
+            <div class="res-row"><span>当前总收益率</span><b id="res-percent">0.00%</b></div>
+            <div class="res-row"><span>回本需涨幅</span><b id="res-need">0.00%</b></div>
+        </div>
+
+        <a href="#" class="reset-link" onclick="clearAll()">↺ 重置并清空本地缓存数据</a>
+    </div>
+
+    <script>
+        let isManualPrice = false;
+        const STORAGE_KEY = 'fund_calc_data_v2'; // 更新Key版本避免冲突
+
+        function calculate(fromManual = false) {
+            if (fromManual) isManualPrice = true;
+            const records = document.querySelectorAll('.record-group');
+            let totalAmount = 0, totalShares = 0, lastPrice = null;
+
+            records.forEach(group => {
+                const shares = parseFloat(group.querySelector('.shares').value) || 0;
+                const pri = parseFloat(group.querySelector('.pri').value) || 0;
+                if (shares > 0 && pri > 0) { lastPrice = pri; }
+            });
+
+            if (!isManualPrice && lastPrice !== null) {
+                document.getElementById('currentPrice').value = lastPrice.toFixed(4);
+            }
+
+            const currP = parseFloat(document.getElementById('currentPrice').value) || 0;
+
+            records.forEach(group => {
+                const shares = parseFloat(group.querySelector('.shares').value) || 0;
+                const pri = parseFloat(group.querySelector('.pri').value) || 0;
+                const gainEl = group.querySelector('.single-gain');
+                const lossEl = group.querySelector('.single-loss');
+                
+                if (shares > 0 && pri > 0) {
+                    const cost = shares * pri;
+                    totalAmount += cost;
+                    totalShares += shares;
+                    
+                    // 计算单笔收益率
+                    const gainPercent = ((currP - pri) / pri * 100).toFixed(2);
+                    gainEl.innerText = (gainPercent >= 0 ? '+' : '') + gainPercent + '%';
+                    gainEl.style.color = gainPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+
+                    // 计算单笔盈亏金额
+                    const singleLossAmt = (shares * currP) - cost;
+                    lossEl.innerText = (singleLossAmt >= 0 ? '盈:' : '亏:') + singleLossAmt.toFixed(2);
+                    lossEl.style.color = singleLossAmt >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                } else {
+                    gainEl.innerText = '0%';
+                    lossEl.innerText = '盈:0.00';
+                }
+            });
+
+            if (totalShares <= 0) {
+                resetResults();
+                saveToLocal();
+                return;
+            }
+
+            const avgCost = totalAmount / totalShares;
+            const totalLoss = (totalShares * currP) - totalAmount;
+            const totalLossP = (totalLoss / totalAmount * 100).toFixed(2);
+            const need = currP > 0 ? ((avgCost - currP) / currP * 100).toFixed(2) : 0;
+
+            document.getElementById('res-totalA').innerText = '¥' + totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
+            document.getElementById('res-avgP').innerText = avgCost.toFixed(4);
+            document.getElementById('res-loss').innerText = (totalLoss >= 0 ? '+' : '') + totalLoss.toFixed(2);
+            document.getElementById('res-loss').style.color = totalLoss >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            document.getElementById('res-percent').innerText = (totalLoss >= 0 ? '+' : '') + totalLossP + '%';
+            document.getElementById('res-percent').style.color = totalLoss >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            document.getElementById('res-need').innerText = need + '%';
+            document.getElementById('res-need').style.color = need > 0 ? 'var(--ios-green)' : 'var(--ios-red)';
+            document.getElementById('display_total_shares').value = totalShares;
+
+            saveToLocal();
+        }
+
+        function resetResults() {
+            document.getElementById('res-totalA').innerText = '¥0.00';
+            document.getElementById('res-avgP').innerText = '0.0000';
+            document.getElementById('res-loss').innerText = '0.00';
+            document.getElementById('res-percent').innerText = '0.00%';
+            document.getElementById('res-need').innerText = '0.00%';
+            document.getElementById('display_total_shares').value = 0;
+        }
+
+        function addRecord(defaultShares = "", defaultPri = "", skipCalc = false) {
+            const list = document.getElementById('buy-list');
+            const div = document.createElement('div');
+            div.className = 'record-card record-group';
+            div.innerHTML = `
+                <div class="card-del-btn" onclick="this.parentElement.remove();calculate()">×</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="label-text" style="font-size:11px;">买入股数</span>
+                            <span class="single-loss" style="color:var(--ios-label)">盈:0.00</span>
+                        </div>
+                        <input type="number" class="input-field shares" style="padding:10px;" value="${defaultShares}" oninput="calculate()">
+                    </div>
+                    <div class="input-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="label-text" style="font-size:11px;">成交单价</span>
+                            <span class="single-gain">0%</span>
+                        </div>
+                        <input type="number" class="input-field pri" style="padding:10px;" value="${defaultPri}" oninput="calculate()">
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+            if(!skipCalc) calculate();
+        }
+
+        function saveToLocal() {
+            const records = [];
+            document.querySelectorAll('.record-group').forEach(group => {
+                records.push({
+                    shares: group.querySelector('.shares').value,
+                    pri: group.querySelector('.pri').value
+                });
+            });
+
+            const data = {
+                currentPrice: document.getElementById('currentPrice').value,
+                isManualPrice: isManualPrice,
+                records: records
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function loadFromLocal() {
+            const rawData = localStorage.getItem(STORAGE_KEY);
+            if (!rawData) {
+                addRecord(1000, 1.000);
+                return;
+            }
+            try {
+                const data = JSON.parse(rawData);
+                document.getElementById('currentPrice').value = data.currentPrice || "1.0000";
+                isManualPrice = data.isManualPrice || false;
+                document.getElementById('buy-list').innerHTML = '';
+                if (data.records && data.records.length > 0) {
+                    data.records.forEach(item => addRecord(item.shares, item.pri, true));
+                } else {
+                    addRecord(1000, 1.000, true);
+                }
+                calculate();
+            } catch (e) {
+                addRecord(1000, 1.000);
+            }
+        }
+
+        function clearAll() {
+            if(confirm("确定清除所有数据并清空本地缓存吗？")) {
+                localStorage.removeItem(STORAGE_KEY);
+                isManualPrice = false;
+                document.getElementById('buy-list').innerHTML = '';
+                document.getElementById('currentPrice').value = "1.0000";
+                addRecord(1000, 1.000);
+            }
+        }
+
+        window.onload = loadFromLocal;
+    </script>
+</body>
+</html>

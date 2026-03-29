@@ -560,13 +560,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   if ((req.method === 'GET' || req.method === 'HEAD') && req.url === '/') {
-    if (servePublicFile(req, res, '/index.html')) {
+    if (servePublicFile(req, res, '/stock.html')) {
       return;
     }
   }
 
   if ((req.method === 'GET' || req.method === 'HEAD') && req.url === '/mobile') {
-    if (servePublicFile(req, res, '/index-mobile.html')) {
+    if (servePublicFile(req, res, '/index.html')) {
       return;
     }
   }

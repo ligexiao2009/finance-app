@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>基金加仓计划</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="加仓助手">
+    
+    <style>
+        :root {
+            --bg-color: #F4F5F7; --card-bg: #FFFFFF; --input-bg: #F0F2F5;
+            --primary-blue: #007AFF; --btn-secondary: #E5E5EA;
+            --accent-orange: #FFF5E9; --text-main: #1C1C1E;
+            --text-secondary: #8E8E93; --apple-red: #FF3B30; --apple-green: #34C759;
+        }
+
+        [data-theme='dark'] {
+            --bg-color: #000000; --card-bg: #1C1C1E; --input-bg: #2C2C2E;
+            --primary-blue: #0A84FF; --btn-secondary: #2C2C2E;
+            --accent-orange: #2C2115; --text-main: #FFFFFF;
+        }
+
+        html, body { overscroll-behavior-y: none; margin: 0; padding: 0; transition: background-color 0.3s; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg-color); display: flex; justify-content: center; padding: 20px; }
+
+        .app-container { width: 100%; max-width: 450px; background: var(--card-bg); border-radius: 32px; padding: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .header h1 { font-size: 24px; font-weight: 800; color: var(--text-main); margin: 0; }
+
+        .label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; display: block; font-weight: 600; }
+        input, select { width: 100%; background: var(--input-bg); border: none; border-radius: 14px; padding: 16px; font-size: 16px; color: var(--text-main); outline: none; box-sizing: border-box; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .plan-box { background: var(--accent-orange); padding: 20px; border-radius: 22px; border: 1px solid rgba(255, 165, 0, 0.2); margin-bottom: 25px; }
+        .plan-box input, .plan-box select { background: var(--card-bg); }
+        .plan-box .label { color: #D68F3F; }
+
+        .btn-group { display: flex; gap: 12px; margin-bottom: 20px; width: 100%; }
+        .btn-main { flex: 1; background: var(--primary-blue); color: #FFF; border: none; border-radius: 16px; padding: 18px 0; font-size: 17px; font-weight: 700; cursor: pointer; text-align: center; }
+        .btn-sub { flex: 1; background: var(--btn-secondary); color: var(--text-main); border: none; border-radius: 16px; padding: 18px 0; font-size: 17px; font-weight: 600; cursor: pointer; display: none; text-align: center; }
+        .btn-main:active, .btn-sub:active { opacity: 0.7; transform: scale(0.98); }
+
+        .res-card { background: #F9F9FB; border-radius: 22px; padding: 20px; margin-top: 15px; border: 0.5px solid #EEE; display: flex; flex-direction: column; gap: 12px; }
+        [data-theme='dark'] .res-card { background: var(--input-bg); border-color: #38383A; }
+        
+        .res-header { display: flex; justify-content: space-between; align-items: center; }
+        .step-tag { background: var(--primary-blue); color: white; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+        .rise-tag { color: var(--apple-red); font-weight: 800; font-size: 15px; }
+        .res-body { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: 1px dashed #DDD; padding-bottom: 12px; }
+        .val-group .v-label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+        .val-group .v-main { font-size: 18px; font-weight: 700; color: var(--text-main); }
+        .res-footer { font-size: 12px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 6px; }
+        .loss-text { color: var(--apple-green); font-weight: 600; font-size: 13px; }
+        .footer-link { text-align: center; font-size: 13px; color: var(--text-secondary); cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body data-theme="light">
+
+<div class="app-container">
+    <div class="header">
+        <h1>基金加仓计划</h1>
+        <div style="font-size: 22px; cursor: pointer;" onclick="toggleTheme()">🌗</div>
+    </div>
+
+    <div class="grid-2">
+        <div><span class="label">1. 原持仓成本</span><input type="number" id="baseCost" value="1.0000" step="0.0001"></div>
+        <div><span class="label">2. 持有总额 (元)</span><input type="number" id="baseAmount" value="10000"></div>
+    </div>
+
+    <div class="plan-box">
+        <div class="grid-2" style="margin-bottom:15px">
+            <div><span class="label">3. 计划加仓金额</span><input type="number" id="firstAdd" value="10000"></div>
+            <div>
+                <span class="label">4. 成本每跌补仓 %</span>
+                <!-- 更新后的下拉框 -->
+                <select id="dropPercent">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+        </div>
+        <div><span class="label">加仓金额递增模式</span><select id="investMode"><option value="1.0">固定金额 (1.0x)</option><option value="1.5">稳健增量 (1.5x)</option><option value="2.0">进取倍投 (2.0x)</option></select></div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-main" onclick="runPlan()">生成计划</button>
+        <button id="csvBtn" class="btn-sub" onclick="exportToCSV()">导出 CSV</button>
+    </div>
+    
+    <div class="footer-link" onclick="location.reload()">🔄 重置模拟器数据</div>
+
+    <div id="resultsArea" style="margin-top:10px"></div>
+</div>
+
+<script>
+    let rowsForCSV = [];
+
+    function toggleTheme() {
+        const body = document.body;
+        body.setAttribute('data-theme', body.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    }
+
+    function runPlan() {
+        const baseCost = parseFloat(document.getElementById('baseCost').value);
+        const baseAmount = parseFloat(document.getElementById('baseAmount').value);
+        const ratio = parseFloat(document.getElementById('investMode').value);
+        const firstAdd = parseFloat(document.getElementById('firstAdd').value);
+        const dropPercent = parseFloat(document.getElementById('dropPercent').value) / 100;
+
+        if(!baseCost || !baseAmount || !firstAdd) { alert("数据不完整"); return; }
+
+        let totalAmount = baseAmount, totalShares = baseAmount / baseCost, nextAddMoney = firstAdd;
+        let html = `<span class="label" style="color:var(--text-main); margin-bottom:12px;">📉 成本下跌路径推演表：</span>`;
+        
+        rowsForCSV = [["轮次", "净值跌幅", "成交价", "本次补仓额", "累计总投入", "平均成本", "反弹回本%", "浮亏预估"]];
+
+        for (let currentDrop = dropPercent, step = 1; currentDrop <= 0.801; currentDrop += dropPercent, step++) {
+            let nextPrice = baseCost * (1 - currentDrop);
+            if (step > 1) nextAddMoney *= ratio;
+
+            totalShares += (nextAddMoney / nextPrice);
+            totalAmount += nextAddMoney;
+            
+            let newCost = totalAmount / totalShares;
+            let currentLoss = (totalShares * nextPrice) - totalAmount;
+            let needRise = ((newCost - nextPrice) / nextPrice * 100).toFixed(1);
+
+            rowsForCSV.push([`第${step}补`, `${(currentDrop * 100).toFixed(0)}%`, nextPrice.toFixed(4), Math.round(nextAddMoney), Math.round(totalAmount), newCost.toFixed(4), `${needRise}%`, Math.round(currentLoss)]);
+
+            html += `
+                <div class="res-card">
+                    <div class="res-header"><span class="step-tag">补仓 ${step}</span><span class="rise-tag">-${(currentDrop * 100).toFixed(0)}%</span></div>
+                    <div class="res-body">
+                        <div class="val-group"><span class="v-label">买入价</span><span class="v-main">${nextPrice.toFixed(4)}</span></div>
+                        <div class="val-group" style="text-align:right"><span class="v-label">新成本</span><span class="v-main" style="color:var(--primary-blue)">${newCost.toFixed(4)}</span></div>
+                    </div>
+                    <div class="res-footer">
+                        <span>本轮投入: <b>¥${Math.round(nextAddMoney).toLocaleString()}</b> | 需反弹 <b>${needRise}%</b> 回本</span>
+                        <span class="loss-text">累计投入: ¥${Math.round(totalAmount).toLocaleString()} | 预估浮亏: ¥${Math.abs(Math.round(currentLoss)).toLocaleString()}</span>
+                    </div>
+                </div>`;
+            if(step > 25) break; 
+        }
+        document.getElementById('resultsArea').innerHTML = html;
+        document.getElementById('csvBtn').style.display = "block";
+        document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function exportToCSV() {
+        if (rowsForCSV.length <= 1) return;
+        let csvContent = "\uFEFF"; 
+        rowsForCSV.forEach(row => { csvContent += row.join(",") + "\r\n"; });
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `加仓计划_${new Date().toLocaleDateString()}.csv`);
+        link.click();
+    }
+
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.setAttribute('data-theme', 'dark');
+    }
+</script>
+</body>
+</html>

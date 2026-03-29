@@ -30,7 +30,7 @@ function getContentType(filePath) {
 }
 
 function resolvePublicPath(urlPath) {
-  const normalizedPath = urlPath === '/' ? '/index.html' : urlPath;
+  const normalizedPath = urlPath === '/' ? '/stock.html' : urlPath;
   const safePath = path.normalize(normalizedPath).replace(/^(\.\.[/\\])+/, '');
   return path.join(publicDir, safePath);
 }

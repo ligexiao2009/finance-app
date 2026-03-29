@@ -6,9 +6,11 @@
     <meta name="theme-color" content="#f8fafc" id="themeColorMeta">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="资产看板">
+    <meta name="apple-mobile-web-app-title" content="持仓看板">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>资产看板专业版 - Ultimate v2.1</title>
+    <title>持仓看板专业版 - Ultimate v2.1</title>
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
     <link rel="stylesheet" href="./tailwind.generated.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
@@ -349,6 +351,31 @@
         .delete-confirm-submit {
             box-shadow: 0 14px 28px rgba(225, 29, 72, 0.2);
         }
+        .delete-confirm-overlay {
+            animation: fadeInOverlay 0.2s ease;
+        }
+        .delete-confirm-panel {
+            animation: popInDeleteConfirm 0.22s ease;
+            transform-origin: center bottom;
+        }
+        @keyframes fadeInOverlay {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes popInDeleteConfirm {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
         .unlock-input {
             width: 100%;
             padding: 0.95rem 1rem;
@@ -446,6 +473,41 @@
             font-weight: 800;
             color: var(--text-muted);
             background: transparent;
+        }
+        .mobile-save-action {
+            justify-content: center;
+            min-width: 2.85rem;
+            transition: 0.2s ease;
+        }
+        .mobile-save-action.is-dirty {
+            color: #4f46e5;
+            border-color: rgba(99, 102, 241, 0.22);
+            background: rgba(99, 102, 241, 0.08);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.12);
+        }
+        .mobile-save-action.is-saving {
+            color: #4f46e5;
+            border-color: rgba(99, 102, 241, 0.2);
+            background: rgba(99, 102, 241, 0.06);
+        }
+        .mobile-save-action.is-saved {
+            color: #059669;
+            border-color: rgba(5, 150, 105, 0.22);
+            background: rgba(5, 150, 105, 0.08);
+        }
+        .mobile-save-action.is-error {
+            color: #e11d48;
+            border-color: rgba(244, 63, 94, 0.22);
+            background: rgba(244, 63, 94, 0.08);
+        }
+        .mobile-save-spinner {
+            width: 0.95rem;
+            height: 0.95rem;
+            border-radius: 999px;
+            border: 2px solid currentColor;
+            border-right-color: transparent;
+            display: inline-block;
+            animation: spin 0.75s linear infinite;
         }
         .mobile-expand-icon {
             transition: transform 0.2s ease;
@@ -716,7 +778,7 @@
         <!-- 顶部标题和快捷操作 -->
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
-                <h1 class="page-title italic uppercase">资产看板</h1>
+                <h1 class="page-title italic uppercase">持仓看板</h1>
                 <span class="text-indigo-500 text-xs font-extrabold">PRO</span>
             </div>
             <div class="flex items-center gap-2">
@@ -1029,8 +1091,8 @@
             </div>
         </div>
 
-        <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
-            <div class="delete-confirm-shell rounded-[1.75rem] p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl">
+        <div id="deleteConfirmModal" class="delete-confirm-overlay fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden" onclick="closeDeleteConfirmModal()">
+            <div class="delete-confirm-shell delete-confirm-panel rounded-[1.75rem] p-6 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] shadow-2xl" onclick="event.stopPropagation()">
                 <div class="relative flex justify-between items-start gap-4 mb-5">
                     <div>
                         <div class="delete-confirm-badge mb-3">危险操作</div>
@@ -1433,6 +1495,7 @@
             if (!card) return;
             const pills = card.querySelectorAll('.draft-pill');
             card.classList.remove('card-save-flash');
+            updateSaveButtonState(card, state);
             pills.forEach(pill => {
                 pill.classList.remove('hidden', 'is-saved', 'is-error');
                 if (state === 'hidden') {
@@ -1450,6 +1513,33 @@
                 }
                 pill.textContent = '未保存';
             });
+        }
+
+        function updateSaveButtonState(card, state) {
+            const btn = card?.querySelector('.mobile-save-action');
+            if (!btn) return;
+            btn.classList.remove('is-dirty', 'is-saving', 'is-saved', 'is-error');
+            if (state === 'dirty') {
+                btn.classList.add('is-dirty');
+                btn.innerHTML = '💾';
+                return;
+            }
+            if (state === 'saving') {
+                btn.classList.add('is-saving');
+                btn.innerHTML = '<span class="mobile-save-spinner" aria-hidden="true"></span>';
+                return;
+            }
+            if (state === 'saved') {
+                btn.classList.add('is-saved');
+                btn.innerHTML = '✓';
+                return;
+            }
+            if (state === 'error') {
+                btn.classList.add('is-error');
+                btn.innerHTML = '💾';
+                return;
+            }
+            btn.innerHTML = '💾';
         }
 
         function markCardDirty(card) {
@@ -1490,7 +1580,7 @@
                                 <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="markCardDirty(this.closest('[data-id]')); handleCodeInput(this)">
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <button onclick="saveRow(this.closest('[data-id]'))" class="mobile-compact-action" title="保存">💾</button>
+                                <button onclick="saveRow(this.closest('[data-id]'))" class="mobile-compact-action mobile-save-action" title="保存">💾</button>
                                 ${item.isFund
                                     ? `<button onclick="openMobileActionSheet(this.closest('[data-id]'))" class="mobile-compact-action" title="操作">⋯<span>操作</span></button>`
                                     : `<button onclick="deleteRow(this.closest('[data-id]'))" class="mobile-compact-action text-rose-500" title="删除">🗑</button>`}
@@ -1612,6 +1702,7 @@
             applyEditingLockState();
             updateCompactModeUI();
             updateSortButton();
+            setCardSaveState(card, item.code ? 'hidden' : 'dirty');
             if(item.code) fetchPrice(card, item.code);
             updatePagination();
 
@@ -2157,6 +2248,7 @@
 
         async function saveRow(el) {
             if (!canEditOrNotify()) return;
+            setCardSaveState(el, 'saving');
             const code = el.querySelector('.code-input').value;
             const shares = parseFloat(el.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(el.querySelector('.cost-input').value) || 0;

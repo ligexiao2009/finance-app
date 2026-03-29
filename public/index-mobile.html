@@ -579,6 +579,37 @@
             font-weight: 700;
             letter-spacing: -0.03em;
         }
+        .mobile-overseas-star {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: color-mix(in srgb, var(--bg-main) 88%, transparent);
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1;
+            transition: 0.2s ease;
+        }
+        .mobile-overseas-star.is-active {
+            color: #f59e0b;
+            border-color: rgba(245, 158, 11, 0.35);
+            background: rgba(245, 158, 11, 0.12);
+            box-shadow: 0 6px 14px rgba(245, 158, 11, 0.12);
+        }
+        .mobile-overseas-star.is-hidden {
+            display: none;
+        }
+        .mobile-overseas-star.compact {
+            width: 16px;
+            height: 16px;
+            border: none;
+            background: transparent;
+            box-shadow: none;
+            font-size: 11px;
+        }
         .mobile-compact-meta {
             margin-top: 0.12rem;
             color: var(--text-muted);
@@ -1139,6 +1170,12 @@
         // ==================== 配置 ====================
         const API_BASE_URL = window.API_BASE_URL;
 
+        const OVERSEAS_FUND_CODES = new Set(['017145', '017437']);
+
+        function isOverseasFundLike(item = {}) {
+            return !!item.isOverseas || OVERSEAS_FUND_CODES.has(String(item.code || '').trim());
+        }
+
         let currentTab = 'all';
         let sortDir = 1;
         let refreshTimer = null;
@@ -1556,11 +1593,38 @@
             setTimeout(() => card.classList.remove('card-save-flash'), 950);
         }
 
+        function updateMobileOverseasUI(card) {
+            if (!card) return;
+            const isFund = card.dataset.isFund === 'true';
+            const isOverseas = card.dataset.isOverseas === '1';
+            card.querySelectorAll('.mobile-overseas-star').forEach(star => {
+                star.classList.toggle('is-hidden', !isFund);
+                star.classList.toggle('is-active', isFund && isOverseas);
+                star.setAttribute('aria-pressed', isFund && isOverseas ? 'true' : 'false');
+                star.title = isFund ? (isOverseas ? '海外基金' : '标记为海外基金') : '';
+            });
+        }
+
+        function toggleMobileOverseas(card) {
+            if (!card || card.dataset.isFund !== 'true') return;
+            card.dataset.isOverseas = card.dataset.isOverseas === '1' ? '0' : '1';
+            updateMobileOverseasUI(card);
+            markCardDirty(card);
+            const code = card.querySelector('.code-input')?.value?.trim();
+            if (code) {
+                fetchPrice(card, code);
+            } else {
+                saveAndCalculate();
+            }
+        }
+
         // 添加卡片
         function addRow(item, prepend = true) {
             const card = document.createElement('div');
+            const isOverseas = isOverseasFundLike(item);
             card.dataset.isFund = item.isFund;
             card.dataset.id = item.id || Date.now() + Math.random().toString(36).substr(2, 9);
+            card.dataset.isOverseas = isOverseas ? '1' : '0';
             card.dataset.isDraft = item.code ? '0' : '1';
             card.className = "card p-4";
 
@@ -1578,6 +1642,7 @@
                             <div class="mobile-code-pill mono">
                                 <span class="text-indigo-500">#</span>
                                 <input type="text" class="code-input" placeholder="输入代码" value="${item.code || ''}" oninput="markCardDirty(this.closest('[data-id]')); handleCodeInput(this)">
+                                <button type="button" onclick="toggleMobileOverseas(this.closest('[data-id]')); event.stopPropagation();" class="mobile-overseas-star ${item.isFund ? '' : 'is-hidden'} ${isOverseas ? 'is-active' : ''}" title="${isOverseas ? '海外基金' : '标记为海外基金'}" aria-label="切换海外基金标记" aria-pressed="${isOverseas ? 'true' : 'false'}">★</button>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
                                 <button onclick="saveRow(this.closest('[data-id]'))" class="mobile-compact-action mobile-save-action" title="保存">💾</button>
@@ -1700,6 +1765,7 @@
                 });
             });
             applyEditingLockState();
+            updateMobileOverseasUI(card);
             updateCompactModeUI();
             updateSortButton();
             setCardSaveState(card, item.code ? 'hidden' : 'dirty');
@@ -1846,7 +1912,8 @@
                         }
 
                         // QDII 境外基金特殊处理：日期 +1 天
-                        if (code === '017145' || code === '017437') {
+                        const isOverseas = card.dataset.isOverseas === '1';
+                        if (isOverseas) {
                             if (priceDate && priceDate.length === 8) {
                                 const year = parseInt(priceDate.substr(0, 4));
                                 const month = parseInt(priceDate.substr(4, 2)) - 1;
@@ -2204,7 +2271,8 @@
                 }
 
                 const alert = parseFloat(card.querySelector('.alert-input').value) || '';
-                return { id: card.dataset.id, code, name: card.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, targetPrice, alert };
+                const isOverseas = card.dataset.isOverseas === '1';
+                return { id: card.dataset.id, code, name: card.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, targetPrice, alert, isOverseas };
             });
 
             // 决定顶部显示哪一组数据
@@ -2256,10 +2324,11 @@
             const targetPrice = parseFloat(el.querySelector('.target-price-input').value) || '';
             const alert = parseFloat(el.querySelector('.alert-input').value) || '';
             const isFund = el.dataset.isFund === 'true';
+            const isOverseas = el.dataset.isOverseas === '1';
             const name = el.querySelector('.stock-name').innerText;
             const id = el.dataset.id;
 
-            const rowData = { id, code, name, shares, cost, isFund, planBuy, targetPrice, alert };
+            const rowData = { id, code, name, shares, cost, isFund, planBuy, targetPrice, alert, isOverseas };
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/save-row`, {
@@ -2356,7 +2425,8 @@
                 const name = card.querySelector('.stock-name').innerText;
                 const id = card.dataset.id;
 
-                const rowData = { id, code, name, shares, cost, isFund: true, planBuy, alert };
+                const isOverseas = card.dataset.isOverseas === '1';
+                const rowData = { id, code, name, shares, cost, isFund: true, planBuy, alert, isOverseas };
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/api/save-row`, {

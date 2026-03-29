@@ -515,6 +515,68 @@
             letter-spacing: 0.04em;
             text-transform: uppercase;
         }
+        .delete-confirm-shell {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at top right, rgba(244, 63, 94, 0.12), transparent 26%),
+                radial-gradient(circle at top left, rgba(248, 113, 113, 0.08), transparent 22%),
+                var(--bg-card);
+        }
+        .delete-confirm-shell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%);
+        }
+        .delete-confirm-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(244, 63, 94, 0.18);
+            background: rgba(244, 63, 94, 0.08);
+            color: #e11d48;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .delete-confirm-name {
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+        .delete-confirm-note {
+            border-radius: 18px;
+            border: 1px solid rgba(244, 63, 94, 0.16);
+            background: linear-gradient(180deg, rgba(244, 63, 94, 0.08), rgba(244, 63, 94, 0.03));
+            color: color-mix(in srgb, var(--text-main) 78%, #fb7185 22%);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .delete-confirm-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            background: color-mix(in srgb, var(--bg-main) 84%, transparent);
+            transition: 0.2s ease;
+        }
+        .delete-confirm-close:hover {
+            background: var(--table-hover);
+            color: var(--text-main);
+        }
+        .delete-confirm-submit {
+            box-shadow: 0 16px 32px rgba(225, 29, 72, 0.18);
+        }
         .unlock-input {
             width: 100%;
             padding: 14px 16px;
@@ -926,6 +988,26 @@
             </div>
         </div>
 
+        <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden" onclick="closeDeleteConfirmModal()">
+            <div class="delete-confirm-shell rounded-[28px] p-8 w-[460px] max-w-[92vw] border border-[var(--border-color)] shadow-2xl" onclick="event.stopPropagation()">
+                <div class="relative flex justify-between items-start gap-6">
+                    <div>
+                        <div class="delete-confirm-badge mb-3">危险操作</div>
+                        <h3 class="modal-title text-[1.45rem] leading-tight">确定要删除这条记录吗？</h3>
+                        <div id="deleteConfirmName" class="delete-confirm-name mt-4"></div>
+                    </div>
+                    <button onclick="closeDeleteConfirmModal()" class="delete-confirm-close text-2xl leading-none">&times;</button>
+                </div>
+                <div class="delete-confirm-note mt-6 px-5 py-4">
+                    删除后会同时移除当前持仓记录和本地缓存，且无法恢复。
+                </div>
+                <div class="mt-8 flex gap-4">
+                    <button onclick="closeDeleteConfirmModal()" class="flex-1 py-3 rounded-2xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button id="deleteConfirmSubmitBtn" onclick="confirmDeleteRow()" class="delete-confirm-submit flex-1 py-3 rounded-2xl font-black text-[10px] bg-rose-600 hover:bg-rose-500 text-white">确认删除</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 收益看板弹窗 -->
         <div id="profitCalendarModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
             <div class="profit-modal-shell rounded-3xl p-4 md:p-6 w-[900px] max-w-[92vw] max-h-[85vh] overflow-y-auto border border-[var(--border-color)] shadow-2xl relative transform transition-all duration-300 scale-95 opacity-0 profit-modal-content">
@@ -992,6 +1074,12 @@
         // ==================== 配置 ====================
         const API_BASE_URL = window.API_BASE_URL;
 
+        const OVERSEAS_FUND_CODES = new Set(['017145', '017437']);
+
+        function isOverseasFundLike(item = {}) {
+            return !!item.isOverseas || OVERSEAS_FUND_CODES.has(String(item.code || '').trim());
+        }
+
         let currentTab = 'all';
         let sortDir = -1;
         let refreshTimer = null;
@@ -1002,6 +1090,7 @@
         const EDIT_UNLOCK_FLAG_KEY = 'vDashboardEditingUnlocked';
         const EDIT_UNLOCK_EXPIRES_KEY = 'vDashboardEditingUnlockedUntil';
         let editUnlockTimer = null;
+        let pendingDeleteRowId = null;
         let isEditingUnlocked = getStoredEditUnlockState();
 
         // 分页相关
@@ -1070,6 +1159,38 @@
             if (event.key === 'Escape') {
                 closeEditUnlockModal();
             }
+        }
+
+        function openDeleteConfirmModal(row) {
+            if (!row) return;
+            pendingDeleteRowId = row.dataset.id;
+            const name = row.querySelector('.stock-name')?.innerText || '未命名标的';
+            const nameEl = document.getElementById('deleteConfirmName');
+            const modal = document.getElementById('deleteConfirmModal');
+            if (nameEl) nameEl.innerText = name;
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeDeleteConfirmModal() {
+            pendingDeleteRowId = null;
+            const modal = document.getElementById('deleteConfirmModal');
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (modal) modal.classList.add('hidden');
+            if (submitBtn) submitBtn.disabled = false;
+        }
+
+        async function confirmDeleteRow() {
+            const row = pendingDeleteRowId
+                ? document.querySelector(`#stockBody tr[data-id="${pendingDeleteRowId}"]`)
+                : null;
+            if (!row) {
+                closeDeleteConfirmModal();
+                return;
+            }
+            const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
+            if (submitBtn) submitBtn.disabled = true;
+            await performDeleteRow(row);
+            closeDeleteConfirmModal();
         }
 
         async function loadAppSettings() {
@@ -1289,9 +1410,10 @@
         // 添加行
         function addRow(item, prepend = true) {
             const tr = document.createElement('tr');
+            const isOverseas = isOverseasFundLike(item);
             tr.dataset.isFund = item.isFund;
             tr.dataset.id = item.id || Date.now() + Math.random().toString(36).substr(2, 9);
-            tr.dataset.isOverseas = item.isOverseas ? '1' : '0';
+            tr.dataset.isOverseas = isOverseas ? '1' : '0';
             tr.className = "asset-row transition group border-b border-[var(--border-color)]";
 
             const moreMenuItems = item.isFund
@@ -1325,7 +1447,7 @@
                 <td class="px-8 py-5">
                     <div class="flex items-center gap-2">
                         <div class="stock-name text-sm mb-0.5">${item.name || '正在获取...'}</div>
-                        <span class="star-btn cursor-pointer select-none ${item.isOverseas ? 'text-yellow-400' : 'text-slate-500 opacity-0 group-hover:opacity-100'}" onclick="toggleOverseas(this.closest('tr'))" title="境外基金" style="font-size: 12px; transition: opacity 0.2s;">★</span>
+                        <span class="star-btn cursor-pointer select-none ${isOverseas ? 'text-yellow-400' : 'text-slate-500 opacity-0 group-hover:opacity-100'}" onclick="toggleOverseas(this.closest('tr'))" title="境外基金" style="font-size: 12px; transition: opacity 0.2s;">★</span>
                     </div>
                     <div class="flex items-center gap-1 text-[10px] mono text-[var(--text-muted)]">
                         <span class="text-indigo-500 font-black italic">#</span>
@@ -1840,10 +1962,10 @@
 
         async function deleteRow(row) {
             if (!canEditOrNotify()) return;
-            if (!confirm('确定要删除这条记录吗？')) {
-                return;
-            }
+            openDeleteConfirmModal(row);
+        }
 
+        async function performDeleteRow(row) {
             const id = row.dataset.id;
             const code = row.querySelector('.code-input')?.value || '';
             const isFund = row.dataset.isFund === 'true';
@@ -1867,6 +1989,7 @@
                 console.error('删除失败:', e);
                 row.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
                 setTimeout(() => row.style.backgroundColor = '', 500);
+                showToast('删除失败');
             }
         }
 
@@ -2360,10 +2483,7 @@
             document.getElementById('saveAllFundsBtn').style.display = '';
             if (s.items && s.items.length) {
                 s.items.forEach(i => {
-                    // 给 017145 和 017437 默认设置境外标记
-                    if ((i.code === '017145' || i.code === '017437') && i.isOverseas === undefined) {
-                        i.isOverseas = true;
-                    }
+                    if (isOverseasFundLike(i)) i.isOverseas = true;
                     addRow(i, false);
                 });
             } else {

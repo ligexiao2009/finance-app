@@ -157,7 +157,7 @@
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 16px 0;
+            padding: 12px 0;
             position: relative;
             flex-wrap: nowrap;
         }
@@ -187,6 +187,13 @@
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .input-area {
+            width: 150px;
+            display: flex;
+            justify-content: flex-end;
+            flex-shrink: 0;
         }
 
         .brand-tag {
@@ -231,7 +238,7 @@
             font-size: 16px;
             color: var(--text-main);
             border-radius: 14px;
-            padding: 10px 14px;
+            padding: 8px 12px;
             width: 150px;
             transition: all 0.2s ease;
             cursor: pointer;
@@ -241,23 +248,17 @@
             background: color-mix(in srgb, var(--group-bg) 80%, var(--ios-blue));
         }
 
-        .input-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: nowrap;
-        }
-
         .input-wrapper {
             position: relative;
             display: flex;
             align-items: center;
+            width: 150px;
         }
 
         .currency-prefix {
             position: absolute;
-            left: 14px;
-            font-size: 14px;
+            left: 12px;
+            font-size: 15px;
             font-weight: 700;
             color: var(--text-sub);
             pointer-events: none;
@@ -270,9 +271,9 @@
             outline: none;
             text-align: right;
             font-size: 16px;
-            width: 120px;
+            width: 150px;
             font-variant-numeric: tabular-nums;
-            padding: 10px 14px 10px 32px;
+            padding: 8px 12px 8px 26px;
             border-radius: 14px;
             color: var(--text-main);
             transition: all 0.2s ease;
@@ -283,40 +284,6 @@
             border-color: var(--ios-blue);
             box-shadow: 0 0 0 4px color-mix(in srgb, var(--ios-blue) 15%, transparent), 0 4px 12px rgba(36, 124, 255, 0.15);
             background: color-mix(in srgb, var(--group-bg) 50%, white);
-        }
-
-        .sign-btn {
-            background: linear-gradient(135deg, #E2E8F0, #CBD5E1);
-            border: none;
-            border-radius: 10px;
-            width: 36px;
-            height: 36px;
-            padding: 0;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            color: #64748B;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-
-        .sign-btn:hover {
-            background: linear-gradient(135deg, var(--ios-blue), #6366F1);
-            color: white;
-            transform: scale(1.05);
-            box-shadow: 0 4px 12px rgba(36, 124, 255, 0.3);
-        }
-
-        .sign-btn:active {
-            transform: scale(0.95);
-        }
-
-        :root[data-theme='dark'] .sign-btn {
-            background: linear-gradient(135deg, #334155, #1E293B);
-            color: #94A3B8;
         }
 
         .save-btn {
@@ -732,27 +699,61 @@
             .field-group {
                 align-items: center;
                 flex-direction: row;
-                gap: 4px;
+                gap: 8px;
                 flex-wrap: nowrap;
+            }
+
+            .label-icon {
+                font-size: 14px;
+            }
+
+            .label-text {
+                font-size: 14px;
             }
 
             .page-subtitle {
                 margin-left: 0;
             }
 
-            .input-row {
-                width: auto;
+            .input-area {
+                width: 130px;
+            }
+
+            .input-wrapper {
+                width: 130px;
             }
 
             input[type="number"] {
-                flex: 1;
-                width: auto;
-                min-width: 90px;
+                width: 130px;
+                font-size: 15px;
+                padding: 10px 10px 10px 26px;
             }
+
+            .currency-prefix {
+                left: 8px;
+                font-size: 13px;
+            }
+
             input[type="date"] {
-                width: 100px;
+                width: 130px;
                 font-size: 14px;
-                padding: 7px 10px;
+                padding: 10px 12px;
+            }
+
+            .brand-tag {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+
+            .date-icon {
+                width: 28px;
+                height: 28px;
+            }
+
+            .date-icon svg {
+                width: 16px;
+                height: 16px;
             }
 
             .tool-btns {
@@ -788,8 +789,6 @@
         <div class="nav-header">
             <h1 class="page-title">收益记录</h1>
         </div>
-        <p class="page-subtitle">记录每日股票和基金收益，追踪投资表现</p>
-
         <!-- 录入面板 -->
         <div class="section-header">收益录入</div>
         <div class="card-group">
@@ -799,18 +798,19 @@
                         <span class="date-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg></span>
                         <span class="label-text">记录日期</span>
                     </div>
-                    <input type="date" id="targetDate" onchange="this.blur(); render();">
+                    <div class="input-area">
+                        <input type="date" id="targetDate" onchange="this.blur(); render();">
+                    </div>
                 </div>
                 <div class="field-group">
                     <div class="label-icon">
                         <span class="brand-tag tag-stock">股</span>
                         <span class="label-text">股票收益</span>
                     </div>
-                    <div class="input-row">
-                        <button class="sign-btn" onclick="tSign('stockToday')" title="切换正负">±</button>
+                    <div class="input-area">
                         <div class="input-wrapper">
                             <span class="currency-prefix">¥</span>
-                            <input type="number" id="stockToday" placeholder="0.00" inputmode="decimal">
+                            <input type="number" id="stockToday" placeholder="0.00" inputmode="decimal" step="0.01">
                         </div>
                     </div>
                 </div>
@@ -819,11 +819,10 @@
                         <span class="brand-tag tag-fund">基</span>
                         <span class="label-text">基金收益</span>
                     </div>
-                    <div class="input-row">
-                        <button class="sign-btn" onclick="tSign('fundToday')" title="切换正负">±</button>
+                    <div class="input-area">
                         <div class="input-wrapper">
                             <span class="currency-prefix">¥</span>
-                            <input type="number" id="fundToday" placeholder="0.00" inputmode="decimal">
+                            <input type="number" id="fundToday" placeholder="0.00" inputmode="decimal" step="0.01">
                         </div>
                     </div>
                 </div>
@@ -1000,11 +999,6 @@
             if (accountMode === 'stock') return parseFloat(record.a || 0);
             if (accountMode === 'fund') return parseFloat(record.t || 0);
             return parseFloat(record.total || 0);
-        }
-
-        function tSign(id) {
-            const e = document.getElementById(id);
-            if (e.value && e.value !== "0") e.value = (parseFloat(e.value) * -1).toString();
         }
 
         async function save() {

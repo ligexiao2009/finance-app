@@ -1818,6 +1818,10 @@
 
                 const mkt = effectiveShares * price * rate;
                 const profit = (price - cost) * shares * rate; // 总盈亏仍按全部份额计算
+                // 调试日志：纳斯达克基金
+                if (code === '017437') {
+                    console.log('纳斯达克基金:', { code, price, cost, shares, rate, profit });
+                }
 
                 // 判断今日净值是否已更新
                 let today = 0;
@@ -1828,36 +1832,8 @@
                     today = mkt * (change / 100);
                     displayChange = change;
                 } else {
-                    // 基金：判断净值日期
-                    const priceDate = row.dataset.priceDate || '';
-                    const now = new Date();
-                    const todayStr = now.getFullYear().toString() +
-                                     (now.getMonth() + 1).toString().padStart(2, '0') +
-                                     now.getDate().toString().padStart(2, '0');
-                    const yesterday = new Date(now);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.getFullYear().toString() +
-                                         (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                         yesterday.getDate().toString().padStart(2, '0');
-                    const hour = now.getHours();
-                    const minute = now.getMinutes();
-
-                    // 判断是否是交易日的上午（9:30-15:00）
-                    const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
-
-                    let isTodayUpdated = false;
-                    if (priceDate === todayStr) {
-                        isTodayUpdated = true;
-                    } else if (priceDate === yesterdayStr) {
-                        if (isTradingMorning) {
-                            // 交易日上午（9:30-15:00）：昨天的数据算未更新
-                            isTodayUpdated = false;
-                        } else {
-                            // 其他时间：15点前算已更新
-                            isTodayUpdated = hour < 15;
-                        }
-                    }
-
+                    // 基金：使用预先计算好的更新状态
+                    const isTodayUpdated = row.dataset.isTodayUpdated === '1';
                     if (isTodayUpdated) {
                         today = mkt * (change / 100);
                         displayChange = change;

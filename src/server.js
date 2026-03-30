@@ -14,6 +14,7 @@ const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000
 const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
 const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);
 const responseCache = new Map();
+let EDIT_UNLOCK_PASSWORD_CACHE = undefined;
 
 function invalidateCache(...keys) {
   keys.forEach(key => responseCache.delete(key));
@@ -182,13 +183,19 @@ async function initConfig() {
       const defaultValue = alertTimeFromEnv || '0 22 * * *';
       await db.setConfig('alertTime', defaultValue);
     }
+    // 处理编辑解锁密码
+    let unlockPasswordValue;
     if (!configs.editUnlockPassword) {
-      const defaultValue = process.env.EDIT_UNLOCK_PASSWORD || '8957';
-      await db.setConfig('editUnlockPassword', defaultValue);
+      unlockPasswordValue = process.env.EDIT_UNLOCK_PASSWORD || '8957';
+      await db.setConfig('editUnlockPassword', unlockPasswordValue);
+    } else {
+      unlockPasswordValue = process.env.EDIT_UNLOCK_PASSWORD || configs.editUnlockPassword || '8957';
     }
 
     // 更新内存中的配置（优先使用环境变量，其次使用数据库配置）
     SERVERCHAN_KEY = serverchanKeyFromEnv || configs.serverchanKey || '';
+    // 设置解锁密码缓存
+    EDIT_UNLOCK_PASSWORD_CACHE = unlockPasswordValue;
     if (!SERVERCHAN_KEY) {
       console.log('Server酱 Key 未设置，无法发送微信通知');
     }
@@ -196,11 +203,19 @@ async function initConfig() {
     console.error('初始化配置失败:', error);
     // 设置默认值
     SERVERCHAN_KEY = '';
+    EDIT_UNLOCK_PASSWORD_CACHE = process.env.EDIT_UNLOCK_PASSWORD || '8957';
   }
 }
 
 async function getEditUnlockPassword() {
-  return process.env.EDIT_UNLOCK_PASSWORD || await db.getConfig('editUnlockPassword') || '8957';
+  // 先从缓存获取
+  if (EDIT_UNLOCK_PASSWORD_CACHE !== undefined) {
+    return EDIT_UNLOCK_PASSWORD_CACHE;
+  }
+  // 缓存为空则从数据库获取并设置缓存
+  const password = process.env.EDIT_UNLOCK_PASSWORD || await db.getConfig('editUnlockPassword') || '8957';
+  EDIT_UNLOCK_PASSWORD_CACHE = password;
+  return password;
 }
 
 

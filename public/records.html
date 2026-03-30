@@ -189,13 +189,6 @@
             gap: 10px;
         }
 
-        .input-area {
-            width: 150px;
-            display: flex;
-            justify-content: flex-end;
-            flex-shrink: 0;
-        }
-
         .brand-tag {
             width: 32px;
             height: 32px;
@@ -235,13 +228,14 @@
             font-weight: 700;
             outline: none;
             text-align: right;
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-main);
             border-radius: 14px;
-            padding: 8px 12px;
-            width: 150px;
+            padding: 8px 12px 8px 26px;
+            width: 135px;
             transition: all 0.2s ease;
             cursor: pointer;
+            white-space: nowrap;
         }
 
         input[type="date"]:hover {
@@ -252,7 +246,9 @@
             position: relative;
             display: flex;
             align-items: center;
-            width: 150px;
+            justify-content: flex-end;
+            width: 135px;
+            flex-shrink: 0;
         }
 
         .currency-prefix {
@@ -264,14 +260,15 @@
             pointer-events: none;
         }
 
-        input[type="number"] {
+        input[type="number"],
+        input[type="text"] {
             border: 2px solid transparent;
             background: var(--group-bg);
             font-weight: 700;
             outline: none;
             text-align: right;
             font-size: 16px;
-            width: 150px;
+            width: 135px;
             font-variant-numeric: tabular-nums;
             padding: 8px 12px 8px 26px;
             border-radius: 14px;
@@ -280,7 +277,8 @@
         }
 
         input[type="date"]:focus,
-        input[type="number"]:focus {
+        input[type="number"]:focus,
+        input[type="text"]:focus {
             border-color: var(--ios-blue);
             box-shadow: 0 0 0 4px color-mix(in srgb, var(--ios-blue) 15%, transparent), 0 4px 12px rgba(36, 124, 255, 0.15);
             background: color-mix(in srgb, var(--group-bg) 50%, white);
@@ -724,7 +722,7 @@
             }
 
             input[type="number"] {
-                width: 130px;
+                width: 135px;
                 font-size: 15px;
                 padding: 10px 10px 10px 26px;
             }
@@ -735,7 +733,7 @@
             }
 
             input[type="date"] {
-                width: 130px;
+                width: 135px;
                 font-size: 14px;
                 padding: 10px 12px;
             }
@@ -798,7 +796,7 @@
                         <span class="date-icon"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/></svg></span>
                         <span class="label-text">记录日期</span>
                     </div>
-                    <div class="input-area">
+                    <div class="input-wrapper">
                         <input type="date" id="targetDate" onchange="this.blur(); render();">
                     </div>
                 </div>
@@ -807,11 +805,8 @@
                         <span class="brand-tag tag-stock">股</span>
                         <span class="label-text">股票收益</span>
                     </div>
-                    <div class="input-area">
-                        <div class="input-wrapper">
-                            <span class="currency-prefix">¥</span>
-                            <input type="number" id="stockToday" placeholder="0.00" inputmode="decimal" step="0.01">
-                        </div>
+                    <div class="input-wrapper">
+                        <input type="text" id="stockToday" placeholder="0.00" inputmode="decimal">
                     </div>
                 </div>
                 <div class="field-group">
@@ -819,11 +814,8 @@
                         <span class="brand-tag tag-fund">基</span>
                         <span class="label-text">基金收益</span>
                     </div>
-                    <div class="input-area">
-                        <div class="input-wrapper">
-                            <span class="currency-prefix">¥</span>
-                            <input type="number" id="fundToday" placeholder="0.00" inputmode="decimal" step="0.01">
-                        </div>
+                    <div class="input-wrapper">
+                        <input type="text" id="fundToday" placeholder="0.00" inputmode="decimal">
                     </div>
                 </div>
                 <button class="save-btn" onclick="save()"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>保存收益数据</button>

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="manifest" href="manifest.json">
+    <script src="app-config.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="投资助手">
@@ -521,7 +522,7 @@
         resultsEl.innerHTML = '<div class="loading-spinner">正在获取基金数据...</div>';
 
         try {
-            const response = await fetch('/api/fund-drawdown/batch', {
+            const response = await fetch(window.API_BASE_URL + '/api/fund-drawdown/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ fundCodes, days })

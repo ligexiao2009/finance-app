@@ -2,192 +2,403 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Drawdown Calculator</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="投资助手">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>投资助手 Pro</title>
     <style>
         :root {
             --ios-bg: #f2f2f7;
             --ios-card: #ffffff;
+            --ios-input-bg: #e9e9eb;
             --ios-primary: #007aff;
-            --ios-up: #ff3b30;    /* 涨红 */
-            --ios-up-bg: rgba(255, 59, 48, 0.1);
-            --ios-down: #34c759;  /* 跌绿 */
-            --ios-down-bg: rgba(52, 199, 89, 0.1);
-            --ios-text: #000000;
-            --ios-secondary-text: #8e8e93;
-            --ios-border: #d1d1d6;
+            --ios-red: #ff3b30;
+            --ios-green: #34c759;
+            --ios-orange: #ff9500;
+            --ios-text: #1c1c1e;
+            --ios-secondary: #8e8e93;
+            --ios-border: rgba(0,0,0,0.1);
+            --ios-shadow: rgba(0,0,0,0.08);
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --ios-bg: #000000;
-                --ios-card: #1c1c1e;
-                --ios-text: #ffffff;
-                --ios-border: #38383a;
-                --ios-up-bg: rgba(255, 69, 58, 0.15);
-                --ios-down-bg: rgba(48, 209, 88, 0.15);
-            }
+        [data-theme="dark"] {
+            --ios-bg: #000000;
+            --ios-card: #1c1c1e;
+            --ios-input-bg: #2c2c2e;
+            --ios-text: #ffffff;
+            --ios-secondary: #a1a1a6;
+            --ios-border: rgba(255,255,255,0.1);
+            --ios-shadow: rgba(0,0,0,0.3);
+        }
+
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background-color: var(--ios-bg);
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior-y: none;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-            background-color: var(--ios-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
             color: var(--ios-text);
-            margin: 0;
-            display: flex; justify-content: center; align-items: flex-start; 
-            height: 100vh; padding-top: 8vh; box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+            display: flex; justify-content: center;
+            padding: env(safe-area-inset-top) 16px 40px;
+            transition: background-color 0.3s;
         }
 
-        .container { width: 92%; max-width: 400px; }
+        .container {
+            width: 100%;
+            max-width: 420px;
+        }
 
+        /* Header */
         .header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; padding: 0 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
         }
-
-        h1 { font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
-        
-        .clear-btn {
-            font-size: 14px; font-weight: 600; color: var(--ios-primary);
-            background: rgba(0, 122, 255, 0.1); border: none;
-            padding: 8px 16px; border-radius: 20px; cursor: pointer;
+        .header h1 {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.5px;
         }
+        .theme-toggle {
+            font-size: 22px;
+            cursor: pointer;
+            padding: 8px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .theme-toggle:active { opacity: 0.4; }
 
-        /* 结果区域 - 背景色动态变化 */
-        .result-group {
+        /* 分段切换器 */
+        .segmented-control {
+            background: rgba(118, 118, 128, 0.12);
+            border-radius: 12px;
+            display: flex;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+        .segment {
+            flex: 1;
+            border: none;
+            background: none;
+            padding: 12px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ios-secondary);
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .segment.active {
             background: var(--ios-card);
-            border-radius: 16px;
-            padding: 28px 16px;
-            text-align: center;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 平滑过渡 */
+            color: var(--ios-primary);
+            box-shadow: 0 2px 8px var(--ios-shadow);
         }
 
-        .res-label { font-size: 13px; color: var(--ios-secondary-text); letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
-        .res-value { font-size: 48px; font-weight: 800; margin: 4px 0; letter-spacing: -1.5px; }
-        .res-sub { font-size: 14px; margin-top: 10px; font-weight: 500; }
+        .tool-content {
+            display: none;
+        }
+        .tool-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 核心数值卡片 */
+        .display-card {
+            background: var(--ios-card);
+            border-radius: 20px;
+            padding: 28px 24px;
+            text-align: center;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 20px var(--ios-shadow);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .label {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .value {
+            font-size: 42px;
+            font-weight: 800;
+            margin: 10px 0;
+            letter-spacing: -1.5px;
+            font-variant-numeric: tabular-nums;
+        }
+        .sub-value {
+            font-size: 15px;
+            font-weight: 500;
+            min-height: 22px;
+            color: var(--ios-secondary);
+        }
 
         /* 输入区域 */
-        .card {
+        .input-group {
             background: var(--ios-card);
-            border-radius: 14px;
-            padding: 0 16px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px var(--ios-shadow);
+            transition: background-color 0.3s;
         }
-
-        .input-item {
-            display: flex; align-items: center; padding: 16px 0;
+        .row {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
             border-bottom: 0.5px solid var(--ios-border);
         }
-        .input-item:last-child { border-bottom: none; }
-
-        .label { font-size: 17px; width: 100px; }
-        input {
-            flex: 1; background: transparent; border: none; color: var(--ios-text);
-            font-size: 17px; text-align: right; outline: none;
+        .row:last-child { border-bottom: none; }
+        .row label {
+            font-size: 16px;
+            font-weight: 500;
+            flex: 1;
         }
-        .unit { color: var(--ios-secondary-text); font-size: 17px; margin-left: 6px; width: 20px; }
+        .row input {
+            background: none;
+            border: none;
+            color: var(--ios-text);
+            font-size: 16px;
+            text-align: right;
+            width: 90px;
+            outline: none;
+            font-family: inherit;
+            font-weight: 600;
+        }
+        .row input::placeholder { color: var(--ios-secondary); opacity: 0.6; }
+        .row .unit {
+            color: var(--ios-secondary);
+            margin-left: 8px;
+            font-size: 14px;
+            width: 24px;
+            text-align: right;
+        }
+
+        /* 按钮 */
+        .btn-clear {
+            display: block;
+            margin: 20px auto 0;
+            color: var(--ios-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 8px 16px;
+        }
+
+        .up { color: var(--ios-red) !important; }
+        .down { color: var(--ios-green) !important; }
+        .highlight { color: var(--ios-primary); font-weight: 600; }
+
+        /* 结果提示 */
+        .tip-success { color: var(--ios-green); }
+        .tip-warning { color: var(--ios-orange); }
     </style>
 </head>
-<body>
+<body data-theme="light">
 
-<div class="container">
+    <div class="container">
     <div class="header">
-        <h1>回撤计算</h1>
-        <button class="clear-btn" onclick="clearAll()">清除</button>
+        <h1>投资助手</h1>
+        <div class="theme-toggle" onclick="toggleTheme()">&#127769;</div>
     </div>
 
-    <div class="result-group" id="resultCard">
-        <span class="res-label" id="typeLabel">资产状态</span>
-        <div class="res-value" id="mainResult">0.00%</div>
-        <div class="res-sub" id="subResult">请输入数值</div>
+    <div class="segmented-control">
+        <button class="segment active" onclick="switchTab(0)">成本助手</button>
+        <button class="segment" onclick="switchTab(1)">回撤计算</button>
     </div>
-    
-    <div class="card">
-        <div class="input-item">
-            <span class="label">前次高点</span>
-            <input type="text" id="highVal" placeholder="0.00" inputmode="text" oninput="validateAndCalc(this)">
-            <span class="unit">%</span>
+
+    <!-- 模块一：成本助手 -->
+    <div id="tab-cost" class="tool-content active">
+        <div class="display-card" id="card-cost">
+            <div class="label">推算成本点位</div>
+            <div class="value" id="res-cost-point">0.00</div>
+            <div class="sub-value" id="res-cost-tip">输入数据开始推算</div>
         </div>
-        <div class="input-item">
-            <span class="label">当前数值</span>
-            <input type="text" id="currentVal" placeholder="0.00" inputmode="text" oninput="validateAndCalc(this)">
-            <span class="unit">%</span>
+        <div class="input-group">
+            <div class="row">
+                <label>当前点位</label>
+                <input type="number" id="in-now-p" placeholder="4690" oninput="runCost()">
+                <span class="unit">点</span>
+            </div>
+            <div class="row">
+                <label>收益率</label>
+                <input type="number" id="in-now-y" placeholder="-14.61" oninput="runCost()">
+                <span class="unit">%</span>
+            </div>
+            <div class="row">
+                <label>目标成本</label>
+                <input type="number" id="in-target-p" placeholder="5000" oninput="runCost()">
+                <span class="unit">点</span>
+            </div>
         </div>
+                <button class="btn-clear" onclick="clearInputs('cost')">重置所有数值</button>
+    </div>
+
+    <!-- 模块二：回撤计算 -->
+    <div id="tab-drawdown" class="tool-content">
+        <div class="display-card" id="card-dd">
+            <div class="label" id="dd-label">实际回撤率</div>
+            <div class="value" id="res-dd-value">0.00%</div>
+            <div class="sub-value" id="res-dd-tip">请输入比例</div>
+        </div>
+        <div class="input-group">
+            <div class="row">
+                <label>前次高点收益</label>
+                <input type="number" id="in-h-v" placeholder="0.00" oninput="runDD()">
+                <span class="unit">%</span>
+            </div>
+            <div class="row">
+                <label>当前收益率</label>
+                <input type="number" id="in-c-v" placeholder="-14.61" oninput="runDD()">
+                <span class="unit">%</span>
+            </div>
+        </div>
+                <button class="btn-clear" onclick="clearInputs('dd')">重置所有数值</button>
     </div>
 </div>
 
 <script>
-    function validateAndCalc(el) {
-        let val = el.value;
-        val = val.replace(/[^\d.-]/g, ""); 
-        if (val.indexOf('-') > 0) val = val.replace('-', ''); 
-        const dots = val.split('.');
-        if (dots.length > 2) val = dots + '.' + dots.slice(1).join(''); 
-        el.value = val;
-        calculate();
+    const STORAGE_KEY = 'invest_drawdown_v1';
+
+    // 初始化
+    window.onload = function() {
+        loadData();
+        const savedTab = parseInt(localStorage.getItem('invest_dd_tab') || '0');
+        switchTab(savedTab);
+    };
+
+    // 主题切换
+    function toggleTheme() {
+        const body = document.body;
+        const isDark = body.getAttribute('data-theme') === 'dark';
+        body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        localStorage.setItem('invest_dd_theme', isDark ? 'light' : 'dark');
     }
 
-    function calculate() {
-        const hStr = document.getElementById('highVal').value;
-        const cStr = document.getElementById('currentVal').value;
-        const cardEl = document.getElementById('resultCard');
-        const mainEl = document.getElementById('mainResult');
-        const subEl = document.getElementById('subResult');
-        const labelEl = document.getElementById('typeLabel');
-
-        if (hStr === "" || cStr === "" || hStr === "-" || cStr === "-") {
-            resetDisplay();
-            return;
+    // 加载保存的主题
+    (function() {
+        const savedTheme = localStorage.getItem('invest_dd_theme');
+        if (savedTheme) {
+            document.body.setAttribute('data-theme', savedTheme);
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.setAttribute('data-theme', 'dark');
         }
+    })();
 
-        const h = parseFloat(hStr);
-        const c = parseFloat(cStr);
-        const diffPoints = (c - h).toFixed(2);
-        const highNet = 1 + (h / 100);
-        const currNet = 1 + (c / 100);
-        
-        if (currNet >= highNet) {
-            // 增长状态：背景变红
-            cardEl.style.backgroundColor = "var(--ios-up-bg)";
-            labelEl.innerText = "资产增长率";
-            const growth = ((currNet - highNet) / highNet * 100).toFixed(2);
-            mainEl.innerText = "+" + growth + "%";
-            mainEl.style.color = "var(--ios-up)";
-            subEl.innerText = "📈 较前高上涨 " + Math.abs(diffPoints) + " 个百分点";
-            subEl.style.color = "var(--ios-up)";
+    function switchTab(index) {
+        const tabs = document.querySelectorAll('.tool-content');
+        const segments = document.querySelectorAll('.segment');
+        tabs.forEach((t, i) => t.classList.toggle('active', i === index));
+        segments.forEach((s, i) => s.classList.toggle('active', i === index));
+        localStorage.setItem('invest_dd_tab', index);
+    }
+
+    function runCost() {
+        const p = parseFloat(document.getElementById('in-now-p').value);
+        const y = parseFloat(document.getElementById('in-now-y').value);
+        const t = parseFloat(document.getElementById('in-target-p').value);
+        const resP = document.getElementById('res-cost-point');
+        const resT = document.getElementById('res-cost-tip');
+
+        saveData();
+
+        if (isNaN(p) || isNaN(y)) return;
+
+        const cost = p / (1 + (y / 100));
+        resP.innerText = cost.toFixed(2);
+
+        if (!isNaN(t)) {
+            if (t >= cost) {
+                resT.innerHTML = '<span class="tip-success">&#10003; 已达标</span>';
+            } else if (t <= p) {
+                resT.innerHTML = '<span class="tip-warning">&#9888; 目标低于现价</span>';
+            } else {
+                const multi = (cost - t) / (t - p);
+                resT.innerHTML = '需补仓 <span class="highlight">' + multi.toFixed(2) + '</span> 倍本金';
+            }
         } else {
-            // 回撤状态：背景变绿
-            cardEl.style.backgroundColor = "var(--ios-down-bg)";
-            labelEl.innerText = "实际回撤率";
-            const drawdown = ((highNet - currNet) / highNet * 100).toFixed(2);
-            mainEl.innerText = "-" + drawdown + "%";
-            mainEl.style.color = "var(--ios-down)";
-            subEl.innerText = "📉 较前高跌了 " + Math.abs(diffPoints) + " 个百分点";
-            subEl.style.color = "var(--ios-down)";
+            resT.innerHTML = '回本需上涨 <span class="highlight">' + ((cost/p-1)*100).toFixed(2) + '%</span>';
         }
     }
 
-    function clearAll() {
-        document.getElementById('highVal').value = "";
-        document.getElementById('currentVal').value = "";
-        resetDisplay();
+    function runDD() {
+        const h = parseFloat(document.getElementById('in-h-v').value);
+        const c = parseFloat(document.getElementById('in-c-v').value);
+        const valEl = document.getElementById('res-dd-value');
+        const tipEl = document.getElementById('res-dd-tip');
+        const labelEl = document.getElementById('dd-label');
+
+        saveData();
+
+        if (isNaN(h) || isNaN(c)) return;
+
+        const dd = ((1+c/100)/(1+h/100) - 1) * 100;
+        valEl.innerText = (dd > 0 ? "+" : "") + dd.toFixed(2) + "%";
+        valEl.className = "value " + (dd >= 0 ? "up" : "down");
+        labelEl.innerText = dd >= 0 ? "资产增长率" : "实际回撤率";
+
+        const diff = Math.abs(c - h).toFixed(2);
+        tipEl.innerHTML = dd >= 0
+            ? '<span class="up">&#9650;</span> 上涨 ' + diff + ' 个百分点'
+            : '<span class="down">&#9660;</span> 回撤 ' + diff + ' 个百分点';
     }
 
-    function resetDisplay() {
-        const cardEl = document.getElementById('resultCard');
-        const mainEl = document.getElementById('mainResult');
-        const subEl = document.getElementById('subResult');
-        cardEl.style.backgroundColor = "var(--ios-card)";
-        mainEl.innerText = "0.00%";
-        mainEl.style.color = "var(--ios-text)";
-        subEl.innerText = "请输入数值";
-        subEl.style.color = "var(--ios-secondary-text)";
-        document.getElementById('typeLabel').innerText = "资产状态";
+    function clearInputs(type) {
+        if(type === 'cost') {
+            ['in-now-p', 'in-now-y', 'in-target-p'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('res-cost-point').innerText = '0.00';
+            document.getElementById('res-cost-tip').innerText = '输入数据开始推算';
+        } else {
+            ['in-h-v', 'in-c-v'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('res-dd-value').innerText = '0.00%';
+            document.getElementById('res-dd-value').className = 'value';
+            document.getElementById('dd-label').innerText = '实际回撤率';
+            document.getElementById('res-dd-tip').innerText = '请输入比例';
+        }
+        saveData();
+    }
+
+    // 本地存储
+    function saveData() {
+        const data = {
+            'in-now-p': document.getElementById('in-now-p').value,
+            'in-now-y': document.getElementById('in-now-y').value,
+            'in-target-p': document.getElementById('in-target-p').value,
+            'in-h-v': document.getElementById('in-h-v').value,
+            'in-c-v': document.getElementById('in-c-v').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadData() {
+        const rawData = localStorage.getItem(STORAGE_KEY);
+        if (!rawData) return;
+        try {
+            const data = JSON.parse(rawData);
+            for (let id in data) {
+                const el = document.getElementById(id);
+                if (el && data[id]) el.value = data[id];
+            }
+            runCost();
+            runDD();
+        } catch (e) {}
     }
 </script>
-
 </body>
 </html>

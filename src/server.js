@@ -9,6 +9,7 @@ const db = require('./db/db');
 const { handleDailyProfitRoutes } = require('./routes/daily-profit');
 const { handleAlertRulesRoutes, checkPriceAlerts, invalidateAlertCache } = require('./routes/alert-rules');
 const { servePublicFile } = require('./utils/static-files');
+const { analyzeFund, analyzeMultipleFunds } = require('./utils/fund-drawdown');
 
 const PORT = 3000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
@@ -1226,6 +1227,47 @@ const server = http.createServer(async (req, res) => {
     fetchQuotesBatch,
     sendWechatMessage
   })) {
+    return;
+  }
+
+  // ========== 基金回撤分析 API ==========
+  // 分析单只基金
+  if (req.method === 'GET' && req.url.startsWith('/api/fund-drawdown/')) {
+    try {
+      const fundCode = req.url.split('/api/fund-drawdown/')[1];
+      const days = 365; // 默认分析最近一年
+      const result = await analyzeFund(fundCode, days);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      console.error('Error analyzing fund:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: e.message }));
+    }
+    return;
+  }
+
+  // 批量分析多只基金
+  if (req.method === 'POST' && req.url === '/api/fund-drawdown/batch') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { fundCodes, days = 365 } = JSON.parse(body);
+        if (!fundCodes || !Array.isArray(fundCodes)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'fundCodes 必须是数组' }));
+          return;
+        }
+        const results = await analyzeMultipleFunds(fundCodes, days);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, results }));
+      } catch (e) {
+        console.error('Error batch analyzing funds:', e);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
     return;
   }
 

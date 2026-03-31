@@ -208,6 +208,89 @@
         /* 结果提示 */
         .tip-success { color: var(--ios-green); }
         .tip-warning { color: var(--ios-orange); }
+
+        /* 基金回撤模块 */
+        .btn-analyze {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: var(--ios-primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: opacity 0.2s;
+        }
+        .btn-analyze:active { opacity: 0.7; }
+        .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .fund-result-card {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 12px var(--ios-shadow);
+        }
+        .fund-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .fund-code {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .fund-name {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            margin-top: 2px;
+        }
+        .fund-date-range {
+            font-size: 12px;
+            color: var(--ios-secondary);
+        }
+        .fund-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .stat-value.negative { color: var(--ios-green); }
+        .stat-value.positive { color: var(--ios-red); }
+        .stat-sub {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            margin-top: 2px;
+        }
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: var(--ios-secondary);
+        }
+        .error-msg {
+            color: var(--ios-red);
+            text-align: center;
+            padding: 20px;
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -221,6 +304,7 @@
     <div class="segmented-control">
         <button class="segment active" onclick="switchTab(0)">成本助手</button>
         <button class="segment" onclick="switchTab(1)">回撤计算</button>
+        <button class="segment" onclick="switchTab(2)">基金回撤</button>
     </div>
 
     <!-- 模块一：成本助手 -->
@@ -270,6 +354,23 @@
             </div>
         </div>
                 <button class="btn-clear" onclick="clearInputs('dd')">重置所有数值</button>
+    </div>
+
+    <!-- 模块三：基金回撤 -->
+    <div id="tab-fund" class="tool-content">
+        <div class="input-group" style="margin-bottom: 16px;">
+            <div class="row">
+                <label>基金代码</label>
+                <input type="text" id="in-fund-codes" placeholder="110011,161725" style="width: 140px;">
+            </div>
+            <div class="row">
+                <label>分析天数</label>
+                <input type="number" id="in-fund-days" placeholder="60" value="60">
+                <span class="unit">天</span>
+            </div>
+        </div>
+        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
+        <div id="fund-results"></div>
     </div>
 </div>
 
@@ -398,6 +499,85 @@
             runCost();
             runDD();
         } catch (e) {}
+    }
+
+    // ==================== 基金回撤分析 ====================
+    async function analyzeFundDrawdown() {
+        const codesInput = document.getElementById('in-fund-codes').value.trim();
+        const days = parseInt(document.getElementById('in-fund-days').value) || 365;
+        const resultsEl = document.getElementById('fund-results');
+        const btnEl = document.querySelector('.btn-analyze');
+
+        if (!codesInput) {
+            resultsEl.innerHTML = '<div class="error-msg">请输入基金代码</div>';
+            return;
+        }
+
+        const fundCodes = codesInput.split(',').map(c => c.trim()).filter(c => c);
+        
+        // 显示加载状态
+        btnEl.disabled = true;
+        btnEl.textContent = '分析中...';
+        resultsEl.innerHTML = '<div class="loading-spinner">正在获取基金数据...</div>';
+
+        try {
+            const response = await fetch('/api/fund-drawdown/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fundCodes, days })
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                resultsEl.innerHTML = `<div class="error-msg">${data.error || '分析失败'}</div>`;
+                return;
+            }
+
+            // 渲染结果
+            let html = '';
+            for (const result of data.results) {
+                if (!result.success) {
+                    html += `<div class="fund-result-card">
+                        <div class="fund-code">${result.fundCode}</div>
+                        <div class="error-msg">获取失败: ${result.error}</div>
+                    </div>`;
+                    continue;
+                }
+
+                const dd = result.maxDrawdown;
+                const ret = result.returnData;
+                const isPositive = parseFloat(ret.returnPercent) >= 0;
+
+                html += `<div class="fund-result-card">
+                    <div class="fund-header">
+                        <div>
+                            <div class="fund-code">${result.fundCode}</div>
+                            <div class="fund-name">${result.fundName || ''}</div>
+                        </div>
+                        <span class="fund-date-range">${result.dataRange.startDate} ~ ${result.dataRange.endDate}</span>
+                    </div>
+                    <div class="fund-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">最大回撤</div>
+                            <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
+                            <div class="stat-sub">${dd.peakDate} → ${dd.troughDate}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">区间收益</div>
+                            <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
+                            <div class="stat-sub">${result.dataRange.dataPoints} 个交易日</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            resultsEl.innerHTML = html;
+
+        } catch (e) {
+            resultsEl.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;
+        } finally {
+            btnEl.disabled = false;
+            btnEl.textContent = '开始分析';
+        }
     }
 </script>
 </body>

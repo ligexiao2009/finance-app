@@ -680,14 +680,20 @@
         const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
         const textColor = isDark ? '#a1a1a6' : '#8e8e93';
         
-        // 构建数据：普通段蓝色，回撤段绿色
+        // 构建数据：蓝色线完整显示，橙色线只显示回撤段（更粗）
         const normalData = [];
         const drawdownData = [];
-        
+
+        // 确保日期格式一致
+        const normalizeDate = (d) => (d || '').replace(/\//g, '-');
+        const pDate = normalizeDate(peakDate);
+        const tDate = normalizeDate(troughDate);
+
         navList.forEach((n, i) => {
-            const isInRange = n.date >= peakDate && n.date <= troughDate;
-            normalData.push(isInRange ? null : n.nav);
-            drawdownData.push(isInRange ? n.nav : null);
+            const nDate = normalizeDate(n.date);
+            const isInRange = nDate >= pDate && nDate <= tDate;
+            normalData.push(n.nav);           // 蓝色线显示全部
+            drawdownData.push(isInRange ? n.nav : null);  // 橙色线只显示回撤段
         });
         
         new Chart(ctx, {
@@ -699,7 +705,7 @@
                         label: '净值',
                         data: normalData,
                         borderColor: '#007aff',
-                        borderWidth: 2,
+                        borderWidth: 1.5,
                         fill: false,
                         tension: 0.3,
                         pointRadius: 0,
@@ -709,8 +715,8 @@
                     {
                         label: '回撤段',
                         data: drawdownData,
-                        borderColor: '#34c759', // 绿色
-                        borderWidth: 2.5,
+                        borderColor: '#ff3b30', // 红色，最醒目
+                        borderWidth: 3.5,
                         fill: false,
                         tension: 0.3,
                         pointRadius: 0,

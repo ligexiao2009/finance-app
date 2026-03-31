@@ -195,7 +195,9 @@ async function analyzeFund(fundCode, days = 365) {
       dataPoints: navList.length
     },
     maxDrawdown,
-    returnData
+    returnData,
+    // 返回净值列表用于绘图
+    navList: navList.map(n => ({ date: n.date, nav: n.nav }))
   };
   
   console.log(`\n分析结果:`);

@@ -9,6 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="投资助手">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>投资助手 Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --ios-bg: #f2f2f7;
@@ -292,6 +293,18 @@
             text-align: center;
             padding: 20px;
         }
+
+        /* 净值曲线图 */
+        .chart-container {
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--ios-card);
+            border-radius: 12px;
+        }
+        .chart-container canvas {
+            width: 100% !important;
+            height: 150px !important;
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -503,7 +516,73 @@
     }
 
     // ==================== 基金回撤分析 ====================
+    let chartDataList = [];
+    
+    function drawChart(canvasId, navList) {
+        if (!navList || navList.length === 0) return;
+        
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+        
+        // 判断当前主题
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const lineColor = '#007aff';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+        const textColor = isDark ? '#a1a1a6' : '#8e8e93';
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: navList.map(n => n.date.slice(5)), // 只显示月-日
+                datasets: [{
+                    data: navList.map(n => n.nav),
+                    borderColor: lineColor,
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHitRadius: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: ctx => '净值: ' + ctx.parsed.y.toFixed(4)
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: textColor,
+                            maxTicksLimit: 5,
+                            font: { size: 10 }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 10 },
+                            callback: v => v.toFixed(2)
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     async function analyzeFundDrawdown() {
+        chartDataList = []; // 重置图表数据列表
         const codesInput = document.getElementById('in-fund-codes').value.trim();
         const days = parseInt(document.getElementById('in-fund-days').value) || 365;
         const resultsEl = document.getElementById('fund-results');
@@ -548,6 +627,7 @@
                 const dd = result.maxDrawdown;
                 const ret = result.returnData;
                 const isPositive = parseFloat(ret.returnPercent) >= 0;
+                const chartId = 'chart-' + result.fundCode;
 
                 html += `<div class="fund-result-card">
                     <div class="fund-header">
@@ -569,9 +649,18 @@
                             <div class="stat-sub">${result.dataRange.dataPoints} 个交易日</div>
                         </div>
                     </div>
+                    <div class="chart-container">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
                 </div>`;
+                
+                // 存储数据用于绑图
+                chartDataList.push({ id: chartId, navList: result.navList });
             }
             resultsEl.innerHTML = html;
+            
+            // 绑制所有图表
+            chartDataList.forEach(item => drawChart(item.id, item.navList));
 
         } catch (e) {
             resultsEl.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;

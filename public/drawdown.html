@@ -518,7 +518,7 @@
     // ==================== 基金回撤分析 ====================
     let chartDataList = [];
     
-    function drawChart(canvasId, navList) {
+    function drawChart(canvasId, navList, peakDate, troughDate) {
         if (!navList || navList.length === 0) return;
         
         const ctx = document.getElementById(canvasId);
@@ -526,23 +526,47 @@
         
         // 判断当前主题
         const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const lineColor = '#007aff';
         const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
         const textColor = isDark ? '#a1a1a6' : '#8e8e93';
+        
+        // 构建数据：普通段蓝色，回撤段绿色
+        const normalData = [];
+        const drawdownData = [];
+        
+        navList.forEach((n, i) => {
+            const isInRange = n.date >= peakDate && n.date <= troughDate;
+            normalData.push(isInRange ? null : n.nav);
+            drawdownData.push(isInRange ? n.nav : null);
+        });
         
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: navList.map(n => n.date.slice(5)), // 只显示月-日
-                datasets: [{
-                    data: navList.map(n => n.nav),
-                    borderColor: lineColor,
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.3,
-                    pointRadius: 0,
-                    pointHitRadius: 10
-                }]
+                datasets: [
+                    {
+                        label: '净值',
+                        data: normalData,
+                        borderColor: '#007aff',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        spanGaps: true
+                    },
+                    {
+                        label: '回撤段',
+                        data: drawdownData,
+                        borderColor: '#34c759', // 绿色
+                        borderWidth: 2.5,
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                        spanGaps: true
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -553,7 +577,12 @@
                         mode: 'index',
                         intersect: false,
                         callbacks: {
-                            label: ctx => '净值: ' + ctx.parsed.y.toFixed(4)
+                            label: ctx => {
+                                if (ctx.parsed.y !== null) {
+                                    return (ctx.datasetIndex === 1 ? '📉 回撤段: ' : '净值: ') + ctx.parsed.y.toFixed(4);
+                                }
+                                return '';
+                            }
                         }
                     }
                 },
@@ -655,12 +684,17 @@
                 </div>`;
                 
                 // 存储数据用于绑图
-                chartDataList.push({ id: chartId, navList: result.navList });
+                chartDataList.push({ 
+                    id: chartId, 
+                    navList: result.navList,
+                    peakDate: dd.peakDate,
+                    troughDate: dd.troughDate
+                });
             }
             resultsEl.innerHTML = html;
             
             // 绑制所有图表
-            chartDataList.forEach(item => drawChart(item.id, item.navList));
+            chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate));
 
         } catch (e) {
             resultsEl.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;

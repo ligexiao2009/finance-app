@@ -12,7 +12,8 @@ async function fetchFundName(fundCode) {
     const response = await fetch(url);
     const text = await response.text();
     // 解析JSONP: jsonpgz({"name":"xxx",...});
-    const jsonMatch = text.match(/jsonpgz\((.+)\);?/);
+    // 使用更精确的正则，只匹配花括号内的内容
+    const jsonMatch = text.match(/jsonpgz\((\{.*?\})\s*\);?/s);
     if (jsonMatch) {
       const data = JSON.parse(jsonMatch[1]);
       return data.name || '';

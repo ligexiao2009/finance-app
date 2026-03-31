@@ -649,9 +649,9 @@
             min-height: 1.2rem;
             padding: 0 0.42rem;
             border-radius: 999px;
-            border: 1px dashed rgba(99, 102, 241, 0.35);
-            background: rgba(99, 102, 241, 0.08);
-            color: #6366f1;
+            border: 1px dashed rgba(239, 68, 68, 0.35);
+            background: rgba(239, 68, 68, 0.08);
+            color: #ef4444;
             font-size: 0.62rem;
             font-weight: 800;
             line-height: 1;
@@ -1543,10 +1543,13 @@
             const metric = mobileCompactMode ? mobileSortMetric : 'mkt';
 
             cards.sort((a, b) => {
-                const aDraft = a.dataset.isDraft === '1';
-                const bDraft = b.dataset.isDraft === '1';
-                if (aDraft !== bDraft) {
-                    return aDraft ? -1 : 1;
+                // 只有新增卡片（没有 code）才排到最前面
+                const aCode = a.querySelector('.code-input')?.value?.trim();
+                const bCode = b.querySelector('.code-input')?.value?.trim();
+                const aIsNew = !aCode;
+                const bIsNew = !bCode;
+                if (aIsNew !== bIsNew) {
+                    return aIsNew ? -1 : 1;
                 }
                 const aVal = parseFloat(a.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
                 const bVal = parseFloat(b.dataset[metric === 'change' ? 'changeSortVal' : metric === 'today' ? 'todayProfitVal' : 'mktVal']) || 0;
@@ -1707,7 +1710,7 @@
                     <div class="mobile-stat-tile">
                         <div class="flex items-center justify-between gap-2">
                             <div class="text-[11px] font-black uppercase tracking-wide text-[var(--text-muted)]">持仓</div>
-                            <input type="number" class="shares-input mobile-metric-input mono text-right" value="${item.shares || 0}" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()" onfocus="clearZero(this)">
+                            <input type="number" class="shares-input mobile-metric-input mono text-right" value="${item.shares || 0}" oninput="markCardDirty(this.closest('[data-id]')); saveAndCalculate()" onfocus="clearZero(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.mobile-stat-tile').parentElement.querySelector('.cost-input').focus()}">
                         </div>
                     </div>
                     <div class="mobile-stat-tile">

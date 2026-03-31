@@ -7,6 +7,7 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const db = require('./db/db');
 const { handleDailyProfitRoutes } = require('./routes/daily-profit');
+const { handleAlertRulesRoutes, checkPriceAlerts, invalidateAlertCache } = require('./routes/alert-rules');
 const { servePublicFile } = require('./utils/static-files');
 
 const PORT = 3000;
@@ -684,6 +685,12 @@ async function setupCronJob() {
   if (global.confirmCronJob) {
     global.confirmCronJob.stop();
   }
+  if (global.alertCheckCronJob) {
+    global.alertCheckCronJob.stop();
+  }
+  if (global.alertResetCronJob) {
+    global.alertResetCronJob.stop();
+  }
 
   // 基金提醒定时任务
   global.cronJob = cron.schedule(cronTime, () => {
@@ -706,9 +713,36 @@ async function setupCronJob() {
     timezone: 'Asia/Shanghai'
   });
 
+  // 股票涨跌幅提醒检查定时任务 - 交易时间每分钟执行
+  // 上午 9:30-11:30, 下午 13:00-15:00
+  global.alertCheckCronJob = cron.schedule('* 9-11,13-14 * * 1-5', () => {
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    // 精确控制时间段
+    const isMorningSession = (hour === 9 && minute >= 30) || (hour === 10) || (hour === 11 && minute <= 30);
+    const isAfternoonSession = hour === 13 || hour === 14 || (hour === 15 && minute === 0);
+    
+    if (isMorningSession || isAfternoonSession) {
+      checkPriceAlerts(fetchQuotesBatch, sendWechatMessage);
+    }
+  }, {
+    timezone: 'Asia/Shanghai'
+  });
+
+  // 每天开盘前重置提醒状态 - 9:25执行
+  global.alertResetCronJob = cron.schedule('25 9 * * 1-5', () => {
+    console.log('重置股票涨跌幅提醒状态...');
+    db.resetAlertRulesDaily();
+  }, {
+    timezone: 'Asia/Shanghai'
+  });
+
   console.log(`基金提醒定时任务已设置: 每天 ${cronTime} 执行`);
   console.log(`每日收益计算定时任务已设置: 周一到周五 23:00 执行`);
   console.log(`自动确认交易定时任务已设置: 每天 09:00 执行`);
+  console.log(`股票涨跌幅提醒检查已设置: 交易时间每分钟执行`);
+  console.log(`提醒状态重置已设置: 周一到周五 09:25 执行`);
   console.log('提示: 可以在 .env 文件中修改 ALERT_TIME 环境变量');
 }
 
@@ -1182,6 +1216,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (await handleDailyProfitRoutes(req, res)) {
+    return;
+  }
+
+  // 股票涨跌幅提醒规则 API
+  if (await handleAlertRulesRoutes(req, res, {
+    sendCachedJson,
+    invalidateCache,
+    fetchQuotesBatch,
+    sendWechatMessage
+  })) {
     return;
   }
 

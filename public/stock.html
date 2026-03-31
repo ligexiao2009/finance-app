@@ -964,6 +964,28 @@
             </div>
         </div>
 
+        <!-- 股票涨跌幅提醒配置弹窗 -->
+        <div id="alertRulesModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="modal-title">涨跌幅提醒设置</h3>
+                        <div class="modal-muted" id="alertRulesStockName"></div>
+                    </div>
+                    <button onclick="closeAlertRulesModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="text-[10px] text-[var(--text-muted)] mb-4">每只股票最多配置3条提醒规则，当日涨跌幅达到阈值时通过微信通知。</div>
+                <div id="alertRulesList" class="space-y-3">
+                    <!-- 动态生成规则列表 -->
+                </div>
+                <button id="addAlertRuleBtn" onclick="addAlertRuleRow()" class="mt-4 w-full py-2 rounded-xl font-black text-[10px] border border-dashed border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10 transition">+ 添加提醒规则</button>
+                <div class="mt-6 flex gap-3">
+                    <button onclick="closeAlertRulesModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button onclick="saveAlertRules()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white">保存</button>
+                </div>
+            </div>
+        </div>
+
         <div id="editUnlockModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
             <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[420px] border border-[var(--border-color)] shadow-2xl">
                 <div class="flex justify-between items-start gap-4 mb-6">
@@ -1474,7 +1496,12 @@
                     <div class="target-ratio-cell text-[10px] font-black opacity-80">--</div>
                 </td>
                 <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input editable-field editable-field-plan text-center mono text-sm text-indigo-500 w-full outline-none" value="${item.planBuy || 0}" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
-                <td class="px-4 text-center"><input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
+                <td class="px-4 text-center">
+                    ${item.isFund 
+                        ? `<input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()">`
+                        : `<button onclick="openAlertRulesModal(this.closest('tr'))" class="alert-rules-btn text-[10px] px-2 py-1 rounded-lg border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition">设置提醒</button>`
+                    }
+                </td>
                 <td class="px-2 text-center">
                     <div class="row-action-cluster flex items-center justify-center gap-2">
                         ${visibleActions}
@@ -1884,7 +1911,8 @@
                     targetRatioEl.className = 'target-ratio-cell text-[10px] font-black opacity-80';
                 }
 
-                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const alertInput = row.querySelector('.alert-input');
+                const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
                 const isOverseas = row.dataset.isOverseas === '1';
                 return { id: row.dataset.id, code, name: row.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, alert, isOverseas, targetPrice };
             });
@@ -1917,7 +1945,8 @@
             const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
             const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
-            const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+            const alertInput = row.querySelector('.alert-input');
+            const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
             const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
             const isFund = row.dataset.isFund === 'true';
             const isOverseas = row.dataset.isOverseas === '1';
@@ -1999,7 +2028,8 @@
                 const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
                 const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
                 const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
-                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const alertInput = row.querySelector('.alert-input');
+                const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
                 const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
                 const name = row.querySelector('.stock-name').innerText;
                 const id = row.dataset.id;
@@ -2117,7 +2147,8 @@
                 const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
                 const isFund = row.dataset.isFund === 'true';
                 const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
-                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const alertInput = row.querySelector('.alert-input');
+                const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
                 const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
                 csv += `${code},${name},${shares},${cost},${isFund?1:0},${planBuy},${alert || ''},${targetPrice || ''}\n`;
             });
@@ -2486,6 +2517,9 @@
             updatePendingTradeBanner();
             // 等净值获取完成后更新状态
             setTimeout(updateNetValueStatus, 2000);
+
+            // 初始化股票涨跌幅提醒按钮状态
+            setTimeout(initAlertRulesButtonStates, 1000);
 
             // 设置每日自动保存收益
             setupDailyAutoSave();
@@ -3285,6 +3319,184 @@
             if (currentTradeHistoryRowId) {
                 const row = document.querySelector(`tr[data-id="${currentTradeHistoryRowId}"]`);
                 if (row) openTradeHistoryModal(row);
+            }
+        }
+
+        // ==================== 股票涨跌幅提醒相关 ====================
+        let currentAlertRulesPositionId = null;
+        let currentAlertRules = [];
+
+        async function openAlertRulesModal(row) {
+            const positionId = row.dataset.id;
+            const code = row.querySelector('.code-input')?.value || '';
+            const name = row.querySelector('.stock-name')?.innerText || '未知股票';
+            
+            currentAlertRulesPositionId = positionId;
+            document.getElementById('alertRulesStockName').innerText = `${name} (#${code})`;
+            
+            // 加载现有规则
+            try {
+                const response = await fetch(`/api/alert-rules/position/${positionId}`);
+                const data = await response.json();
+                currentAlertRules = data.rules || [];
+            } catch (e) {
+                console.error('加载提醒规则失败:', e);
+                currentAlertRules = [];
+            }
+            
+            renderAlertRulesList();
+            document.getElementById('alertRulesModal').classList.remove('hidden');
+        }
+
+        function closeAlertRulesModal() {
+            document.getElementById('alertRulesModal').classList.add('hidden');
+            currentAlertRulesPositionId = null;
+            currentAlertRules = [];
+        }
+
+        function renderAlertRulesList() {
+            const container = document.getElementById('alertRulesList');
+            container.innerHTML = '';
+            
+            currentAlertRules.forEach((rule, index) => {
+                const ruleEl = document.createElement('div');
+                ruleEl.className = 'alert-rule-item flex items-center gap-3 p-3 bg-[var(--bg-main)] rounded-lg';
+                ruleEl.innerHTML = `
+                    <select class="direction-select bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-[10px] font-bold outline-none" data-index="${index}">
+                        <option value="up" ${rule.direction === 'up' ? 'selected' : ''}>涨</option>
+                        <option value="down" ${rule.direction === 'down' ? 'selected' : ''}>跌</option>
+                        <option value="both" ${rule.direction === 'both' ? 'selected' : ''}>涨/跌</option>
+                    </select>
+                    <div class="flex-1 flex items-center gap-2">
+                        <span class="text-[10px] text-[var(--text-muted)]">>=</span>
+                        <input type="number" class="threshold-input bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-[10px] font-bold w-20 outline-none text-center" value="${rule.threshold}" min="0.1" max="20" step="0.1" data-index="${index}">
+                        <span class="text-[10px] text-[var(--text-muted)]">%</span>
+                    </div>
+                    <label class="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" class="enabled-checkbox" ${rule.enabled ? 'checked' : ''} data-index="${index}">
+                        <span class="text-[10px] text-[var(--text-muted)]">启用</span>
+                    </label>
+                    <button onclick="removeAlertRule(${index})" class="text-rose-400 hover:text-rose-300 text-lg font-bold">&times;</button>
+                `;
+                container.appendChild(ruleEl);
+            });
+            
+            // 更新添加按钮状态
+            const addBtn = document.getElementById('addAlertRuleBtn');
+            if (currentAlertRules.length >= 3) {
+                addBtn.classList.add('hidden');
+            } else {
+                addBtn.classList.remove('hidden');
+            }
+
+            // 绑定事件
+            container.querySelectorAll('.direction-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    currentAlertRules[idx].direction = e.target.value;
+                });
+            });
+            container.querySelectorAll('.threshold-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    currentAlertRules[idx].threshold = parseFloat(e.target.value) || 0;
+                });
+            });
+            container.querySelectorAll('.enabled-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    currentAlertRules[idx].enabled = e.target.checked;
+                });
+            });
+        }
+
+        function addAlertRuleRow() {
+            if (currentAlertRules.length >= 3) {
+                showToast('每只股票最多只能配置3条提醒规则');
+                return;
+            }
+            currentAlertRules.push({
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                positionId: currentAlertRulesPositionId,
+                direction: 'both',
+                threshold: 3,
+                enabled: true
+            });
+            renderAlertRulesList();
+        }
+
+        function removeAlertRule(index) {
+            currentAlertRules.splice(index, 1);
+            renderAlertRulesList();
+        }
+
+        async function saveAlertRules() {
+            // 验证数据
+            for (const rule of currentAlertRules) {
+                if (!rule.threshold || rule.threshold <= 0 || rule.threshold > 20) {
+                    showToast('阈值必须在 0.1% - 20% 之间');
+                    return;
+                }
+            }
+
+            try {
+                // 先删除该持仓的所有旧规则
+                const existingRules = await (await fetch(`/api/alert-rules/position/${currentAlertRulesPositionId}`)).json();
+                for (const rule of existingRules.rules || []) {
+                    await fetch(`/api/alert-rules/${rule.id}`, { method: 'DELETE' });
+                }
+
+                // 创建新规则
+                for (const rule of currentAlertRules) {
+                    await fetch('/api/alert-rules', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(rule)
+                    });
+                }
+
+                showToast('提醒规则保存成功');
+                closeAlertRulesModal();
+
+                // 更新按钮显示状态
+                updateAlertRulesButtonState(currentAlertRulesPositionId);
+            } catch (e) {
+                console.error('保存提醒规则失败:', e);
+                showToast('保存失败，请重试');
+            }
+        }
+
+        async function updateAlertRulesButtonState(positionId) {
+            const row = document.querySelector(`tr[data-id="${positionId}"]`);
+            if (!row) return;
+            const btn = row.querySelector('.alert-rules-btn');
+            if (!btn) return;
+
+            try {
+                const response = await fetch(`/api/alert-rules/position/${positionId}`);
+                const data = await response.json();
+                const rules = data.rules || [];
+                const enabledCount = rules.filter(r => r.enabled).length;
+                
+                if (enabledCount > 0) {
+                    btn.classList.add('bg-indigo-500/20');
+                    btn.innerText = `已设置(${enabledCount})`;
+                } else {
+                    btn.classList.remove('bg-indigo-500/20');
+                    btn.innerText = '设置提醒';
+                }
+            } catch (e) {
+                console.error('获取提醒规则状态失败:', e);
+            }
+        }
+
+        async function initAlertRulesButtonStates() {
+            // 获取所有股票行的提醒按钮并更新状态
+            const rows = document.querySelectorAll('#stockBody tr');
+            for (const row of rows) {
+                if (row.dataset.isFund !== 'true') {
+                    await updateAlertRulesButtonState(row.dataset.id);
+                }
             }
         }
     </script>

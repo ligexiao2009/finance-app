@@ -104,3 +104,21 @@ SELECT
     (p.shares * p.cost) as estimated_value
 FROM positions p
 ORDER BY p.code;
+
+-- ==================== 股票涨跌幅提醒规则表 ====================
+CREATE TABLE IF NOT EXISTS alert_rules (
+    id VARCHAR(50) PRIMARY KEY,
+    position_id VARCHAR(50) NOT NULL,
+    direction VARCHAR(5) NOT NULL CHECK (direction IN ('up', 'down', 'both')),
+    threshold DECIMAL(5, 2) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    triggered_today BOOLEAN NOT NULL DEFAULT false,
+    trigger_time TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE CASCADE
+);
+
+-- 索引优化查询
+CREATE INDEX IF NOT EXISTS idx_alert_rules_position_id ON alert_rules(position_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);

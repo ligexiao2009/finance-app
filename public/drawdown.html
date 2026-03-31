@@ -305,6 +305,136 @@
             width: 100% !important;
             height: 150px !important;
         }
+
+        /* 多选下拉框样式 */
+        .fund-select-wrapper {
+            position: relative;
+            width: 140px;
+        }
+        .fund-select-display {
+            background: none;
+            border: none;
+            color: var(--ios-text);
+            font-size: 16px;
+            text-align: right;
+            width: 100%;
+            outline: none;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .fund-select-display::placeholder {
+            color: var(--ios-secondary);
+            opacity: 0.6;
+            font-weight: normal;
+        }
+        .fund-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: var(--ios-card);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--ios-shadow);
+            z-index: 1000;
+            min-width: 240px;
+            max-height: 600px;
+            overflow-y: auto;
+            display: none;
+        }
+        .fund-dropdown.show {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+        .fund-option {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background-color 0.15s;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .fund-option:last-child {
+            border-bottom: none;
+        }
+        .fund-option:hover {
+            background: rgba(0, 122, 255, 0.08);
+        }
+        .fund-option-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--ios-secondary);
+            border-radius: 6px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .fund-option.selected .fund-option-checkbox {
+            background: var(--ios-primary);
+            border-color: var(--ios-primary);
+        }
+        .fund-option-checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            display: none;
+        }
+        .fund-option.selected .fund-option-checkbox::after {
+            display: block;
+        }
+        .fund-option-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .fund-option-code {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ios-text);
+        }
+        .fund-option-name {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .fund-select-actions {
+            padding: 12px 16px;
+            border-top: 0.5px solid var(--ios-border);
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .fund-select-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+            flex: 1;
+        }
+        .fund-select-btn:active {
+            opacity: 0.7;
+        }
+        .fund-select-btn-clear {
+            background: rgba(0, 122, 255, 0.1);
+            color: var(--ios-primary);
+        }
+        .fund-select-btn-all {
+            background: var(--ios-primary);
+            color: white;
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -375,7 +505,17 @@
         <div class="input-group" style="margin-bottom: 16px;">
             <div class="row">
                 <label>基金代码</label>
-                <input type="text" id="in-fund-codes" placeholder="110011,161725" style="width: 140px;">
+                <div class="fund-select-wrapper">
+                    <button type="button" class="fund-select-display" id="fund-select-display">选择持仓基金</button>
+                    <input type="hidden" id="in-fund-codes">
+                    <div class="fund-dropdown" id="fund-dropdown">
+                        <div id="fund-options-list"></div>
+                        <div class="fund-select-actions">
+                            <button type="button" class="fund-select-btn fund-select-btn-clear" onclick="clearFundSelection()">清空</button>
+                            <button type="button" class="fund-select-btn fund-select-btn-all" onclick="selectAllFunds()">全选</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="row">
                 <label>分析天数</label>
@@ -391,11 +531,17 @@
 <script>
     const STORAGE_KEY = 'invest_drawdown_v1';
 
+    // 持仓基金数据
+    let holdingFunds = [];
+    let selectedFundCodes = new Set();
+
     // 初始化
     window.onload = function() {
         loadData();
         const savedTab = parseInt(localStorage.getItem('invest_dd_tab') || '0');
         switchTab(savedTab);
+        loadHoldingFunds();
+        initFundSelect();
     };
 
     // 主题切换
@@ -610,6 +756,106 @@
         });
     }
 
+    // ==================== 基金选择器 ====================
+    async function loadHoldingFunds() {
+        try {
+            const response = await fetch(window.API_BASE_URL + '/api/data');
+            const data = await response.json();
+            if (data && data.rows) {
+                holdingFunds = data.rows.filter(row => row.isFund === true || row.isFund === 'true' || row.isFund === 1);
+                renderFundOptions();
+            }
+        } catch (e) {
+            console.error('加载持仓基金失败:', e);
+        }
+    }
+
+    function initFundSelect() {
+        const displayBtn = document.getElementById('fund-select-display');
+        const dropdown = document.getElementById('fund-dropdown');
+
+        // 点击显示/隐藏下拉框
+        displayBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('show');
+        });
+
+        // 点击外部关闭下拉框
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && e.target !== displayBtn) {
+                dropdown.classList.remove('show');
+            }
+        });
+    }
+
+    function renderFundOptions() {
+        const container = document.getElementById('fund-options-list');
+        if (!container) return;
+
+        if (holdingFunds.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--ios-secondary); font-size: 14px;">暂无持仓基金</div>';
+            return;
+        }
+
+        container.innerHTML = holdingFunds.map(fund => `
+            <div class="fund-option ${selectedFundCodes.has(fund.code) ? 'selected' : ''}" data-code="${fund.code}" onclick="toggleFundSelection('${fund.code}')">
+                <div class="fund-option-checkbox"></div>
+                <div class="fund-option-info">
+                    <div class="fund-option-code">${fund.code}</div>
+                    <div class="fund-option-name">${fund.name || ''}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function toggleFundSelection(code) {
+        if (selectedFundCodes.has(code)) {
+            selectedFundCodes.delete(code);
+        } else {
+            selectedFundCodes.add(code);
+        }
+        updateFundSelection();
+    }
+
+    function updateFundSelection() {
+        // 更新隐藏输入框
+        document.getElementById('in-fund-codes').value = Array.from(selectedFundCodes).join(',');
+
+        // 更新显示文本
+        const displayBtn = document.getElementById('fund-select-display');
+        if (selectedFundCodes.size === 0) {
+            displayBtn.textContent = '选择持仓基金';
+        } else if (selectedFundCodes.size === 1) {
+            const code = Array.from(selectedFundCodes)[0];
+            const fund = holdingFunds.find(f => f.code === code);
+            displayBtn.textContent = fund ? fund.code : code;
+        } else {
+            displayBtn.textContent = `已选 ${selectedFundCodes.size} 只`;
+        }
+
+        // 更新选项状态
+        const options = document.querySelectorAll('.fund-option');
+        options.forEach(opt => {
+            const code = opt.dataset.code;
+            if (selectedFundCodes.has(code)) {
+                opt.classList.add('selected');
+            } else {
+                opt.classList.remove('selected');
+            }
+        });
+    }
+
+    function clearFundSelection() {
+        selectedFundCodes.clear();
+        updateFundSelection();
+    }
+
+    function selectAllFunds() {
+        holdingFunds.forEach(fund => selectedFundCodes.add(fund.code));
+        updateFundSelection();
+    }
+
+    // ==================== 基金回撤分析 ====================
     async function analyzeFundDrawdown() {
         chartDataList = []; // 重置图表数据列表
         const codesInput = document.getElementById('in-fund-codes').value.trim();

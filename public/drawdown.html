@@ -154,7 +154,6 @@
         .input-group {
             background: var(--ios-card);
             border-radius: 16px;
-            overflow: hidden;
             box-shadow: 0 2px 12px var(--ios-shadow);
             transition: background-color 0.3s;
         }
@@ -365,16 +364,21 @@
             background: rgba(0, 122, 255, 0.08);
         }
         .fund-option-checkbox {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--ios-secondary);
-            border-radius: 6px;
+            width: 22px !important;
+            height: 22px !important;
+            border: 2px solid var(--ios-secondary) !important;
+            border-radius: 6px !important;
             margin-right: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            flex-shrink: 0 !important;
             transition: all 0.2s;
+            background: var(--ios-card) !important;
+            box-sizing: border-box !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            padding: 0 !important;
         }
         .fund-option.selected .fund-option-checkbox {
             background: var(--ios-primary);
@@ -386,6 +390,7 @@
             font-size: 14px;
             font-weight: bold;
             display: none;
+            line-height: 1;
         }
         .fund-option.selected .fund-option-checkbox::after {
             display: block;

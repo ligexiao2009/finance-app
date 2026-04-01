@@ -1531,7 +1531,7 @@
                         else if (quote.priceDate === yesterdayStr) label = '昨日涨跌';
                     }
                     yesterdayChangeHtml = `
-                        <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="display: flex; flex-direction: column; align-items: center; margin-right: 20px;">
                             <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
                             <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${sign}${change.toFixed(2)}%</span>
                         </div>`;
@@ -1591,7 +1591,10 @@
                     <div class="fund-header">
                         <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 140px;">
                             <div class="fund-code">${result.fundCode}</div>
-                            <div class="fund-name">${result.fundName || ''}</div>
+                            <div class="fund-name" title="${result.fundName || ''}" style="max-width: 130px; font-size: 12px; line-height: 1.4; white-space: nowrap;">
+                                ${(result.fundName || '').replace(/\s+/g, '').slice(0, 6)}<br/>
+                                ${(result.fundName || '').replace(/\s+/g, '').length > 6 ? (result.fundName || '').replace(/\s+/g, '').slice(6, 12) : ''}
+                            </div>
                         </div>
                         ${yesterdayChangeHtml}
                         <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end;">

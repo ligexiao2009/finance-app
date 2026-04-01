@@ -364,21 +364,18 @@
             background: rgba(0, 122, 255, 0.08);
         }
         .fund-option-checkbox {
-            width: 22px !important;
-            height: 22px !important;
-            border: 2px solid var(--ios-secondary) !important;
-            border-radius: 6px !important;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--ios-secondary);
+            border-radius: 6px;
             margin-right: 12px;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            flex-shrink: 0 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
             transition: all 0.2s;
-            background: var(--ios-card) !important;
-            box-sizing: border-box !important;
-            appearance: none !important;
-            -webkit-appearance: none !important;
-            padding: 0 !important;
+            background: var(--ios-card);
+            box-sizing: border-box;
         }
         .fund-option.selected .fund-option-checkbox {
             background: var(--ios-primary);
@@ -525,7 +522,7 @@
             <div class="row">
                 <label>分析天数</label>
                 <input type="number" id="in-fund-days" placeholder="60" value="60">
-                <span class="unit">天</span>
+                <!-- <span class="unit">天</span> -->
             </div>
         </div>
         <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
@@ -671,15 +668,18 @@
     
     function drawChart(canvasId, navList, peakDate, troughDate) {
         if (!navList || navList.length === 0) return;
-        
+
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
-        
+
         // 判断当前主题
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
         const textColor = isDark ? '#a1a1a6' : '#8e8e93';
-        
+
+        // 以第一个净值为基准，计算涨跌百分比
+        const firstNav = navList[0].nav;
+
         // 构建数据：蓝色线完整显示，橙色线只显示回撤段（更粗）
         const normalData = [];
         const drawdownData = [];
@@ -692,8 +692,9 @@
         navList.forEach((n, i) => {
             const nDate = normalizeDate(n.date);
             const isInRange = nDate >= pDate && nDate <= tDate;
-            normalData.push(n.nav);           // 蓝色线显示全部
-            drawdownData.push(isInRange ? n.nav : null);  // 橙色线只显示回撤段
+            const changePercent = ((n.nav / firstNav) - 1) * 100;
+            normalData.push(changePercent);           // 蓝色线显示全部
+            drawdownData.push(isInRange ? changePercent : null);  // 橙色线只显示回撤段
         });
         
         new Chart(ctx, {
@@ -736,7 +737,9 @@
                         callbacks: {
                             label: ctx => {
                                 if (ctx.parsed.y !== null) {
-                                    return (ctx.datasetIndex === 1 ? '📉 回撤段: ' : '净值: ') + ctx.parsed.y.toFixed(4);
+                                    const prefix = ctx.datasetIndex === 1 ? '📉 回撤段: ' : '涨跌幅: ';
+                                    const sign = ctx.parsed.y >= 0 ? '+' : '';
+                                    return prefix + sign + ctx.parsed.y.toFixed(2) + '%';
                                 }
                                 return '';
                             }
@@ -759,7 +762,7 @@
                         ticks: {
                             color: textColor,
                             font: { size: 10 },
-                            callback: v => v.toFixed(2)
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%'
                         }
                     }
                 }
@@ -809,7 +812,7 @@
         }
 
         container.innerHTML = holdingFunds.map(fund => `
-            <div class="fund-option ${selectedFundCodes.has(fund.code) ? 'selected' : ''}" data-code="${fund.code}" onclick="toggleFundSelection('${fund.code}')">
+            <div class="fund-option ${selectedFundCodes.has(fund.code) ? 'selected' : ''}" data-code="${fund.code}">
                 <div class="fund-option-checkbox"></div>
                 <div class="fund-option-info">
                     <div class="fund-option-code">${fund.code}</div>
@@ -817,6 +820,18 @@
                 </div>
             </div>
         `).join('');
+
+        // 绑定点击事件
+        container.querySelectorAll('.fund-option').forEach(opt => {
+            const handleClick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const code = opt.dataset.code;
+                toggleFundSelection(code);
+            };
+            opt.addEventListener('click', handleClick);
+            opt.addEventListener('touchend', handleClick);
+        });
     }
 
     function toggleFundSelection(code) {

@@ -664,6 +664,87 @@
             color: var(--ios-secondary);
             margin-top: 16px;
         }
+
+        /* 修复进度弹框 */
+        .recovery-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+        [data-theme="dark"] .recovery-modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .recovery-modal {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 28px 24px 24px;
+            max-width: 340px;
+            width: 90%;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .recovery-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--ios-text);
+        }
+        .recovery-modal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .recovery-modal-row:last-child {
+            border-bottom: none;
+        }
+        .recovery-modal-label {
+            font-size: 15px;
+            color: var(--ios-secondary);
+            font-weight: 500;
+        }
+        .recovery-modal-value {
+            font-size: 18px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .recovery-modal-close {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            background: var(--ios-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .recovery-modal-close:active {
+            transform: scale(0.96);
+            opacity: 0.8;
+        }
+        .stat-item.clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .stat-item.clickable:active {
+            transform: scale(0.96);
+            background: rgba(0, 122, 255, 0.1);
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -688,6 +769,15 @@
                 <div class="progress-bar" id="progress-bar"></div>
             </div>
             <div class="loading-subtext" id="loading-subtext">这可能需要几秒钟时间</div>
+        </div>
+    </div>
+
+    <!-- 修复进度弹框 -->
+    <div id="recovery-modal-overlay" class="recovery-modal-overlay" style="display: none;" onclick="closeRecoveryModal(event)">
+        <div class="recovery-modal" onclick="event.stopPropagation()">
+            <div class="recovery-modal-title" id="recovery-modal-title">修复详情</div>
+            <div id="recovery-modal-content"></div>
+            <button class="recovery-modal-close" onclick="closeRecoveryModal()">好的</button>
         </div>
     </div>
 
@@ -1571,16 +1661,45 @@
                 }
 
                 let recoveryHtml = '';
+                let peakRecoveryProfit = null;
+                let peakNav = null;
+
+                // 计算回到前高的收益
+                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList) {
+                    const peakDateNormalized = (dd.peakDate || '').replace(/\//g, '-');
+                    const peakNavItem = result.navList.find(n => n.date.replace(/\//g, '-') === peakDateNormalized);
+                    if (peakNavItem && peakNavItem.nav) {
+                        peakNav = peakNavItem.nav;
+                        peakRecoveryProfit = (peakNav - holdingFund.cost) * holdingFund.shares;
+                    }
+                }
+
+                const modalData = JSON.stringify({
+                    fundCode: result.fundCode,
+                    fundName: result.fundName,
+                    peakDate: dd.peakDate,
+                    troughDate: dd.troughDate,
+                    recoveryDate: dd.recoveryDate,
+                    recoveryDays: dd.recoveryDays,
+                    recovered: dd.recovered,
+                    currentRecoveryPercent: dd.currentRecoveryPercent,
+                    remainingRecoveryPercent: dd.remainingRecoveryPercent,
+                    peakNav: peakNav,
+                    costBasis: holdingFund?.cost,
+                    shares: holdingFund?.shares,
+                    peakRecoveryProfit: peakRecoveryProfit
+                });
+
                 if (dd.recovered && dd.recoveryDate) {
                     recoveryHtml = `
-                        <div class="stat-item">
+                        <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
                             <div class="stat-label">修复周期</div>
                             <div class="stat-value" style="color: var(--ios-text);">${dd.recoveryDays}天</div>
                             <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
                         </div>`;
                 } else if (dd.currentRecoveryPercent) {
                     recoveryHtml = `
-                        <div class="stat-item">
+                        <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
                             <div class="stat-label">修复进度</div>
                             <div class="stat-value" style="color: var(--ios-orange);">+${dd.currentRecoveryPercent}%</div>
                             <div class="stat-sub">仍需 +${dd.remainingRecoveryPercent}%</div>
@@ -1676,6 +1795,84 @@
         if (loadingProgress) {
             loadingProgress.textContent = subtext;
         }
+    }
+
+    // ==================== 修复进度弹框函数 ====================
+    function showRecoveryModal(data) {
+        const overlay = document.getElementById('recovery-modal-overlay');
+        const titleEl = document.getElementById('recovery-modal-title');
+        const contentEl = document.getElementById('recovery-modal-content');
+
+        titleEl.textContent = `${data.fundCode} ${data.fundName || ''}`.slice(0, 20);
+
+        let html = '';
+
+        // 回撤区间
+        html += `<div class="recovery-modal-row">
+            <span class="recovery-modal-label">回撤区间</span>
+            <span class="recovery-modal-value">${data.peakDate?.slice(5) || '-'} 至 ${data.troughDate?.slice(5) || '-'}</span>
+        </div>`;
+
+        if (data.recovered && data.recoveryDate) {
+            // 已修复
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">修复周期</span>
+                <span class="recovery-modal-value">${data.recoveryDays}天</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">修复完成</span>
+                <span class="recovery-modal-value">${data.recoveryDate?.slice(5) || '-'}</span>
+            </div>`;
+        } else if (data.currentRecoveryPercent) {
+            // 修复中
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">已修复</span>
+                <span class="recovery-modal-value" style="color: var(--ios-orange);">+${data.currentRecoveryPercent}%</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">仍需修复</span>
+                <span class="recovery-modal-value">+${data.remainingRecoveryPercent}%</span>
+            </div>`;
+        }
+
+        // 回到前高收益
+        if (data.peakRecoveryProfit !== null && data.peakRecoveryProfit !== undefined) {
+            const profitColor = data.peakRecoveryProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            const profitSign = data.peakRecoveryProfit >= 0 ? '+' : '';
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">回到前高赚</span>
+                <span class="recovery-modal-value" style="color: ${profitColor};">${profitSign}${Math.round(data.peakRecoveryProfit)}</span>
+            </div>`;
+        }
+
+        // 成本和份额
+        if (data.costBasis && data.shares) {
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">持仓成本</span>
+                <span class="recovery-modal-value">${parseFloat(data.costBasis).toFixed(4)}</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">持有份额</span>
+                <span class="recovery-modal-value">${parseFloat(data.shares).toFixed(2)}</span>
+            </div>`;
+        }
+        if (data.peakNav) {
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">前高净值</span>
+                <span class="recovery-modal-value">${parseFloat(data.peakNav).toFixed(4)}</span>
+            </div>`;
+        }
+
+        contentEl.innerHTML = html;
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRecoveryModal(event) {
+        if (event && event.target && event.target.id !== 'recovery-modal-overlay') return;
+        const overlay = document.getElementById('recovery-modal-overlay');
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
     }
 </script>
 </body>

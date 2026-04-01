@@ -249,8 +249,8 @@
             box-shadow: 0 2px 12px var(--ios-shadow);
         }
         .fund-header {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
             margin-bottom: 12px;
             padding-bottom: 12px;
@@ -276,6 +276,9 @@
         }
         .fund-stats.has-estimate {
             grid-template-columns: 1fr 1fr 1fr 1fr;
+        }
+        .fund-stats.has-recovery {
+            grid-template-columns: 1fr 1fr 1fr;
         }
         .stat-item {
             text-align: center;
@@ -1463,31 +1466,94 @@
                 // 检查是否是持仓基金，计算今日预估收益
                 const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
                 let rightHeaderHtml = '';
-                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && estimate && !isNaN(estimate.estimateChange)) {
-                    // 有持仓且有估算数据，计算预估收益
+                if (holdingFund && holdingFund.shares && holdingFund.shares > 0) {
+                    // 有持仓就显示收益
                     const currentNav = quote?.price || 0;
-                    if (currentNav > 0) {
+                    if (currentNav > 0 && holdingFund.cost && holdingFund.cost > 0) {
+                        // 用成本和当前净值计算持仓收益
+                        const holdingValue = currentNav * holdingFund.shares;
+                        const costValue = holdingFund.cost * holdingFund.shares;
+                        const holdingProfit = holdingValue - costValue;
+                        const color = holdingProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                        const sign = holdingProfit >= 0 ? '+' : '';
+                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">持仓收益</span>
+                        <span class="fund-est-profit" style="color: ${color}; font-weight: 700; font-size: 16px;">${sign}¥${holdingProfit.toFixed(2)}</span>`;
+                    } else if (currentNav > 0 && estimate && !isNaN(estimate.estimateChange)) {
+                        // 如果没有成本价但有估算数据，用估算计算今日收益
                         const estValue = currentNav * (1 + estimate.estimateChange / 100);
                         const estProfit = (estValue - currentNav) * holdingFund.shares;
                         const color = estProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                         const sign = estProfit >= 0 ? '+' : '';
-                        rightHeaderHtml = `<span class="fund-est-profit" style="color: ${color}; font-weight: 700; font-size: 16px;">${sign}¥${estProfit.toFixed(2)}</span>`;
+                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">今日收益</span>
+                        <span class="fund-est-profit" style="color: ${color}; font-weight: 700; font-size: 16px;">${sign}¥${estProfit.toFixed(2)}</span>`;
                     }
                 }
-                if (!rightHeaderHtml) {
-                    // 没有持仓或没有估算数据，显示日期区间
-                    rightHeaderHtml = `<span class="fund-date-range">${result.dataRange.startDate} ~ ${result.dataRange.endDate}</span>`;
+
+                // 构建涨跌数据显示HTML（只显示净值涨跌，今日/昨日）
+                let changeHtml = '';
+                if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
+                    const change = quote.change;
+                    const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                    const sign = change >= 0 ? '+' : '';
+                    let label = '净值涨跌';
+                    if (quote.priceDate) {
+                        const today = new Date();
+                        const todayStr = today.getFullYear().toString() +
+                                       (today.getMonth() + 1).toString().padStart(2, '0') +
+                                       today.getDate().toString().padStart(2, '0');
+                        const yesterday = new Date(today);
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        const yesterdayStr = yesterday.getFullYear().toString() +
+                                           (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+                                           yesterday.getDate().toString().padStart(2, '0');
+                        if (quote.priceDate === todayStr) {
+                            label = '今日涨跌';
+                        } else if (quote.priceDate === yesterdayStr) {
+                            label = '昨日涨跌';
+                        }
+                    }
+                    changeHtml = `
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${label}</span>
+                            <span style="color: ${color}; font-weight: 700; font-size: 20px; margin-top: 4px;">${sign}${change.toFixed(2)}%</span>
+                        </div>`;
                 }
+
+                // 没有持仓的话，右侧不显示
+
+                // 构建修复区间HTML
+                let recoveryHtml = '';
+                if (dd.recovered && dd.recoveryDate) {
+                    recoveryHtml = `
+                        <div class="stat-item">
+                            <div class="stat-label">修复区间</div>
+                            <div class="stat-value" style="color: var(--ios-red);">${dd.recoveryDays}天</div>
+                            <div class="stat-sub">${dd.troughDate} → ${dd.recoveryDate}</div>
+                        </div>`;
+                } else if (dd.currentRecoveryPercent) {
+                    recoveryHtml = `
+                        <div class="stat-item">
+                            <div class="stat-label">修复进度</div>
+                            <div class="stat-value" style="color: var(--ios-red);">+${dd.currentRecoveryPercent}%</div>
+                            <div class="stat-sub">还差 +${dd.remainingRecoveryPercent}%</div>
+                        </div>`;
+                }
+
+                // 计算有几个stat-item要显示
+                const hasRecovery = !!(dd.recovered && dd.recoveryDate || dd.currentRecoveryPercent);
 
                 html += `<div class="fund-result-card">
                     <div class="fund-header">
-                        <div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
                             <div class="fund-code">${result.fundCode}</div>
                             <div class="fund-name">${result.fundName || ''}</div>
                         </div>
-                        ${rightHeaderHtml}
+                        ${changeHtml}
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                            ${rightHeaderHtml}
+                        </div>
                     </div>
-                    <div class="fund-stats ${hasEstimate ? 'has-estimate' : ''}">
+                    <div class="fund-stats ${hasRecovery ? 'has-recovery' : ''}">
                         <div class="stat-item">
                             <div class="stat-label">最大回撤</div>
                             <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
@@ -1498,8 +1564,7 @@
                             <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
                             <div class="stat-sub">${result.dataRange.dataPoints} 个交易日</div>
                         </div>
-                        ${yesterdayChangeHtml}
-                        ${estimateHtml}
+                        ${recoveryHtml}
                     </div>
                     <div class="chart-container">
                         <canvas id="${chartId}"></canvas>

@@ -114,29 +114,64 @@ function calculateMaxDrawdown(navList) {
   let peak = navList[0].nav;    // 峰值净值
   let peakDate = navList[0].date; // 峰值日期
   let troughDate = '';          // 谷值日期
-  
+
   let startPeakDate = navList[0].date;
   let startTroughDate = navList[0].date;
+  let peakNavAtDrawdown = navList[0].nav; // 最大回撤发生时的峰值净值
 
   for (let i = 1; i < navList.length; i++) {
     const currentNav = navList[i].nav;
-    
+
     // 更新峰值
     if (currentNav > peak) {
       peak = currentNav;
       peakDate = navList[i].date;
     }
-    
+
     // 计算当前回撤
     const drawdown = peak - currentNav;
     const drawdownPercent = (drawdown / peak) * 100;
-    
+
     // 更新最大回撤
     if (drawdownPercent > maxDrawdownPercent) {
       maxDrawdownPercent = drawdownPercent;
       maxDrawdown = drawdown;
       startPeakDate = peakDate;
       startTroughDate = navList[i].date;
+      peakNavAtDrawdown = peak; // 记录此时的峰值净值
+    }
+  }
+
+  // 计算修复区间：从最低点回到前期高点所需的时间和幅度
+  let recoveryDate = null;    // 修复日期（回到前期高点的日期）
+  let recoveryDays = 0;       // 修复天数
+  let recovered = false;      // 是否已经修复
+  let currentRecoveryPercent = 0; // 当前已反弹百分比（从最低点到最新）
+  let remainingRecoveryPercent = 0; // 剩余需要反弹百分比（从最新到前期高点）
+
+  // 找到最低点的索引
+  const troughIndex = navList.findIndex(n => n.date === startTroughDate);
+  if (troughIndex !== -1) {
+    const troughNav = navList[troughIndex].nav;
+    const latestNav = navList[navList.length - 1].nav;
+
+    // 从最低点之后开始查找是否已修复
+    for (let i = troughIndex + 1; i < navList.length; i++) {
+      if (navList[i].nav >= peakNavAtDrawdown) {
+        recoveryDate = navList[i].date;
+        recovered = true;
+        // 计算修复天数（交易日）
+        recoveryDays = i - troughIndex;
+        break;
+      }
+    }
+
+    // 计算反弹百分比（无论是否已修复）
+    if (troughNav > 0) {
+      currentRecoveryPercent = ((latestNav - troughNav) / troughNav) * 100;
+    }
+    if (latestNav > 0 && latestNav < peakNavAtDrawdown) {
+      remainingRecoveryPercent = ((peakNavAtDrawdown - latestNav) / latestNav) * 100;
     }
   }
 
@@ -145,6 +180,13 @@ function calculateMaxDrawdown(navList) {
     maxDrawdownPercent: maxDrawdownPercent.toFixed(2),
     peakDate: startPeakDate,
     troughDate: startTroughDate,
+    peakNav: peakNavAtDrawdown.toFixed(4), // 最大回撤时的峰值净值
+    // 修复区间数据
+    recovered,
+    recoveryDate,
+    recoveryDays,
+    currentRecoveryPercent: currentRecoveryPercent.toFixed(2),
+    remainingRecoveryPercent: remainingRecoveryPercent.toFixed(2),
     dataPoints: navList.length
   };
 }

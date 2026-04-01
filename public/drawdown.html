@@ -1460,13 +1460,32 @@
                         </div>`;
                 }
 
+                // 检查是否是持仓基金，计算今日预估收益
+                const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+                let rightHeaderHtml = '';
+                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && estimate && !isNaN(estimate.estimateChange)) {
+                    // 有持仓且有估算数据，计算预估收益
+                    const currentNav = quote?.price || 0;
+                    if (currentNav > 0) {
+                        const estValue = currentNav * (1 + estimate.estimateChange / 100);
+                        const estProfit = (estValue - currentNav) * holdingFund.shares;
+                        const color = estProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                        const sign = estProfit >= 0 ? '+' : '';
+                        rightHeaderHtml = `<span class="fund-est-profit" style="color: ${color}; font-weight: 700; font-size: 16px;">${sign}¥${estProfit.toFixed(2)}</span>`;
+                    }
+                }
+                if (!rightHeaderHtml) {
+                    // 没有持仓或没有估算数据，显示日期区间
+                    rightHeaderHtml = `<span class="fund-date-range">${result.dataRange.startDate} ~ ${result.dataRange.endDate}</span>`;
+                }
+
                 html += `<div class="fund-result-card">
                     <div class="fund-header">
                         <div>
                             <div class="fund-code">${result.fundCode}</div>
                             <div class="fund-name">${result.fundName || ''}</div>
                         </div>
-                        <span class="fund-date-range">${result.dataRange.startDate} ~ ${result.dataRange.endDate}</span>
+                        ${rightHeaderHtml}
                     </div>
                     <div class="fund-stats ${hasEstimate ? 'has-estimate' : ''}">
                         <div class="stat-item">

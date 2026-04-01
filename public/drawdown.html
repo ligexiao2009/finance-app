@@ -494,7 +494,7 @@
         .days-preset {
             display: flex;
             gap: 6px;
-            padding: 8px 16px 0;
+            padding: 8px 16px 16px;
             flex-wrap: wrap;
         }
         .days-preset-btn {
@@ -1176,7 +1176,6 @@
                 toggleFundSelection(code);
             };
             opt.addEventListener('click', handleClick);
-            opt.addEventListener('touchend', handleClick);
         });
     }
 

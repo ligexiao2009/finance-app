@@ -1043,9 +1043,16 @@
                 return;
             }
 
+            // 按最大回撤从大到小排序
+            const sortedResults = [...data.results].sort((a, b) => {
+                if (!a.success) return 1;
+                if (!b.success) return -1;
+                return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
+            });
+
             // 渲染结果
             let html = '';
-            for (const result of data.results) {
+            for (const result of sortedResults) {
                 if (!result.success) {
                     html += `<div class="fund-result-card">
                         <div class="fund-code">${result.fundCode}</div>

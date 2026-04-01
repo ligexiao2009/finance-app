@@ -568,6 +568,102 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--ios-border); border-radius: 10px; }
+
+        /* Loading 遮罩层 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+        [data-theme="dark"] .loading-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .loading-content {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+            width: 90%;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .loading-spinner-large {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--ios-input-bg);
+            border-top-color: var(--ios-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ios-text);
+            margin-bottom: 12px;
+        }
+
+        .loading-progress {
+            font-size: 14px;
+            color: var(--ios-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .progress-bar-container {
+            background: var(--ios-input-bg);
+            border-radius: 10px;
+            height: 6px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--ios-primary-gradient);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .loading-subtext {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -579,6 +675,19 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
+        </div>
+    </div>
+
+    <!-- Loading 遮罩层 -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner-large"></div>
+            <div class="loading-title" id="loading-title">深度分析中</div>
+            <div class="loading-progress" id="loading-progress">正在准备数据...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="loading-subtext" id="loading-subtext">这可能需要几秒钟时间</div>
         </div>
     </div>
 
@@ -1315,11 +1424,13 @@
         }
 
         const fundCodes = codesInput.split(',').map(c => c.trim()).filter(c => c);
-        btnEl.disabled = true;
-        btnEl.textContent = '深度分析中...';
-        resultsEl.innerHTML = '<div class="loading-spinner">正在拉取基金数据...</div>';
-
+        
+        // 显示 Loading 遮罩
+        showLoading();
+        updateLoadingProgress(0, '正在获取预估数据...', '准备阶段');
+        
         try {
+            // 获取预估数据
             const estimateRes = await fetch(window.API_BASE_URL + '/api/fund-estimate/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1331,14 +1442,24 @@
                 estimateData.results.forEach(r => { if (r.success) estimates[r.fundCode] = r; });
             }
 
+            updateLoadingProgress(20, '正在获取实时行情...', '获取行情');
+            
+            // 获取实时行情
             const quotesRes = await fetch(window.API_BASE_URL + '/api/quotes?items=' + fundCodes.map(c => `${c}:1`).join(','));
             const quotesData = await quotesRes.json();
             const quotes = quotesData?.quotes || {};
 
             const results = [];
+            // 逐个分析基金
             for (let i = 0; i < fundCodes.length; i++) {
                 const code = fundCodes[i];
-                resultsEl.innerHTML = `<div class="loading-spinner">正在分析 ${i + 1}/${fundCodes.length} (代码：${code})</div>`;
+                const progress = Math.round(30 + (i / fundCodes.length) * 60); // 30% - 90%
+                updateLoadingProgress(
+                    progress, 
+                    `正在分析 ${i + 1}/${fundCodes.length}`, 
+                    `处理基金 ${code}`
+                );
+                
                 try {
                     // 查找持仓基金的成本数据
                     const holdingFund = holdingFunds.find(f => f.code === code);
@@ -1487,15 +1608,54 @@
                 });
             }
             resultsEl.innerHTML = html;
-
+    
+            // 更新进度到 100%
+            updateLoadingProgress(100, '分析完成！', '正在渲染图表...');
+                
+            // 延迟一小段时间后关闭 loading，让用户看到完成状态
+            await new Promise(resolve => setTimeout(resolve, 500));
+            hideLoading();
+    
+            // 绘制图表
             if (successResults.length > 1) drawCompareChart('compare-chart', successResults);
             chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent));
-
+    
         } catch (e) {
-            resultsEl.innerHTML = `<div class="error-msg">拉取数据失败: ${e.message}</div>`;
+            hideLoading();
+            resultsEl.innerHTML = `<div class="error-msg">拉取数据失败：${e.message}</div>`;
         } finally {
             btnEl.disabled = false;
             btnEl.textContent = '开始深度分析';
+        }
+    }
+    
+    // ==================== Loading 控制函数 ====================
+    function showLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // 禁止背景滚动
+    }
+    
+    function hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = 'none';
+        document.body.style.overflow = ''; // 恢复滚动
+    }
+    
+    function updateLoadingProgress(progress, title, subtext) {
+        const progressBar = document.getElementById('progress-bar');
+        const loadingTitle = document.getElementById('loading-title');
+        const loadingProgress = document.getElementById('loading-progress');
+        const loadingSubtext = document.getElementById('loading-subtext');
+    
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+        }
+        if (loadingTitle) {
+            loadingTitle.textContent = title;
+        }
+        if (loadingProgress) {
+            loadingProgress.textContent = subtext;
         }
     }
 </script>

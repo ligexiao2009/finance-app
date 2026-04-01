@@ -1552,14 +1552,14 @@
                         const yieldSign = holdingYieldPercent >= 0 ? '+' : '';
                         
                         // 横排文字
-                        rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
-                            <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益</span>
-                            <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${holdingProfit.toFixed(2)}</span>
-                        </div>`;
-                        
-                        holdingYieldHtml = `<div style="display: flex; flex-direction: column; align-items: center; margin-left: 16px;">
+                        holdingYieldHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
                             <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益率</span>
                             <span style="color: ${yieldColor}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${yieldSign}${holdingYieldPercent.toFixed(2)}%</span>
+                        </div>`;
+                        
+                        rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center; margin-left: 16px;">
+                            <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益</span>
+                            <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${holdingProfit.toFixed(2)}</span>
                         </div>`;
                     } else if (currentNav > 0 && estimate && !isNaN(estimate.estimateChange)) {
                         const estProfit = (currentNav * (1 + estimate.estimateChange / 100) - currentNav) * holdingFund.shares;
@@ -1595,8 +1595,8 @@
                         </div>
                         ${yesterdayChangeHtml}
                         <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end;">
-                            ${rightHeaderHtml}
                             ${holdingYieldHtml}
+                            ${rightHeaderHtml}
                         </div>
                     </div>
                     <div class="fund-stats">

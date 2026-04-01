@@ -12,27 +12,43 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
+            /* 现代 iOS 色彩系统 */
             --ios-bg: #f2f2f7;
             --ios-card: #ffffff;
-            --ios-input-bg: #e9e9eb;
+            --ios-card-glass: rgba(255, 255, 255, 0.85);
+            --ios-input-bg: rgba(118, 118, 128, 0.12);
             --ios-primary: #007aff;
+            --ios-primary-gradient: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
             --ios-red: #ff3b30;
             --ios-green: #34c759;
             --ios-orange: #ff9500;
             --ios-text: #1c1c1e;
             --ios-secondary: #8e8e93;
-            --ios-border: rgba(0,0,0,0.1);
-            --ios-shadow: rgba(0,0,0,0.08);
+            --ios-border: rgba(60, 60, 67, 0.1);
+            
+            /* 优化多层柔和阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.08);
+            
+            /* 圆角系统 */
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
         }
 
         [data-theme="dark"] {
             --ios-bg: #000000;
             --ios-card: #1c1c1e;
-            --ios-input-bg: #2c2c2e;
-            --ios-text: #ffffff;
-            --ios-secondary: #a1a1a6;
-            --ios-border: rgba(255,255,255,0.1);
-            --ios-shadow: rgba(0,0,0,0.3);
+            --ios-card-glass: rgba(28, 28, 30, 0.85);
+            --ios-input-bg: rgba(118, 118, 128, 0.24);
+            --ios-text: #f2f2f7;
+            --ios-secondary: #98989d;
+            --ios-border: rgba(84, 84, 88, 0.3);
+            
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
         }
 
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
@@ -42,68 +58,83 @@
             margin: 0;
             background-color: var(--ios-bg);
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             overscroll-behavior-y: none;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
             color: var(--ios-text);
             display: flex; justify-content: center;
             padding: env(safe-area-inset-top) 16px 40px;
-            transition: background-color 0.3s;
+            transition: background-color 0.4s ease, color 0.4s ease;
         }
 
         .container {
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
+            padding-top: 12px;
         }
 
-        /* Header */
+        /* --- Header --- */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 24px;
+            padding: 0 4px;
         }
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 800;
             margin: 0;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.8px;
         }
         .theme-toggle {
-            font-size: 22px;
+            font-size: 24px;
             cursor: pointer;
             padding: 8px;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-        .theme-toggle:active { opacity: 0.4; }
-
-        /* 分段切换器 */
-        .segmented-control {
-            background: rgba(118, 118, 128, 0.12);
-            border-radius: 12px;
+            opacity: 0.8;
+            transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+            background: var(--ios-input-bg);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
             display: flex;
-            padding: 4px;
-            margin-bottom: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+        .theme-toggle:active { 
+            transform: scale(0.9); 
+            opacity: 0.5; 
+        }
+
+        /* --- 分段切换器 (Segmented Control) --- */
+        .segmented-control {
+            background: var(--ios-input-bg);
+            border-radius: 14px;
+            display: flex;
+            padding: 3px;
+            margin-bottom: 24px;
         }
         .segment {
             flex: 1;
             border: none;
-            background: none;
-            padding: 12px 0;
+            background: transparent;
+            padding: 10px 0;
             font-size: 14px;
             font-weight: 600;
-            color: var(--ios-secondary);
-            border-radius: 9px;
+            color: var(--ios-text);
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.25s ease;
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            opacity: 0.6;
         }
         .segment.active {
             background: var(--ios-card);
-            color: var(--ios-primary);
-            box-shadow: 0 2px 8px var(--ios-shadow);
+            color: var(--ios-text);
+            box-shadow: var(--shadow-sm);
+            opacity: 1;
         }
 
         .tool-content {
@@ -111,35 +142,35 @@
         }
         .tool-content.active {
             display: block;
-            animation: fadeIn 0.3s ease;
+            animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* 核心数值卡片 */
+        /* --- 核心数值卡片 --- */
         .display-card {
             background: var(--ios-card);
-            border-radius: 20px;
-            padding: 28px 24px;
+            border-radius: var(--radius-xl);
+            padding: 32px 24px;
             text-align: center;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 20px var(--ios-shadow);
-            transition: background-color 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
         .label {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--ios-secondary);
-            font-weight: 700;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1.2px;
         }
         .value {
-            font-size: 42px;
+            font-size: 48px;
             font-weight: 800;
-            margin: 10px 0;
+            margin: 12px 0;
             letter-spacing: -1.5px;
             font-variant-numeric: tabular-nums;
         }
@@ -150,21 +181,20 @@
             color: var(--ios-secondary);
         }
 
-        /* 输入区域 */
+        /* --- 输入区域 --- */
         .input-group {
             background: var(--ios-card);
-            border-radius: 20px;
-            box-shadow: 0 4px 20px var(--ios-shadow);
-            transition: background-color 0.3s, transform 0.2s;
-        }
-        .input-group:active {
-            transform: scale(0.995);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 20px;
+            overflow: hidden;
         }
         .row {
             display: flex;
             align-items: center;
-            padding: 14px 16px;
+            padding: 16px 20px;
             border-bottom: 0.5px solid var(--ios-border);
+            position: relative;
         }
         .row:last-child { border-bottom: none; }
         .row label {
@@ -173,180 +203,232 @@
             flex: 1;
         }
         .row input {
-            background: none;
+            background: transparent;
             border: none;
             color: var(--ios-text);
-            font-size: 16px;
+            font-size: 17px;
             text-align: right;
-            width: 250px;
+            width: 60%;
             outline: none;
             font-family: inherit;
             font-weight: 600;
+            padding: 0;
         }
-        .row input::placeholder { color: var(--ios-secondary); opacity: 0.6; }
+        .row input::placeholder { color: var(--ios-secondary); font-weight: 400; }
         .row .unit {
             color: var(--ios-secondary);
             margin-left: 8px;
-            font-size: 14px;
-            width: 24px;
-            text-align: right;
+            font-size: 15px;
+            font-weight: 500;
         }
 
-        /* 按钮 */
+        /* 快捷操作区 (全选/清空) */
+        .quick-actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: var(--ios-bg);
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .quick-btn {
+            flex: 1;
+            background: var(--ios-input-bg);
+            color: var(--ios-primary);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .quick-btn:first-child { margin-right: 12px; }
+        .quick-btn:active { transform: scale(0.96); opacity: 0.8; }
+        .quick-btn.clear { color: var(--ios-text); }
+
+        /* --- 按钮 --- */
         .btn-clear {
             display: block;
-            margin: 20px auto 0;
+            margin: 24px auto 0;
             color: var(--ios-primary);
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 600;
             cursor: pointer;
-            background: none;
+            background: var(--ios-input-bg);
             border: none;
-            padding: 8px 16px;
+            padding: 12px 24px;
+            border-radius: 30px;
+            transition: all 0.2s ease;
         }
+        .btn-clear:active { transform: scale(0.96); opacity: 0.8; }
 
         .up { color: var(--ios-red) !important; }
         .down { color: var(--ios-green) !important; }
-        .highlight { color: var(--ios-primary); font-weight: 600; }
+        .highlight { color: var(--ios-primary); font-weight: 700; }
+        .tip-success { color: var(--ios-green); font-weight: 600;}
+        .tip-warning { color: var(--ios-orange); font-weight: 600;}
 
-        /* 结果提示 */
-        .tip-success { color: var(--ios-green); }
-        .tip-warning { color: var(--ios-orange); }
-
-        /* 基金回撤模块 */
+        /* --- 基金回撤模块 --- */
         .btn-analyze {
-            display: block;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             width: 100%;
-            padding: 16px;
-            background: var(--ios-primary);
+            padding: 18px;
+            background: var(--ios-primary-gradient);
             color: white;
             border: none;
-            border-radius: 16px;
-            font-size: 16px;
+            border-radius: var(--radius-lg);
+            font-size: 17px;
             font-weight: 700;
             cursor: pointer;
-            margin-bottom: 16px;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
             letter-spacing: 0.5px;
         }
         .btn-analyze:active {
-            transform: scale(0.97);
-            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+            transform: translateY(2px) scale(0.98);
+            box-shadow: 0 4px 10px rgba(0, 122, 255, 0.2);
         }
         .btn-analyze:disabled {
-            opacity: 0.5;
+            background: var(--ios-input-bg);
+            color: var(--ios-secondary);
+            box-shadow: none;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
         }
 
+        /* 预设天数标签 */
+        .days-preset {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px 20px;
+            flex-wrap: wrap;
+            background: var(--ios-card);
+        }
+        .days-preset-btn {
+            padding: 8px 14px;
+            background: var(--ios-input-bg);
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--ios-text);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .days-preset-btn.active {
+            background: var(--ios-text);
+            color: var(--ios-bg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 结果卡片 */
         .fund-result-card {
             background: var(--ios-card);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 12px var(--ios-shadow);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
         }
         .fund-header {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
             border-bottom: 0.5px solid var(--ios-border);
         }
         .fund-code {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
         }
         .fund-name {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--ios-secondary);
-            margin-top: 2px;
-        }
-        .fund-date-range {
-            font-size: 12px;
-            color: var(--ios-secondary);
+            margin-top: 4px;
+            font-weight: 500;
         }
         .fund-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
-        }
-        .fund-stats.has-estimate {
-            grid-template-columns: 1fr 1fr 1fr 1fr;
-        }
-        .fund-stats.has-recovery {
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(30%, 1fr));
+            gap: 16px 8px;
         }
         .stat-item {
             text-align: center;
-            min-width: 0;
+            background: var(--ios-input-bg);
+            padding: 12px 8px;
+            border-radius: var(--radius-md);
         }
         .stat-label {
             font-size: 11px;
             color: var(--ios-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-        .stat-value {
-            font-size: 20px;
-            font-weight: 700;
-            margin-top: 4px;
-            word-break: keep-all;
-        }
-        .stat-label {
-            font-size: 11px;
-            color: var(--ios-secondary);
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         .stat-value {
             font-size: 20px;
-            font-weight: 700;
-            margin-top: 4px;
+            font-weight: 800;
+            margin-top: 6px;
+            font-variant-numeric: tabular-nums;
         }
         .stat-value.negative { color: var(--ios-green); }
         .stat-value.positive { color: var(--ios-red); }
         .stat-sub {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--ios-secondary);
-            margin-top: 2px;
+            margin-top: 6px;
+            font-weight: 500;
         }
+
         .loading-spinner {
             text-align: center;
             padding: 40px;
             color: var(--ios-secondary);
+            font-weight: 500;
+            font-size: 15px;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
         }
         .error-msg {
             color: var(--ios-red);
             text-align: center;
             padding: 20px;
+            background: rgba(255, 59, 48, 0.1);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            font-size: 14px;
         }
 
         /* 净值曲线图 */
         .chart-container {
-            margin-top: 16px;
-            padding: 12px;
-            background: var(--ios-card);
-            border-radius: 12px;
+            margin-top: 20px;
+            padding: 16px 8px 8px;
+            background: var(--ios-input-bg);
+            border-radius: var(--radius-lg);
         }
         .chart-container canvas {
             width: 100% !important;
-            height: 150px !important;
+            height: 160px !important;
         }
 
-        /* 多选下拉框样式 */
+        /* --- 多选下拉框样式 (Glassmorphism) --- */
         .fund-select-wrapper {
             position: relative;
-            width: 140px;
+            width: 160px;
         }
         .fund-select-display {
-            background: none;
+            background: transparent;
             border: none;
-            color: var(--ios-text);
+            color: var(--ios-primary);
             font-size: 16px;
             text-align: right;
             width: 100%;
@@ -359,62 +441,65 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .fund-select-display::placeholder {
-            color: var(--ios-secondary);
-            opacity: 0.6;
-            font-weight: normal;
+        .fund-select-display::after {
+            content: "›";
+            margin-left: 6px;
+            font-size: 18px;
+            position: relative;
+            top: -1px;
         }
         .fund-dropdown {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 12px);
             right: 0;
-            margin-top: 8px;
-            background: var(--ios-card);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px var(--ios-shadow);
+            background: var(--ios-card-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 0.5px solid var(--ios-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
             z-index: 1000;
-            min-width: 280px;
-            width: 280px;
+            min-width: 300px;
             display: none;
             overflow: hidden;
-        }
-        .fund-dropdown * {
-            box-sizing: border-box;
-        }
-        #fund-options-list {
-            max-height: 300px;
-            overflow-y: auto;
+            transform-origin: top right;
         }
         .fund-dropdown.show {
             display: block;
-            animation: fadeIn 0.2s ease;
+            animation: dropdownPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes dropdownPop {
+            from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        #fund-options-list {
+            max-height: 280px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
         }
         .fund-option {
             display: flex;
             align-items: center;
-            padding: 12px 16px;
+            padding: 14px 16px;
             cursor: pointer;
-            transition: background-color 0.15s;
+            transition: background 0.2s;
             border-bottom: 0.5px solid var(--ios-border);
         }
-        .fund-option:last-child {
-            border-bottom: none;
-        }
-        .fund-option:hover {
-            background: rgba(0, 122, 255, 0.08);
-        }
+        .fund-option:last-child { border-bottom: none; }
+        .fund-option:hover { background: rgba(0, 122, 255, 0.05); }
+        
         .fund-option-checkbox {
-            width: 22px;
-            height: 22px;
-            border: 2px solid var(--ios-secondary);
-            border-radius: 6px;
+            width: 20px;
+            height: 20px;
+            border: 1.5px solid var(--ios-secondary);
+            border-radius: 50%;
             margin-right: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            transition: all 0.2s;
-            background: var(--ios-card);
+            transition: all 0.2s ease;
             box-sizing: border-box;
         }
         .fund-option.selected .fund-option-checkbox {
@@ -422,132 +507,67 @@
             border-color: var(--ios-primary);
         }
         .fund-option-checkbox::after {
-            content: '✓';
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
+            content: '';
+            width: 6px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) translateY(-1px);
             display: none;
-            line-height: 1;
         }
-        .fund-option.selected .fund-option-checkbox::after {
-            display: block;
-        }
-        .fund-option-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .fund-option-code {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--ios-text);
-        }
+        .fund-option.selected .fund-option-checkbox::after { display: block; }
+        
+        .fund-option-info { flex: 1; min-width: 0; }
+        .fund-option-code { font-size: 15px; font-weight: 600; color: var(--ios-text); }
         .fund-option-name {
             font-size: 12px;
             color: var(--ios-secondary);
-            margin-top: 2px;
+            margin-top: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .fund-select-actions {
-            padding: 12px 16px;
-            border-top: 0.5px solid var(--ios-border);
-            display: flex;
-            justify-content: space-between;
-            gap: 8px;
-        }
-        .fund-select-btn {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: opacity 0.2s;
-            flex: 1;
-        }
-        .fund-select-btn:active {
-            opacity: 0.7;
-        }
-        .fund-select-btn-clear {
-            background: rgba(0, 122, 255, 0.1);
-            color: var(--ios-primary);
-        }
-        .fund-select-btn-all {
-            background: var(--ios-primary);
-            color: white;
-        }
+        
         .fund-search-box {
-            padding: 12px 12px;
+            padding: 12px;
+            background: var(--ios-card);
             border-bottom: 0.5px solid var(--ios-border);
-            position: relative;
-            z-index: 10;
-            pointer-events: auto;
-            overflow: visible;
         }
         .fund-search-input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 10px 14px;
             background: var(--ios-input-bg);
             border: none;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 15px;
             color: var(--ios-text);
             outline: none;
-            font-family: inherit;
-            position: relative;
-            z-index: 999;
-            pointer-events: auto;
-            display: block;
-            box-sizing: border-box;
-            cursor: text;
-            text-indent: 0;
-            margin: 0;
         }
-        .fund-search-input::placeholder {
-            color: var(--ios-secondary);
-            opacity: 0.6;
-        }
-        .days-preset {
-            display: flex;
-            gap: 6px;
-            padding: 8px 16px 16px;
-            flex-wrap: wrap;
-        }
-        .days-preset-btn {
-            padding: 6px 12px;
-            background: rgba(0, 122, 255, 0.1);
-            border: none;
-            border-radius: 8px;
-            font-size: 12px;
-            color: var(--ios-primary);
-            cursor: pointer;
-            font-weight: 500;
-            font-family: inherit;
-        }
-        .days-preset-btn.active {
-            background: var(--ios-primary);
-            color: white;
-        }
+
+        /* 对比图 */
         .compare-chart-container {
             background: var(--ios-card);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 2px 12px var(--ios-shadow);
+            border-radius: var(--radius-xl);
+            padding: 24px 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
         }
         .compare-chart-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--ios-secondary);
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ios-text);
+            margin-bottom: 16px;
+            text-align: center;
         }
         .compare-chart-container canvas {
             width: 100% !important;
-            height: 200px !important;
+            height: 220px !important;
         }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--ios-border); border-radius: 10px; }
     </style>
 </head>
 <body data-theme="light">
@@ -555,39 +575,42 @@
     <div class="container">
     <div class="header">
         <h1>回撤分析</h1>
-        <div class="theme-toggle" onclick="toggleTheme()">&#127769;</div>
+        <div class="theme-toggle" onclick="toggleTheme()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </div>
     </div>
 
     <div class="segmented-control">
         <button class="segment active" onclick="switchTab(0)">基金回撤</button>
-        <button class="segment" onclick="switchTab(1)">成本助手</button>
+        <button class="segment" onclick="switchTab(1)">成本推算</button>
         <button class="segment" onclick="switchTab(2)">回撤计算</button>
     </div>
 
-    <!-- 模块一：基金回撤 -->
     <div id="tab-fund" class="tool-content active">
-        <div class="input-group" style="margin-bottom: 16px;">
+        <div class="input-group">
             <div class="row">
-                <label>基金代码</label>
+                <label>选择基金</label>
                 <div class="fund-select-wrapper">
-                    <button type="button" class="fund-select-display" id="fund-select-display">选择基金</button>
+                    <button type="button" class="fund-select-display" id="fund-select-display">点击选择</button>
                     <input type="hidden" id="in-fund-codes">
                     <div class="fund-dropdown" id="fund-dropdown">
                         <div class="fund-search-box">
-                            <input type="text" class="fund-search-input" id="fund-search-input" placeholder="搜索基金代码或名称" oninput="filterFundOptions(this.value)">
+                            <input type="text" class="fund-search-input" id="fund-search-input" placeholder="输入代码或名称搜索" oninput="filterFundOptions(this.value)">
                         </div>
                         <div id="fund-options-list"></div>
-                        <div class="fund-select-actions">
-                            <button type="button" class="fund-select-btn fund-select-btn-clear" onclick="clearFundSelection()">清空</button>
-                            <button type="button" class="fund-select-btn fund-select-btn-all" onclick="selectAllFunds()">全选</button>
-                        </div>
                     </div>
                 </div>
             </div>
+            <div class="quick-actions">
+                <button type="button" class="quick-btn" onclick="selectAllFunds()">全选持仓</button>
+                <button type="button" class="quick-btn clear" onclick="clearFundSelection()">清空选择</button>
+            </div>
+            
             <div class="row">
-                <label>分析天数</label>
+                <label>分析周期</label>
                 <input type="number" id="in-fund-days" placeholder="90" value="90" oninput="onDaysInputChange()">
-                <!-- <span class="unit">天</span> -->
             </div>
             <div class="days-preset">
                 <button type="button" class="days-preset-btn" data-days="30" onclick="setDaysPreset(30)">近1月</button>
@@ -599,47 +622,45 @@
                 <button type="button" class="days-preset-btn" data-days="1825" onclick="setDaysPreset(1825)">近5年</button>
             </div>
         </div>
-        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
+        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始深度分析</button>
         <div id="fund-results"></div>
     </div>
 
-    <!-- 模块二：成本助手 -->
     <div id="tab-cost" class="tool-content">
         <div class="display-card" id="card-cost">
             <div class="label">推算成本点位</div>
             <div class="value" id="res-cost-point">0.00</div>
-            <div class="sub-value" id="res-cost-tip">输入数据开始推算</div>
+            <div class="sub-value" id="res-cost-tip">输入下方数据以开始推算</div>
         </div>
         <div class="input-group">
             <div class="row">
                 <label>当前点位</label>
-                <input type="number" id="in-now-p" placeholder="4690" oninput="runCost()">
+                <input type="number" id="in-now-p" placeholder="例如: 4690" oninput="runCost()">
                 <span class="unit">点</span>
             </div>
             <div class="row">
                 <label>收益率</label>
-                <input type="number" id="in-now-y" placeholder="-14.61" oninput="runCost()">
+                <input type="number" id="in-now-y" placeholder="例如: -14.61" oninput="runCost()">
                 <span class="unit">%</span>
             </div>
             <div class="row">
                 <label>目标成本</label>
-                <input type="number" id="in-target-p" placeholder="5000" oninput="runCost()">
+                <input type="number" id="in-target-p" placeholder="例如: 5000" oninput="runCost()">
                 <span class="unit">点</span>
             </div>
         </div>
-                <button class="btn-clear" onclick="clearInputs('cost')">重置所有数值</button>
+        <button class="btn-clear" onclick="clearInputs('cost')">清空重置</button>
     </div>
 
-    <!-- 模块三：回撤计算 -->
     <div id="tab-drawdown" class="tool-content">
         <div class="display-card" id="card-dd">
             <div class="label" id="dd-label">实际回撤率</div>
             <div class="value" id="res-dd-value">0.00%</div>
-            <div class="sub-value" id="res-dd-tip">请输入比例</div>
+            <div class="sub-value" id="res-dd-tip">等待输入数据...</div>
         </div>
         <div class="input-group">
             <div class="row">
-                <label>前次高点收益</label>
+                <label>前高点收益</label>
                 <input type="number" id="in-h-v" placeholder="0.00" oninput="runDD()">
                 <span class="unit">%</span>
             </div>
@@ -649,7 +670,7 @@
                 <span class="unit">%</span>
             </div>
         </div>
-                <button class="btn-clear" onclick="clearInputs('dd')">重置所有数值</button>
+        <button class="btn-clear" onclick="clearInputs('dd')">清空重置</button>
     </div>
 </div>
 
@@ -678,16 +699,34 @@
         const isDark = body.getAttribute('data-theme') === 'dark';
         body.setAttribute('data-theme', isDark ? 'light' : 'dark');
         localStorage.setItem('invest_dd_theme', isDark ? 'light' : 'dark');
+        
+        // 更换 SVG 图标
+        const svg = document.querySelector('.theme-toggle svg');
+        if (isDark) {
+            // 月亮换太阳
+            svg.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+        } else {
+            // 太阳换月亮
+            svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+        }
     }
 
     // 加载保存的主题
     (function() {
         const savedTheme = localStorage.getItem('invest_dd_theme');
+        const body = document.body;
         if (savedTheme) {
-            document.body.setAttribute('data-theme', savedTheme);
+            body.setAttribute('data-theme', savedTheme);
         } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.body.setAttribute('data-theme', 'dark');
+            body.setAttribute('data-theme', 'dark');
         }
+        
+        // 初始化图标
+        setTimeout(() => {
+           const isDark = body.getAttribute('data-theme') === 'dark';
+           const svg = document.querySelector('.theme-toggle svg');
+           if(isDark && svg) svg.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+        }, 50);
     })();
 
     function switchTab(index) {
@@ -714,15 +753,15 @@
 
         if (!isNaN(t)) {
             if (t >= cost) {
-                resT.innerHTML = '<span class="tip-success">&#10003; 已达标</span>';
+                resT.innerHTML = '<span class="tip-success">✓ 已达标，无需补仓</span>';
             } else if (t <= p) {
-                resT.innerHTML = '<span class="tip-warning">&#9888; 目标低于现价</span>';
+                resT.innerHTML = '<span class="tip-warning">⚠ 目标低于现价，无法测算</span>';
             } else {
                 const multi = (cost - t) / (t - p);
-                resT.innerHTML = '需补仓 <span class="highlight">' + multi.toFixed(2) + '</span> 倍本金';
+                resT.innerHTML = '需补入当前仓位 <span class="highlight">' + multi.toFixed(2) + '</span> 倍资金';
             }
         } else {
-            resT.innerHTML = '回本需上涨 <span class="highlight">' + ((cost/p-1)*100).toFixed(2) + '%</span>';
+            resT.innerHTML = '距回本还需上涨 <span class="highlight">' + ((cost/p-1)*100).toFixed(2) + '%</span>';
         }
     }
 
@@ -744,26 +783,25 @@
 
         const diff = Math.abs(c - h).toFixed(2);
         tipEl.innerHTML = dd >= 0
-            ? '<span class="up">&#9650;</span> 上涨 ' + diff + ' 个百分点'
-            : '<span class="down">&#9660;</span> 回撤 ' + diff + ' 个百分点';
+            ? '<span class="up">↑</span> 上涨 ' + diff + ' 个百分点'
+            : '<span class="down">↓</span> 回撤 ' + diff + ' 个百分点';
     }
 
     function clearInputs(type) {
         if(type === 'cost') {
             ['in-now-p', 'in-now-y', 'in-target-p'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('res-cost-point').innerText = '0.00';
-            document.getElementById('res-cost-tip').innerText = '输入数据开始推算';
+            document.getElementById('res-cost-tip').innerText = '输入下方数据以开始推算';
         } else {
             ['in-h-v', 'in-c-v'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('res-dd-value').innerText = '0.00%';
             document.getElementById('res-dd-value').className = 'value';
             document.getElementById('dd-label').innerText = '实际回撤率';
-            document.getElementById('res-dd-tip').innerText = '请输入比例';
+            document.getElementById('res-dd-tip').innerText = '等待输入数据...';
         }
         saveData();
     }
 
-    // 本地存储
     function saveData() {
         const data = {
             'in-now-p': document.getElementById('in-now-p').value,
@@ -789,25 +827,25 @@
         } catch (e) {}
     }
 
-    // ==================== 基金回撤分析 ====================
     let chartDataList = [];
+    
+    function getCSSVariableValue(name) {
+        return getComputedStyle(document.body).getPropertyValue(name).trim();
+    }
     
     function drawCompareChart(canvasId, results) {
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
-        // 判断当前主题
         const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-        const textColor = isDark ? '#a1a1a6' : '#8e8e93';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+        const textColor = isDark ? '#98989d' : '#8e8e93';
 
-        // 不同基金的颜色
         const colors = [
             '#007aff', '#ff3b30', '#34c759', '#ff9500', '#af52de',
             '#5856d6', '#ff2d55', '#00c7be'
         ];
 
-        // 找出所有日期的并集
         const allDates = new Set();
         results.forEach(r => {
             if (r.success && r.navList) {
@@ -816,16 +854,12 @@
         });
         const sortedDates = Array.from(allDates).sort();
 
-        // 构建数据集
         const datasets = [];
         results.forEach((r, idx) => {
             if (!r.success || !r.navList) return;
-
-            // 创建日期到净值的映射
             const navMap = new Map();
             r.navList.forEach(n => navMap.set(n.date, n.nav));
 
-            // 找到第一个有效净值作为基准
             let firstNav = null;
             for (const date of sortedDates) {
                 const nav = navMap.get(date);
@@ -836,7 +870,6 @@
             }
             if (!firstNav) return;
 
-            // 构建数据点，缺失值用null填充
             const data = [];
             sortedDates.forEach(date => {
                 const nav = navMap.get(date);
@@ -853,9 +886,9 @@
                 borderColor: colors[idx % colors.length],
                 borderWidth: 2,
                 fill: false,
-                tension: 0.3,
+                tension: 0.4,
                 pointRadius: 0,
-                pointHitRadius: 10,
+                pointHitRadius: 15,
                 spanGaps: true
             });
         });
@@ -869,24 +902,33 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
                 plugins: {
                     legend: {
                         display: true,
                         position: 'top',
                         labels: {
                             color: textColor,
-                            font: { size: 11 },
-                            boxWidth: 12
+                            font: { size: 11, family: "SF Pro Display" },
+                            usePointStyle: true,
+                            boxWidth: 6
                         }
                     },
                     tooltip: {
-                        mode: 'index',
-                        intersect: false,
+                        backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)',
+                        titleColor: isDark ? '#fff' : '#000',
+                        bodyColor: isDark ? '#ccc' : '#333',
+                        borderColor: gridColor,
+                        borderWidth: 1,
+                        padding: 10,
                         callbacks: {
                             label: ctx => {
                                 if (ctx.parsed.y !== null) {
                                     const sign = ctx.parsed.y >= 0 ? '+' : '';
-                                    return `${ctx.dataset.label}: ${sign}${ctx.parsed.y.toFixed(2)}%`;
+                                    return ` ${ctx.dataset.label}: ${sign}${ctx.parsed.y.toFixed(2)}%`;
                                 }
                                 return '';
                             }
@@ -897,19 +939,16 @@
                     x: {
                         display: true,
                         grid: { display: false },
-                        ticks: {
-                            color: textColor,
-                            maxTicksLimit: 8,
-                            font: { size: 10 }
-                        }
+                        ticks: { color: textColor, maxTicksLimit: 6, font: { size: 10 } }
                     },
                     y: {
                         display: true,
+                        border: { display: false },
                         grid: { color: gridColor },
                         ticks: {
                             color: textColor,
                             font: { size: 10 },
-                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%'
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
                         }
                     }
                 }
@@ -923,19 +962,13 @@
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
 
-        // 判断当前主题
         const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
-        const textColor = isDark ? '#a1a1a6' : '#8e8e93';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+        const textColor = isDark ? '#98989d' : '#8e8e93';
 
-        // 以第一个净值为基准，计算涨跌百分比
         const firstNav = navList[0].nav;
-
-        // 构建数据：蓝色线完整显示，橙色线只显示回撤段（更粗）
         const normalData = [];
         const drawdownData = [];
-
-        // 确保日期格式一致
         const normalizeDate = (d) => (d || '').replace(/\//g, '-');
         const pDate = normalizeDate(peakDate);
         const tDate = normalizeDate(troughDate);
@@ -944,40 +977,44 @@
             const nDate = normalizeDate(n.date);
             const isInRange = nDate >= pDate && nDate <= tDate;
             const changePercent = ((n.nav / firstNav) - 1) * 100;
-            normalData.push(changePercent);           // 蓝色线显示全部
-            drawdownData.push(isInRange ? changePercent : null);  // 橙色线只显示回撤段
+            normalData.push(changePercent);           
+            drawdownData.push(isInRange ? changePercent : null);  
         });
-
-        // 收集所有出现的年份
-        const years = new Set();
-        navList.forEach(n => years.add(n.date.slice(0, 4)));
-        const yearList = Array.from(years).sort();
 
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: navList.map(n => n.date), // 保留完整日期
+                labels: navList.map(n => n.date), 
                 datasets: [
                     {
                         label: '净值',
                         data: normalData,
                         borderColor: '#007aff',
-                        borderWidth: 1.5,
-                        fill: false,
-                        tension: 0.3,
+                        borderWidth: 2,
+                        fill: true,
+                        backgroundColor: (context) => {
+                            const chart = context.chart;
+                            const {ctx, chartArea} = chart;
+                            if (!chartArea) return null;
+                            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                            gradient.addColorStop(0, isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)');
+                            gradient.addColorStop(1, 'rgba(0,122,255,0)');
+                            return gradient;
+                        },
+                        tension: 0.4,
                         pointRadius: 0,
-                        pointHitRadius: 10,
+                        pointHitRadius: 15,
                         spanGaps: true
                     },
                     {
                         label: '回撤段',
                         data: drawdownData,
-                        borderColor: '#ff3b30', // 红色，最醒目
-                        borderWidth: 3.5,
+                        borderColor: '#ff3b30',
+                        borderWidth: 3,
                         fill: false,
-                        tension: 0.3,
+                        tension: 0.4,
                         pointRadius: 0,
-                        pointHitRadius: 10,
+                        pointHitRadius: 15,
                         spanGaps: true
                     }
                 ]
@@ -985,15 +1022,20 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        mode: 'index',
-                        intersect: false,
+                        backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)',
+                        titleColor: isDark ? '#fff' : '#000',
+                        bodyColor: isDark ? '#ccc' : '#333',
+                        borderColor: gridColor,
+                        borderWidth: 1,
+                        padding: 10,
                         callbacks: {
                             label: ctx => {
                                 if (ctx.parsed.y !== null) {
-                                    const prefix = ctx.datasetIndex === 1 ? '📉 回撤段: ' : '涨跌幅: ';
+                                    const prefix = ctx.datasetIndex === 1 ? '📉 回撤: ' : '📈 涨跌: ';
                                     const sign = ctx.parsed.y >= 0 ? '+' : '';
                                     return prefix + sign + ctx.parsed.y.toFixed(2) + '%';
                                 }
@@ -1008,33 +1050,26 @@
                         grid: { display: false },
                         ticks: {
                             color: textColor,
-                            maxTicksLimit: 8,
+                            maxTicksLimit: 6,
                             font: { size: 10 },
                             callback: function(value, index) {
                                 const dateStr = navList[value]?.date;
                                 if (!dateStr) return '';
                                 const year = dateStr.slice(0, 4);
                                 const monthDay = dateStr.slice(5);
-
-                                // 找到该年份第一次出现的索引
                                 const firstIndexForYear = navList.findIndex(n => n.date.slice(0, 4) === year);
-
-                                // 如果是该年份的第一个数据点，显示完整年份
-                                if (value === firstIndexForYear) {
-                                    return dateStr;
-                                }
-                                // 否则只显示月-日
-                                return monthDay;
+                                return value === firstIndexForYear ? dateStr : monthDay;
                             }
                         }
                     },
                     y: {
                         display: true,
+                        border: { display: false },
                         grid: { color: gridColor },
                         ticks: {
                             color: textColor,
                             font: { size: 10 },
-                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%'
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
                         }
                     }
                 }
@@ -1042,15 +1077,13 @@
         });
     }
 
-    // ==================== 基金选择器 ====================
     async function loadHoldingFunds() {
         try {
+            if(typeof window.API_BASE_URL === 'undefined') window.API_BASE_URL = '';
             const response = await fetch(window.API_BASE_URL + '/api/data');
             const data = await response.json();
             if (data && data.rows) {
                 holdingFunds = data.rows.filter(row => row.isFund === true || row.isFund === 'true' || row.isFund === 1);
-
-                // 同时加载基金行情数据
                 if (holdingFunds.length > 0) {
                     const params = new URLSearchParams();
                     params.set('items', holdingFunds.map(f => `${f.code}:1`).join(','));
@@ -1058,7 +1091,6 @@
                     const quotesData = await quotesRes.json();
                     fundQuotes = quotesData?.quotes || {};
                 }
-
                 renderFundOptions();
             }
         } catch (e) {
@@ -1071,7 +1103,6 @@
         const dropdown = document.getElementById('fund-dropdown');
         const searchInput = document.getElementById('fund-search-input');
 
-        // 点击显示/隐藏下拉框
         displayBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const isShowing = dropdown.classList.toggle('show');
@@ -1082,20 +1113,14 @@
             }
         });
 
-        // 点击外部关闭下拉框
         document.addEventListener('click', (e) => {
             if (!dropdown.contains(e.target) && e.target !== displayBtn) {
                 dropdown.classList.remove('show');
             }
         });
 
-        // 阻止搜索框的点击事件冒泡，防止关闭下拉框
         if (searchInput) {
-            searchInput.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-
-            // 回车添加基金
+            searchInput.addEventListener('click', (e) => e.stopPropagation());
             searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1111,26 +1136,18 @@
         }
     }
 
-    function filterFundOptions(keyword) {
-        renderFundOptions(keyword);
-    }
+    function filterFundOptions(keyword) { renderFundOptions(keyword); }
 
-    // 异步获取基金名称
     async function fetchCustomFundName(fundCode) {
-        if (customFundNames[fundCode] || loadingFundCodes.has(fundCode)) {
-            return;
-        }
+        if (customFundNames[fundCode] || loadingFundCodes.has(fundCode)) return;
         loadingFundCodes.add(fundCode);
         try {
             const res = await fetch(window.API_BASE_URL + '/api/fund-estimate/' + fundCode);
             const data = await res.json();
             if (data.success && data.fundName) {
                 customFundNames[fundCode] = data.fundName;
-                // 重新渲染列表
                 const searchInput = document.getElementById('fund-search-input');
-                if (searchInput) {
-                    renderFundOptions(searchInput.value);
-                }
+                if (searchInput) renderFundOptions(searchInput.value);
             }
         } catch (e) {
             console.error('获取基金名称失败:', e);
@@ -1142,20 +1159,15 @@
     function renderFundOptions(searchKeyword = '') {
         const container = document.getElementById('fund-options-list');
         if (!container) return;
-
-        const kw = searchKeyword.trim();
-        const kwLower = kw.toLowerCase();
-
-        // 过滤基金列表
+        const kw = searchKeyword.trim().toLowerCase();
         let filteredFunds = holdingFunds;
         if (kw) {
             filteredFunds = holdingFunds.filter(fund =>
-                (fund.code && fund.code.toLowerCase().includes(kwLower)) ||
-                (fund.name && fund.name.toLowerCase().includes(kwLower))
+                (fund.code && fund.code.toLowerCase().includes(kw)) ||
+                (fund.name && fund.name.toLowerCase().includes(kw))
             );
         }
 
-        // 按盈亏率排序：亏最多的排前面
         filteredFunds = [...filteredFunds].sort((a, b) => {
             const getProfit = (fund) => {
                 const quote = fundQuotes[`${fund.code}:1`];
@@ -1168,8 +1180,6 @@
         });
 
         let html = '';
-
-        // 渲染持仓基金
         html += filteredFunds.map(fund => {
             const quote = fundQuotes[`${fund.code}:1`];
             let profitHtml = '';
@@ -1189,26 +1199,13 @@
             </div>
         `}).join('');
 
-        // 如果输入了内容且不是持仓基金，显示"添加基金"选项
         if (kw && /^\d+$/.test(kw) && !holdingFunds.some(f => f.code === kw)) {
-            if (filteredFunds.length > 0) {
-                html += `<div style="height: 0.5px; background: var(--ios-border); margin: 0 16px;"></div>`;
-            }
+            if (filteredFunds.length > 0) html += `<div style="height: 0.5px; background: var(--ios-border); margin: 0 16px;"></div>`;
             const isSelected = selectedFundCodes.has(kw);
             const fundName = customFundNames[kw];
             const isLoading = loadingFundCodes.has(kw);
 
-            let displayName = '';
-            if (isSelected) {
-                displayName = fundName ? `${fundName} · 已添加` : '已添加';
-            } else if (fundName) {
-                displayName = fundName;
-            } else if (isLoading) {
-                displayName = '加载中...';
-            } else {
-                displayName = '添加此基金';
-            }
-
+            let displayName = isSelected ? (fundName ? `${fundName} · 已添加` : '已添加') : (fundName ? fundName : (isLoading ? '加载中...' : '添加此基金'));
             html += `
             <div class="fund-option ${isSelected ? 'selected' : ''}" data-code="${kw}" data-custom="true">
                 <div class="fund-option-checkbox"></div>
@@ -1219,81 +1216,48 @@
                     </div>
                 </div>
             </div>`;
-
-            // 如果没有缓存且不在加载中，触发获取
-            if (!fundName && !isLoading) {
-                fetchCustomFundName(kw);
-            }
+            if (!fundName && !isLoading) fetchCustomFundName(kw);
         }
 
-        if (!html) {
-            html = '<div style="padding: 20px; text-align: center; color: var(--ios-secondary); font-size: 14px;">暂无持仓基金</div>';
-        }
-
+        if (!html) html = '<div style="padding: 30px; text-align: center; color: var(--ios-secondary); font-size: 14px;">暂无相关基金</div>';
         container.innerHTML = html;
 
-        // 绑定点击事件
         container.querySelectorAll('.fund-option').forEach(opt => {
-            const handleClick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const code = opt.dataset.code;
-                toggleFundSelection(code);
-            };
-            opt.addEventListener('click', handleClick);
+            opt.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                toggleFundSelection(opt.dataset.code);
+            });
         });
     }
 
     function toggleFundSelection(code) {
-        if (selectedFundCodes.has(code)) {
-            selectedFundCodes.delete(code);
-        } else {
-            selectedFundCodes.add(code);
-        }
+        selectedFundCodes.has(code) ? selectedFundCodes.delete(code) : selectedFundCodes.add(code);
         updateFundSelection();
     }
 
     function updateFundSelection() {
-        // 更新隐藏输入框
         document.getElementById('in-fund-codes').value = Array.from(selectedFundCodes).join(',');
-
-        // 更新显示文本
         const displayBtn = document.getElementById('fund-select-display');
         if (selectedFundCodes.size === 0) {
-            displayBtn.textContent = '选择持仓基金';
+            displayBtn.textContent = '点击选择';
         } else if (selectedFundCodes.size === 1) {
             const code = Array.from(selectedFundCodes)[0];
             const fund = holdingFunds.find(f => f.code === code);
             displayBtn.textContent = fund ? fund.code : code;
         } else {
-            displayBtn.textContent = `已选 ${selectedFundCodes.size} 只`;
+            displayBtn.textContent = `已选 ${selectedFundCodes.size} 支`;
         }
 
-        // 更新选项状态
-        const options = document.querySelectorAll('.fund-option');
-        options.forEach(opt => {
-            const code = opt.dataset.code;
-            if (selectedFundCodes.has(code)) {
-                opt.classList.add('selected');
-            } else {
-                opt.classList.remove('selected');
-            }
+        document.querySelectorAll('.fund-option').forEach(opt => {
+            opt.classList.toggle('selected', selectedFundCodes.has(opt.dataset.code));
         });
     }
 
-    function clearFundSelection() {
-        selectedFundCodes.clear();
-        updateFundSelection();
-    }
-
-    function selectAllFunds() {
-        holdingFunds.forEach(fund => selectedFundCodes.add(fund.code));
-        updateFundSelection();
-    }
+    function clearFundSelection() { selectedFundCodes.clear(); updateFundSelection(); }
+    function selectAllFunds() { holdingFunds.forEach(fund => selectedFundCodes.add(fund.code)); updateFundSelection(); }
 
     function setDaysPreset(days) {
         document.getElementById('in-fund-days').value = days;
-        // 更新按钮状态
         document.querySelectorAll('.days-preset-btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
         });
@@ -1301,44 +1265,33 @@
 
     function onDaysInputChange() {
         const inputDays = parseInt(document.getElementById('in-fund-days').value);
-        // 检查是否匹配预设值
         let matched = false;
         document.querySelectorAll('.days-preset-btn').forEach(btn => {
-            const presetDays = parseInt(btn.dataset.days);
-            const isActive = presetDays === inputDays;
+            const isActive = parseInt(btn.dataset.days) === inputDays;
             btn.classList.toggle('active', isActive);
             if (isActive) matched = true;
         });
-        // 如果不匹配任何预设，清除所有active状态
-        if (!matched) {
-            document.querySelectorAll('.days-preset-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-        }
+        if (!matched) document.querySelectorAll('.days-preset-btn').forEach(btn => btn.classList.remove('active'));
     }
 
-    // ==================== 基金回撤分析 ====================
     async function analyzeFundDrawdown() {
-        chartDataList = []; // 重置图表数据列表
+        chartDataList = [];
         const codesInput = document.getElementById('in-fund-codes').value.trim();
         const days = parseInt(document.getElementById('in-fund-days').value) || 365;
         const resultsEl = document.getElementById('fund-results');
         const btnEl = document.querySelector('.btn-analyze');
 
         if (!codesInput) {
-            resultsEl.innerHTML = '<div class="error-msg">请输入基金代码</div>';
+            resultsEl.innerHTML = '<div class="error-msg">请先选择或输入基金代码</div>';
             return;
         }
 
         const fundCodes = codesInput.split(',').map(c => c.trim()).filter(c => c);
-
-        // 显示加载状态
         btnEl.disabled = true;
-        btnEl.textContent = '分析中...';
-        resultsEl.innerHTML = '<div class="loading-spinner">正在获取基金数据...</div>';
+        btnEl.textContent = '深度分析中...';
+        resultsEl.innerHTML = '<div class="loading-spinner">正在拉取基金数据...</div>';
 
         try {
-            // 先获取基金实时估算数据
             const estimateRes = await fetch(window.API_BASE_URL + '/api/fund-estimate/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1347,54 +1300,38 @@
             const estimateData = await estimateRes.json();
             const estimates = {};
             if (estimateData.success && estimateData.results) {
-                estimateData.results.forEach(r => {
-                    if (r.success) {
-                        estimates[r.fundCode] = r;
-                    }
-                });
+                estimateData.results.forEach(r => { if (r.success) estimates[r.fundCode] = r; });
             }
 
-            // 再获取行情数据（用于 fallback）
             const quotesRes = await fetch(window.API_BASE_URL + '/api/quotes?items=' + fundCodes.map(c => `${c}:1`).join(','));
             const quotesData = await quotesRes.json();
             const quotes = quotesData?.quotes || {};
 
-            // 逐个请求基金数据，显示进度
             const results = [];
             for (let i = 0; i < fundCodes.length; i++) {
                 const code = fundCodes[i];
-                resultsEl.innerHTML = `<div class="loading-spinner">正在分析 ${i + 1}/${fundCodes.length} - ${code}</div>`;
-
+                resultsEl.innerHTML = `<div class="loading-spinner">正在分析 ${i + 1}/${fundCodes.length} (代码: ${code})</div>`;
                 try {
                     const res = await fetch(window.API_BASE_URL + '/api/fund-drawdown/' + code + '?days=' + days);
                     const data = await res.json();
                     results.push(data);
                 } catch (e) {
-                    results.push({
-                        success: false,
-                        fundCode: code,
-                        error: e.message
-                    });
+                    results.push({ success: false, fundCode: code, error: e.message });
                 }
             }
 
-            // 按最大回撤从大到小排序
             const sortedResults = [...results].sort((a, b) => {
                 if (!a.success) return 1;
                 if (!b.success) return -1;
                 return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
             });
 
-            // 成功的基金数量
             const successResults = sortedResults.filter(r => r.success);
-
-            // 渲染结果
             let html = '';
 
-            // 如果有多只基金，先渲染对比图
             if (successResults.length > 1) {
                 html += `<div class="compare-chart-container">
-                    <div class="compare-chart-title">基金对比</div>
+                    <div class="compare-chart-title">组合收益走势对比</div>
                     <canvas id="compare-chart"></canvas>
                 </div>`;
             }
@@ -1412,158 +1349,89 @@
                 const ret = result.returnData;
                 const isPositive = parseFloat(ret.returnPercent) >= 0;
                 const chartId = 'chart-' + result.fundCode;
-
-                // 获取基金实时估算数据
                 const estimate = estimates[result.fundCode];
                 const quote = quotes[`${result.fundCode}:1`];
-                let estimateHtml = '';
+                
                 let yesterdayChangeHtml = '';
-                let hasEstimate = false;
-
-                // 优先用实时估算数据
-                if (estimate && estimate.estimateChange !== undefined && estimate.estimateChange !== null && !isNaN(estimate.estimateChange)) {
-                    const change = estimate.estimateChange;
-                    const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                    const sign = change >= 0 ? '+' : '';
-                    hasEstimate = true;
-                    estimateHtml = `
-                        <div class="stat-item">
-                            <div class="stat-label">估算涨跌</div>
-                            <div class="stat-value" style="color: ${color};">${sign}${change.toFixed(2)}%</div>
-                            <div class="stat-sub">${estimate.estimateTime || ''}</div>
-                        </div>`;
-                }
-                // 昨日净值涨跌
+                
                 if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
                     const change = quote.change;
                     const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                     const sign = change >= 0 ? '+' : '';
-                    // 判断净值日期来决定显示"今日"还是"昨日"
                     let label = '净值涨跌';
                     if (quote.priceDate) {
                         const today = new Date();
-                        const todayStr = today.getFullYear().toString() +
-                                       (today.getMonth() + 1).toString().padStart(2, '0') +
-                                       today.getDate().toString().padStart(2, '0');
+                        const todayStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
                         const yesterday = new Date(today);
                         yesterday.setDate(yesterday.getDate() - 1);
-                        const yesterdayStr = yesterday.getFullYear().toString() +
-                                           (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                           yesterday.getDate().toString().padStart(2, '0');
-
-                        if (quote.priceDate === todayStr) {
-                            label = '今日涨跌';
-                        } else if (quote.priceDate === yesterdayStr) {
-                            label = '昨日涨跌';
-                        }
+                        const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+                        if (quote.priceDate === todayStr) label = '今日涨跌';
+                        else if (quote.priceDate === yesterdayStr) label = '昨日涨跌';
                     }
                     yesterdayChangeHtml = `
-                        <div class="stat-item">
-                            <div class="stat-label">${label}</div>
-                            <div class="stat-value" style="color: ${color};">${sign}${change.toFixed(2)}%</div>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
+                            <span style="color: ${color}; font-weight: 800; font-size: 22px; margin-top: 4px; font-variant-numeric: tabular-nums;">${sign}${change.toFixed(2)}%</span>
                         </div>`;
                 }
 
-                // 检查是否是持仓基金，计算今日预估收益
                 const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
                 let rightHeaderHtml = '';
                 if (holdingFund && holdingFund.shares && holdingFund.shares > 0) {
-                    // 有持仓就显示收益
                     const currentNav = quote?.price || 0;
                     if (currentNav > 0 && holdingFund.cost && holdingFund.cost > 0) {
-                        // 用成本和当前净值计算持仓收益
-                        const holdingValue = currentNav * holdingFund.shares;
-                        const costValue = holdingFund.cost * holdingFund.shares;
-                        const holdingProfit = holdingValue - costValue;
+                        const holdingProfit = (currentNav - holdingFund.cost) * holdingFund.shares;
                         const color = holdingProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                         const sign = holdingProfit >= 0 ? '+' : '';
-                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">持仓收益</span>
-                        <span class="fund-est-profit" style="color: ${color}; font-weight: 700; font-size: 16px;">${sign}¥${holdingProfit.toFixed(2)}</span>`;
+                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; font-weight: 600;">当前收益</span>
+                        <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top:2px;">${sign}¥${holdingProfit.toFixed(2)}</span>`;
                     } else if (currentNav > 0 && estimate && !isNaN(estimate.estimateChange)) {
-                        // 如果没有成本价但有估算数据，用估算计算今日收益
-                        const estValue = currentNav * (1 + estimate.estimateChange / 100);
-                        const estProfit = (estValue - currentNav) * holdingFund.shares;
+                        const estProfit = (currentNav * (1 + estimate.estimateChange / 100) - currentNav) * holdingFund.shares;
                         const color = estProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                         const sign = estProfit >= 0 ? '+' : '';
-                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">今日收益</span>
-                        <span class="fund-est-profit" style="color: ${color}; font-weight: 700; font-size: 16px;">${sign}¥${estProfit.toFixed(2)}</span>`;
+                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; font-weight: 600;">预估收益</span>
+                        <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top:2px;">${sign}¥${estProfit.toFixed(2)}</span>`;
                     }
                 }
 
-                // 构建涨跌数据显示HTML（只显示净值涨跌，今日/昨日）
-                let changeHtml = '';
-                if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
-                    const change = quote.change;
-                    const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                    const sign = change >= 0 ? '+' : '';
-                    let label = '净值涨跌';
-                    if (quote.priceDate) {
-                        const today = new Date();
-                        const todayStr = today.getFullYear().toString() +
-                                       (today.getMonth() + 1).toString().padStart(2, '0') +
-                                       today.getDate().toString().padStart(2, '0');
-                        const yesterday = new Date(today);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const yesterdayStr = yesterday.getFullYear().toString() +
-                                           (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                           yesterday.getDate().toString().padStart(2, '0');
-                        if (quote.priceDate === todayStr) {
-                            label = '今日涨跌';
-                        } else if (quote.priceDate === yesterdayStr) {
-                            label = '昨日涨跌';
-                        }
-                    }
-                    changeHtml = `
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${label}</span>
-                            <span style="color: ${color}; font-weight: 700; font-size: 20px; margin-top: 4px;">${sign}${change.toFixed(2)}%</span>
-                        </div>`;
-                }
-
-                // 没有持仓的话，右侧不显示
-
-                // 构建修复区间HTML
                 let recoveryHtml = '';
                 if (dd.recovered && dd.recoveryDate) {
                     recoveryHtml = `
                         <div class="stat-item">
-                            <div class="stat-label">修复区间</div>
-                            <div class="stat-value" style="color: var(--ios-red);">${dd.recoveryDays}天</div>
-                            <div class="stat-sub">${dd.troughDate} → ${dd.recoveryDate}</div>
+                            <div class="stat-label">修复周期</div>
+                            <div class="stat-value" style="color: var(--ios-text);">${dd.recoveryDays}天</div>
+                            <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
                         </div>`;
                 } else if (dd.currentRecoveryPercent) {
                     recoveryHtml = `
                         <div class="stat-item">
                             <div class="stat-label">修复进度</div>
-                            <div class="stat-value" style="color: var(--ios-red);">+${dd.currentRecoveryPercent}%</div>
-                            <div class="stat-sub">还差 +${dd.remainingRecoveryPercent}%</div>
+                            <div class="stat-value" style="color: var(--ios-orange);">+${dd.currentRecoveryPercent}%</div>
+                            <div class="stat-sub">仍需 +${dd.remainingRecoveryPercent}%</div>
                         </div>`;
                 }
 
-                // 计算有几个stat-item要显示
-                const hasRecovery = !!(dd.recovered && dd.recoveryDate || dd.currentRecoveryPercent);
-
                 html += `<div class="fund-result-card">
                     <div class="fund-header">
-                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 140px;">
                             <div class="fund-code">${result.fundCode}</div>
                             <div class="fund-name">${result.fundName || ''}</div>
                         </div>
-                        ${changeHtml}
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                        ${yesterdayChangeHtml}
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content:center;">
                             ${rightHeaderHtml}
                         </div>
                     </div>
-                    <div class="fund-stats ${hasRecovery ? 'has-recovery' : ''}">
+                    <div class="fund-stats">
                         <div class="stat-item">
                             <div class="stat-label">最大回撤</div>
                             <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
-                            <div class="stat-sub">${dd.peakDate} → ${dd.troughDate}</div>
+                            <div class="stat-sub">${dd.peakDate.slice(5)}至${dd.troughDate.slice(5)}</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-label">区间收益</div>
                             <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
-                            <div class="stat-sub">${result.dataRange.dataPoints} 个交易日</div>
+                            <div class="stat-sub">共 ${result.dataRange.dataPoints} 交易日</div>
                         </div>
                         ${recoveryHtml}
                     </div>
@@ -1572,7 +1440,6 @@
                     </div>
                 </div>`;
 
-                // 存储数据用于绑图
                 chartDataList.push({
                     id: chartId,
                     navList: result.navList,
@@ -1582,19 +1449,14 @@
             }
             resultsEl.innerHTML = html;
 
-            // 先绑定对比图
-            if (successResults.length > 1) {
-                drawCompareChart('compare-chart', successResults);
-            }
-
-            // 绑制所有单独图表
+            if (successResults.length > 1) drawCompareChart('compare-chart', successResults);
             chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate));
 
         } catch (e) {
-            resultsEl.innerHTML = `<div class="error-msg">请求失败: ${e.message}</div>`;
+            resultsEl.innerHTML = `<div class="error-msg">拉取数据失败: ${e.message}</div>`;
         } finally {
             btnEl.disabled = false;
-            btnEl.textContent = '开始分析';
+            btnEl.textContent = '开始深度分析';
         }
     }
 </script>

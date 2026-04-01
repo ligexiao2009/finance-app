@@ -798,7 +798,10 @@
         loadData();
         const savedTab = parseInt(localStorage.getItem('invest_dd_tab') || '0');
         switchTab(savedTab);
-        loadHoldingFunds();
+        loadHoldingFunds().then(() => {
+            // 加载完成后默认全选持仓
+            selectAllFunds();
+        });
         initFundSelect();
     };
 

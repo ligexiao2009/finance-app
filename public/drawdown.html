@@ -1663,29 +1663,22 @@
                 let recoveryHtml = '';
                 let peakRecoveryProfit = null;
                 let peakNav = null;
+                let peakNavDate = null;
 
-                // 计算回到前高的收益
-                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0) {
-                    // 优先用后端返回的 peakNav
-                    if (dd.peakNav) {
-                        peakNav = dd.peakNav;
-                    }
-                    // 没有的话从 navList 里找
-                    else if (result.navList) {
-                        const peakDateStr = (dd.peakDate || '').replace(/\//g, '-');
-                        // 先尝试精确匹配
-                        let peakNavItem = result.navList.find(n => n.date.replace(/\//g, '-') === peakDateStr);
-                        // 精确匹配不到的话，尝试部分匹配（只匹配月-日）
-                        if (!peakNavItem && peakDateStr.length >= 5) {
-                            const monthDay = peakDateStr.slice(5);
-                            peakNavItem = result.navList.find(n => n.date.replace(/\//g, '-').slice(5) === monthDay);
-                        }
-                        if (peakNavItem && peakNavItem.nav) {
-                            peakNav = peakNavItem.nav;
+                // 计算回到前高的收益（使用整个周期内的最高净值）
+                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList && result.navList.length > 0) {
+                    // 从整个周期的 navList 中找出最高净值
+                    let maxNav = 0;
+                    let maxNavItem = null;
+                    for (const item of result.navList) {
+                        if (item.nav && item.nav > maxNav) {
+                            maxNav = item.nav;
+                            maxNavItem = item;
                         }
                     }
-                    // 计算收益
-                    if (peakNav) {
+                    if (maxNavItem) {
+                        peakNav = maxNavItem.nav;
+                        peakNavDate = maxNavItem.date;
                         peakRecoveryProfit = (peakNav - holdingFund.cost) * holdingFund.shares;
                     }
                 }
@@ -1701,6 +1694,7 @@
                     currentRecoveryPercent: dd.currentRecoveryPercent,
                     remainingRecoveryPercent: dd.remainingRecoveryPercent,
                     peakNav: peakNav,
+                    peakNavDate: peakNavDate,
                     costBasis: holdingFund?.cost,
                     shares: holdingFund?.shares,
                     peakRecoveryProfit: peakRecoveryProfit
@@ -1851,12 +1845,12 @@
             </div>`;
         }
 
-        // 回到前高收益
+        // 回到周期最高收益
         if (data.peakRecoveryProfit !== null && data.peakRecoveryProfit !== undefined) {
             const profitColor = data.peakRecoveryProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
             const profitSign = data.peakRecoveryProfit >= 0 ? '+' : '';
             html += `<div class="recovery-modal-row">
-                <span class="recovery-modal-label">回到前高赚</span>
+                <span class="recovery-modal-label">回到周期最高赚</span>
                 <span class="recovery-modal-value" style="color: ${profitColor};">${profitSign}${Math.round(data.peakRecoveryProfit)}</span>
             </div>`;
         }
@@ -1873,9 +1867,10 @@
             </div>`;
         }
         if (data.peakNav) {
+            const peakDateDisplay = data.peakNavDate ? data.peakNavDate.slice(5) : '-';
             html += `<div class="recovery-modal-row">
-                <span class="recovery-modal-label">前高净值</span>
-                <span class="recovery-modal-value">${parseFloat(data.peakNav).toFixed(4)}</span>
+                <span class="recovery-modal-label">周期最高净值</span>
+                <span class="recovery-modal-value">${parseFloat(data.peakNav).toFixed(4)} (${peakDateDisplay})</span>
             </div>`;
         }
 

@@ -1845,18 +1845,9 @@
             </div>`;
         }
 
-        // 回到周期最高收益
-        if (data.peakRecoveryProfit !== null && data.peakRecoveryProfit !== undefined) {
-            const profitColor = data.peakRecoveryProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-            const profitSign = data.peakRecoveryProfit >= 0 ? '+' : '';
-            html += `<div class="recovery-modal-row">
-                <span class="recovery-modal-label">回到周期最高赚</span>
-                <span class="recovery-modal-value" style="color: ${profitColor};">${profitSign}${Math.round(data.peakRecoveryProfit)}</span>
-            </div>`;
-        }
-
-        // 成本和份额
+        // 成本和份额、本金
         if (data.costBasis && data.shares) {
+            const principal = data.costBasis * data.shares;
             html += `<div class="recovery-modal-row">
                 <span class="recovery-modal-label">持仓成本</span>
                 <span class="recovery-modal-value">${parseFloat(data.costBasis).toFixed(4)}</span>
@@ -1864,6 +1855,28 @@
             html += `<div class="recovery-modal-row">
                 <span class="recovery-modal-label">持有份额</span>
                 <span class="recovery-modal-value">${parseFloat(data.shares).toFixed(2)}</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">本金</span>
+                <span class="recovery-modal-value">${Math.round(principal)}</span>
+            </div>`;
+        }
+
+        // 回到周期最高收益和收益率
+        if (data.peakRecoveryProfit !== null && data.peakRecoveryProfit !== undefined && data.peakNav && data.costBasis && data.costBasis > 0) {
+            const profitColor = data.peakRecoveryProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            const profitSign = data.peakRecoveryProfit >= 0 ? '+' : '';
+            const peakYieldPercent = ((data.peakNav - data.costBasis) / data.costBasis) * 100;
+            const yieldColor = peakYieldPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            const yieldSign = peakYieldPercent >= 0 ? '+' : '';
+
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">回到周期最高收益率</span>
+                <span class="recovery-modal-value" style="color: ${yieldColor};">${yieldSign}${peakYieldPercent.toFixed(2)}%</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">回到周期最高赚</span>
+                <span class="recovery-modal-value" style="color: ${profitColor};">${profitSign}${Math.round(data.peakRecoveryProfit)}</span>
             </div>`;
         }
         if (data.peakNav) {

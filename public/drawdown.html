@@ -1665,11 +1665,27 @@
                 let peakNav = null;
 
                 // 计算回到前高的收益
-                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList) {
-                    const peakDateNormalized = (dd.peakDate || '').replace(/\//g, '-');
-                    const peakNavItem = result.navList.find(n => n.date.replace(/\//g, '-') === peakDateNormalized);
-                    if (peakNavItem && peakNavItem.nav) {
-                        peakNav = peakNavItem.nav;
+                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0) {
+                    // 优先用后端返回的 peakNav
+                    if (dd.peakNav) {
+                        peakNav = dd.peakNav;
+                    }
+                    // 没有的话从 navList 里找
+                    else if (result.navList) {
+                        const peakDateStr = (dd.peakDate || '').replace(/\//g, '-');
+                        // 先尝试精确匹配
+                        let peakNavItem = result.navList.find(n => n.date.replace(/\//g, '-') === peakDateStr);
+                        // 精确匹配不到的话，尝试部分匹配（只匹配月-日）
+                        if (!peakNavItem && peakDateStr.length >= 5) {
+                            const monthDay = peakDateStr.slice(5);
+                            peakNavItem = result.navList.find(n => n.date.replace(/\//g, '-').slice(5) === monthDay);
+                        }
+                        if (peakNavItem && peakNavItem.nav) {
+                            peakNav = peakNavItem.nav;
+                        }
+                    }
+                    // 计算收益
+                    if (peakNav) {
                         peakRecoveryProfit = (peakNav - holdingFund.cost) * holdingFund.shares;
                     }
                 }

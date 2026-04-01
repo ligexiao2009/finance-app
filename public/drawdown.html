@@ -1383,7 +1383,7 @@
                         const holdingProfit = (currentNav - holdingFund.cost) * holdingFund.shares;
                         const color = holdingProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                         const sign = holdingProfit >= 0 ? '+' : '';
-                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; font-weight: 600;">当前收益</span>
+                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; font-weight: 600;">持仓收益</span>
                         <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top:2px;">${sign}¥${holdingProfit.toFixed(2)}</span>`;
                     } else if (currentNav > 0 && estimate && !isNaN(estimate.estimateChange)) {
                         const estProfit = (currentNav * (1 + estimate.estimateChange / 100) - currentNav) * holdingFund.shares;

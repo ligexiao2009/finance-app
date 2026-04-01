@@ -153,9 +153,12 @@
         /* 输入区域 */
         .input-group {
             background: var(--ios-card);
-            border-radius: 16px;
-            box-shadow: 0 2px 12px var(--ios-shadow);
-            transition: background-color 0.3s;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px var(--ios-shadow);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        .input-group:active {
+            transform: scale(0.995);
         }
         .row {
             display: flex;
@@ -214,19 +217,29 @@
         .btn-analyze {
             display: block;
             width: 100%;
-            padding: 14px;
+            padding: 16px;
             background: var(--ios-primary);
             color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 16px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             margin-bottom: 16px;
-            transition: opacity 0.2s;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+            letter-spacing: 0.5px;
         }
-        .btn-analyze:active { opacity: 0.7; }
-        .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-analyze:active {
+            transform: scale(0.97);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+        }
+        .btn-analyze:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
 
         .fund-result-card {
             background: var(--ios-card);
@@ -260,6 +273,9 @@
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 12px;
+        }
+        .fund-stats.has-estimate {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
         }
         .stat-item {
             text-align: center;
@@ -475,6 +491,46 @@
             color: var(--ios-secondary);
             opacity: 0.6;
         }
+        .days-preset {
+            display: flex;
+            gap: 6px;
+            padding: 8px 16px 0;
+            flex-wrap: wrap;
+        }
+        .days-preset-btn {
+            padding: 6px 12px;
+            background: rgba(0, 122, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--ios-primary);
+            cursor: pointer;
+            font-weight: 500;
+            font-family: inherit;
+        }
+        .days-preset-btn.active {
+            background: var(--ios-primary);
+            color: white;
+        }
+        .compare-chart-container {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px var(--ios-shadow);
+        }
+        .compare-chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ios-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .compare-chart-container canvas {
+            width: 100% !important;
+            height: 200px !important;
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -486,13 +542,49 @@
     </div>
 
     <div class="segmented-control">
-        <button class="segment active" onclick="switchTab(0)">成本助手</button>
-        <button class="segment" onclick="switchTab(1)">回撤计算</button>
-        <button class="segment" onclick="switchTab(2)">基金回撤</button>
+        <button class="segment active" onclick="switchTab(0)">基金回撤</button>
+        <button class="segment" onclick="switchTab(1)">成本助手</button>
+        <button class="segment" onclick="switchTab(2)">回撤计算</button>
     </div>
 
-    <!-- 模块一：成本助手 -->
-    <div id="tab-cost" class="tool-content active">
+    <!-- 模块一：基金回撤 -->
+    <div id="tab-fund" class="tool-content active">
+        <div class="input-group" style="margin-bottom: 16px;">
+            <div class="row">
+                <label>基金代码</label>
+                <div class="fund-select-wrapper">
+                    <button type="button" class="fund-select-display" id="fund-select-display">选择基金</button>
+                    <input type="hidden" id="in-fund-codes">
+                    <div class="fund-dropdown" id="fund-dropdown">
+                        <div class="fund-search-box">
+                            <input type="text" class="fund-search-input" id="fund-search-input" placeholder="搜索基金代码或名称" oninput="filterFundOptions(this.value)">
+                        </div>
+                        <div id="fund-options-list"></div>
+                        <div class="fund-select-actions">
+                            <button type="button" class="fund-select-btn fund-select-btn-clear" onclick="clearFundSelection()">清空</button>
+                            <button type="button" class="fund-select-btn fund-select-btn-all" onclick="selectAllFunds()">全选</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <label>分析天数</label>
+                <input type="number" id="in-fund-days" placeholder="90" value="90" oninput="onDaysInputChange()">
+                <!-- <span class="unit">天</span> -->
+            </div>
+            <div class="days-preset">
+                <button type="button" class="days-preset-btn" data-days="30" onclick="setDaysPreset(30)">近1月</button>
+                <button type="button" class="days-preset-btn active" data-days="90" onclick="setDaysPreset(90)">近3月</button>
+                <button type="button" class="days-preset-btn" data-days="180" onclick="setDaysPreset(180)">近半年</button>
+                <button type="button" class="days-preset-btn" data-days="365" onclick="setDaysPreset(365)">近1年</button>
+            </div>
+        </div>
+        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
+        <div id="fund-results"></div>
+    </div>
+
+    <!-- 模块二：成本助手 -->
+    <div id="tab-cost" class="tool-content">
         <div class="display-card" id="card-cost">
             <div class="label">推算成本点位</div>
             <div class="value" id="res-cost-point">0.00</div>
@@ -518,7 +610,7 @@
                 <button class="btn-clear" onclick="clearInputs('cost')">重置所有数值</button>
     </div>
 
-    <!-- 模块二：回撤计算 -->
+    <!-- 模块三：回撤计算 -->
     <div id="tab-drawdown" class="tool-content">
         <div class="display-card" id="card-dd">
             <div class="label" id="dd-label">实际回撤率</div>
@@ -538,36 +630,6 @@
             </div>
         </div>
                 <button class="btn-clear" onclick="clearInputs('dd')">重置所有数值</button>
-    </div>
-
-    <!-- 模块三：基金回撤 -->
-    <div id="tab-fund" class="tool-content">
-        <div class="input-group" style="margin-bottom: 16px;">
-            <div class="row">
-                <label>基金代码</label>
-                <div class="fund-select-wrapper">
-                    <button type="button" class="fund-select-display" id="fund-select-display">选择持仓基金</button>
-                    <input type="hidden" id="in-fund-codes">
-                    <div class="fund-dropdown" id="fund-dropdown">
-                        <div class="fund-search-box">
-                            <input type="text" class="fund-search-input" id="fund-search-input" placeholder="搜索基金代码或名称" oninput="filterFundOptions(this.value)">
-                        </div>
-                        <div id="fund-options-list"></div>
-                        <div class="fund-select-actions">
-                            <button type="button" class="fund-select-btn fund-select-btn-clear" onclick="clearFundSelection()">清空</button>
-                            <button type="button" class="fund-select-btn fund-select-btn-all" onclick="selectAllFunds()">全选</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <label>分析天数</label>
-                <input type="number" id="in-fund-days" placeholder="60" value="60">
-                <!-- <span class="unit">天</span> -->
-            </div>
-        </div>
-        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
-        <div id="fund-results"></div>
     </div>
 </div>
 
@@ -708,6 +770,131 @@
     // ==================== 基金回撤分析 ====================
     let chartDataList = [];
     
+    function drawCompareChart(canvasId, results) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+
+        // 判断当前主题
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+        const textColor = isDark ? '#a1a1a6' : '#8e8e93';
+
+        // 不同基金的颜色
+        const colors = [
+            '#007aff', '#ff3b30', '#34c759', '#ff9500', '#af52de',
+            '#5856d6', '#ff2d55', '#00c7be'
+        ];
+
+        // 找出所有日期的并集
+        const allDates = new Set();
+        results.forEach(r => {
+            if (r.success && r.navList) {
+                r.navList.forEach(n => allDates.add(n.date));
+            }
+        });
+        const sortedDates = Array.from(allDates).sort();
+
+        // 构建数据集
+        const datasets = [];
+        results.forEach((r, idx) => {
+            if (!r.success || !r.navList) return;
+
+            // 创建日期到净值的映射
+            const navMap = new Map();
+            r.navList.forEach(n => navMap.set(n.date, n.nav));
+
+            // 找到第一个有效净值作为基准
+            let firstNav = null;
+            for (const date of sortedDates) {
+                const nav = navMap.get(date);
+                if (nav) {
+                    firstNav = nav;
+                    break;
+                }
+            }
+            if (!firstNav) return;
+
+            // 构建数据点，缺失值用null填充
+            const data = [];
+            sortedDates.forEach(date => {
+                const nav = navMap.get(date);
+                if (nav) {
+                    data.push(((nav / firstNav) - 1) * 100);
+                } else {
+                    data.push(null);
+                }
+            });
+
+            datasets.push({
+                label: `${r.fundCode} ${r.fundName || ''}`,
+                data: data,
+                borderColor: colors[idx % colors.length],
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3,
+                pointRadius: 0,
+                pointHitRadius: 10,
+                spanGaps: true
+            });
+        });
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedDates.map(d => d.slice(5)),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: textColor,
+                            font: { size: 11 },
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: ctx => {
+                                if (ctx.parsed.y !== null) {
+                                    const sign = ctx.parsed.y >= 0 ? '+' : '';
+                                    return `${ctx.dataset.label}: ${sign}${ctx.parsed.y.toFixed(2)}%`;
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: textColor,
+                            maxTicksLimit: 8,
+                            font: { size: 10 }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 10 },
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     function drawChart(canvasId, navList, peakDate, troughDate) {
         if (!navList || navList.length === 0) return;
 
@@ -885,6 +1072,20 @@
             searchInput.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
+
+            // 回车添加基金
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const kw = searchInput.value.trim();
+                    if (kw && /^\d+$/.test(kw)) {
+                        toggleFundSelection(kw);
+                        searchInput.value = '';
+                        renderFundOptions('');
+                    }
+                }
+            });
         }
     }
 
@@ -896,13 +1097,15 @@
         const container = document.getElementById('fund-options-list');
         if (!container) return;
 
+        const kw = searchKeyword.trim();
+        const kwLower = kw.toLowerCase();
+
         // 过滤基金列表
         let filteredFunds = holdingFunds;
-        if (searchKeyword.trim()) {
-            const kw = searchKeyword.trim().toLowerCase();
+        if (kw) {
             filteredFunds = holdingFunds.filter(fund =>
-                (fund.code && fund.code.toLowerCase().includes(kw)) ||
-                (fund.name && fund.name.toLowerCase().includes(kw))
+                (fund.code && fund.code.toLowerCase().includes(kwLower)) ||
+                (fund.name && fund.name.toLowerCase().includes(kwLower))
             );
         }
 
@@ -918,13 +1121,10 @@
             return getProfit(a) - getProfit(b);
         });
 
-        if (filteredFunds.length === 0) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--ios-secondary); font-size: 14px;">' +
-                (searchKeyword.trim() ? '无匹配基金' : '暂无持仓基金') + '</div>';
-            return;
-        }
+        let html = '';
 
-        container.innerHTML = filteredFunds.map(fund => {
+        // 渲染持仓基金
+        html += filteredFunds.map(fund => {
             const quote = fundQuotes[`${fund.code}:1`];
             let profitHtml = '';
             if (quote && quote.price && fund.cost && fund.cost > 0) {
@@ -942,6 +1142,30 @@
                 </div>
             </div>
         `}).join('');
+
+        // 如果输入了内容且不是持仓基金，显示"添加基金"选项
+        if (kw && /^\d+$/.test(kw) && !holdingFunds.some(f => f.code === kw)) {
+            if (filteredFunds.length > 0) {
+                html += `<div style="height: 0.5px; background: var(--ios-border); margin: 0 16px;"></div>`;
+            }
+            const isSelected = selectedFundCodes.has(kw);
+            html += `
+            <div class="fund-option ${isSelected ? 'selected' : ''}" data-code="${kw}" data-custom="true">
+                <div class="fund-option-checkbox"></div>
+                <div class="fund-option-info">
+                    <div class="fund-option-code">${kw}</div>
+                    <div class="fund-option-name" style="color: var(--ios-primary);">
+                        ${isSelected ? '已添加' : '添加此基金'}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        if (!html) {
+            html = '<div style="padding: 20px; text-align: center; color: var(--ios-secondary); font-size: 14px;">暂无持仓基金</div>';
+        }
+
+        container.innerHTML = html;
 
         // 绑定点击事件
         container.querySelectorAll('.fund-option').forEach(opt => {
@@ -1003,6 +1227,32 @@
         updateFundSelection();
     }
 
+    function setDaysPreset(days) {
+        document.getElementById('in-fund-days').value = days;
+        // 更新按钮状态
+        document.querySelectorAll('.days-preset-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+        });
+    }
+
+    function onDaysInputChange() {
+        const inputDays = parseInt(document.getElementById('in-fund-days').value);
+        // 检查是否匹配预设值
+        let matched = false;
+        document.querySelectorAll('.days-preset-btn').forEach(btn => {
+            const presetDays = parseInt(btn.dataset.days);
+            const isActive = presetDays === inputDays;
+            btn.classList.toggle('active', isActive);
+            if (isActive) matched = true;
+        });
+        // 如果不匹配任何预设，清除所有active状态
+        if (!matched) {
+            document.querySelectorAll('.days-preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
+    }
+
     // ==================== 基金回撤分析 ====================
     async function analyzeFundDrawdown() {
         chartDataList = []; // 重置图表数据列表
@@ -1024,34 +1274,67 @@
         resultsEl.innerHTML = '<div class="loading-spinner">正在获取基金数据...</div>';
 
         try {
-            // 并行获取基金回撤数据和行情数据
-            const [drawdownRes, quotesRes] = await Promise.all([
-                fetch(window.API_BASE_URL + '/api/fund-drawdown/batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fundCodes, days })
-                }),
-                fetch(window.API_BASE_URL + '/api/quotes?items=' + fundCodes.map(c => `${c}:1`).join(','))
-            ]);
+            // 先获取基金实时估算数据
+            const estimateRes = await fetch(window.API_BASE_URL + '/api/fund-estimate/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fundCodes })
+            });
+            const estimateData = await estimateRes.json();
+            const estimates = {};
+            if (estimateData.success && estimateData.results) {
+                estimateData.results.forEach(r => {
+                    if (r.success) {
+                        estimates[r.fundCode] = r;
+                    }
+                });
+            }
 
-            const data = await drawdownRes.json();
+            // 再获取行情数据（用于 fallback）
+            const quotesRes = await fetch(window.API_BASE_URL + '/api/quotes?items=' + fundCodes.map(c => `${c}:1`).join(','));
             const quotesData = await quotesRes.json();
             const quotes = quotesData?.quotes || {};
 
-            if (!data.success) {
-                resultsEl.innerHTML = `<div class="error-msg">${data.error || '分析失败'}</div>`;
-                return;
+            // 逐个请求基金数据，显示进度
+            const results = [];
+            for (let i = 0; i < fundCodes.length; i++) {
+                const code = fundCodes[i];
+                resultsEl.innerHTML = `<div class="loading-spinner">正在分析 ${i + 1}/${fundCodes.length} - ${code}</div>`;
+
+                try {
+                    const res = await fetch(window.API_BASE_URL + '/api/fund-drawdown/' + code + '?days=' + days);
+                    const data = await res.json();
+                    results.push(data);
+                } catch (e) {
+                    results.push({
+                        success: false,
+                        fundCode: code,
+                        error: e.message
+                    });
+                }
             }
 
             // 按最大回撤从大到小排序
-            const sortedResults = [...data.results].sort((a, b) => {
+            const sortedResults = [...results].sort((a, b) => {
                 if (!a.success) return 1;
                 if (!b.success) return -1;
                 return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
             });
 
+            // 成功的基金数量
+            const successResults = sortedResults.filter(r => r.success);
+
             // 渲染结果
             let html = '';
+
+            // 如果有多只基金，先渲染对比图
+            if (successResults.length > 1) {
+                html += `<div class="compare-chart-container">
+                    <div class="compare-chart-title">基金对比</div>
+                    <canvas id="compare-chart"></canvas>
+                </div>`;
+            }
+
             for (const result of sortedResults) {
                 if (!result.success) {
                     html += `<div class="fund-result-card">
@@ -1066,16 +1349,33 @@
                 const isPositive = parseFloat(ret.returnPercent) >= 0;
                 const chartId = 'chart-' + result.fundCode;
 
-                // 获取基金行情数据
+                // 获取基金实时估算数据
+                const estimate = estimates[result.fundCode];
                 const quote = quotes[`${result.fundCode}:1`];
-                let todayChangeHtml = '';
-                if (quote && quote.change !== undefined && quote.change !== null) {
+                let estimateHtml = '';
+                let yesterdayChangeHtml = '';
+                let hasEstimate = false;
+
+                // 优先用实时估算数据
+                if (estimate && estimate.estimateChange !== undefined && estimate.estimateChange !== null && !isNaN(estimate.estimateChange)) {
+                    const change = estimate.estimateChange;
+                    const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                    const sign = change >= 0 ? '+' : '';
+                    hasEstimate = true;
+                    estimateHtml = `
+                        <div class="stat-item">
+                            <div class="stat-label">估算涨跌</div>
+                            <div class="stat-value" style="color: ${color};">${sign}${change.toFixed(2)}%</div>
+                            <div class="stat-sub">${estimate.estimateTime || ''}</div>
+                        </div>`;
+                }
+                // 昨日净值涨跌
+                if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
                     const change = quote.change;
                     const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                     const sign = change >= 0 ? '+' : '';
-
                     // 判断净值日期来决定显示"今日"还是"昨日"
-                    let label = '今日涨跌';
+                    let label = '净值涨跌';
                     if (quote.priceDate) {
                         const today = new Date();
                         const todayStr = today.getFullYear().toString() +
@@ -1091,12 +1391,9 @@
                             label = '今日涨跌';
                         } else if (quote.priceDate === yesterdayStr) {
                             label = '昨日涨跌';
-                        } else {
-                            label = '净值涨跌';
                         }
                     }
-
-                    todayChangeHtml = `
+                    yesterdayChangeHtml = `
                         <div class="stat-item">
                             <div class="stat-label">${label}</div>
                             <div class="stat-value" style="color: ${color};">${sign}${change.toFixed(2)}%</div>
@@ -1111,7 +1408,7 @@
                         </div>
                         <span class="fund-date-range">${result.dataRange.startDate} ~ ${result.dataRange.endDate}</span>
                     </div>
-                    <div class="fund-stats">
+                    <div class="fund-stats ${hasEstimate ? 'has-estimate' : ''}">
                         <div class="stat-item">
                             <div class="stat-label">最大回撤</div>
                             <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
@@ -1122,7 +1419,8 @@
                             <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
                             <div class="stat-sub">${result.dataRange.dataPoints} 个交易日</div>
                         </div>
-                        ${todayChangeHtml}
+                        ${yesterdayChangeHtml}
+                        ${estimateHtml}
                     </div>
                     <div class="chart-container">
                         <canvas id="${chartId}"></canvas>
@@ -1139,7 +1437,12 @@
             }
             resultsEl.innerHTML = html;
 
-            // 绑制所有图表
+            // 先绑定对比图
+            if (successResults.length > 1) {
+                drawCompareChart('compare-chart', successResults);
+            }
+
+            // 绑制所有单独图表
             chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate));
 
         } catch (e) {

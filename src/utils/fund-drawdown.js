@@ -8,15 +8,19 @@ const fetch = require('node-fetch');
 // ==================== 获取基金名称 ====================
 async function fetchFundName(fundCode) {
   try {
-    const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js`;
+    // 使用腾讯财经接口获取基金名称
+    const sym = 'jj' + fundCode;
+    const url = `https://qt.gtimg.cn/q=s_${sym}`;
     const response = await fetch(url);
-    const text = await response.text();
-    // 解析JSONP: jsonpgz({"name":"xxx",...});
-    // 使用更精确的正则，只匹配花括号内的内容
-    const jsonMatch = text.match(/jsonpgz\((\{.*?\})\s*\);?/s);
-    if (jsonMatch) {
-      const data = JSON.parse(jsonMatch[1]);
-      return data.name || '';
+
+    // 解码 GBK 编码
+    const buffer = await response.arrayBuffer();
+    const text = new TextDecoder('gb18030').decode(buffer);
+
+    if (text && text.indexOf('~') > -1) {
+      const parts = text.split('~');
+      const name = parts[1] || '';
+      return name.replace('[基金] ', '');
     }
     return '';
   } catch (error) {

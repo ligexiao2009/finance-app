@@ -159,6 +159,32 @@ async function fetchQuotesBatch(items) {
   return quotes;
 }
 
+// ==================== 获取基金实时估算 ====================
+async function fetchFundEstimate(fundCode) {
+  try {
+    const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js`;
+    const response = await fetch(url);
+    const text = await response.text();
+    // 解析JSONP: jsonpgz({"name":"xxx",...});
+    const jsonMatch = text.match(/jsonpgz\((\{.*?\})\s*\);?/s);
+    if (jsonMatch) {
+      const data = JSON.parse(jsonMatch[1]);
+      return {
+        success: true,
+        fundCode: data.fundcode,
+        fundName: data.name,
+        estimateValue: parseFloat(data.gsz) || 0,     // 估算净值
+        estimateChange: parseFloat(data.gszzl) || 0,   // 估算涨跌(%)
+        estimateTime: data.gztime || '',                 // 估算时间
+      };
+    }
+    return { success: false, error: '解析失败' };
+  } catch (error) {
+    console.error(`获取基金 ${fundCode} 实时估算失败:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // ==================== 配置部分 ====================
 // Server酱配置 - 优先从环境变量或数据库配置读取
 let SERVERCHAN_KEY = '';
@@ -1230,13 +1256,67 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ========== 基金实时估算 API ==========
+  if (req.method === 'GET' && req.url.startsWith('/api/fund-estimate/')) {
+    try {
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      const fundCode = parsedUrl.pathname.split('/api/fund-estimate/')[1].replace(/\/$/, '');
+      const result = await fetchFundEstimate(fundCode);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      console.error('Error fetching fund estimate:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: e.message }));
+    }
+    return;
+  }
+
+  // 批量获取基金实时估算
+  if (req.method === 'POST' && req.url === '/api/fund-estimate/batch') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { fundCodes } = JSON.parse(body);
+        if (!fundCodes || !Array.isArray(fundCodes)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'fundCodes 必须是数组' }));
+          return;
+        }
+        const results = [];
+        for (const code of fundCodes) {
+          const result = await fetchFundEstimate(code);
+          results.push(result);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, results }));
+      } catch (e) {
+        console.error('Error batch fetching fund estimates:', e);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
   // ========== 基金回撤分析 API ==========
   // 分析单只基金
   if (req.method === 'GET' && req.url.startsWith('/api/fund-drawdown/')) {
     try {
-      const fundCode = req.url.split('/api/fund-drawdown/')[1];
-      const days = 365; // 默认分析最近一年
+      // 1. 使用 URL 构造函数解析完整路径
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      
+      // 2. 从 pathname 提取 fundCode (去掉末尾可能存在的斜杠)
+      const fundCode = parsedUrl.pathname.split('/api/fund-drawdown/')[1].replace(/\/$/, '');
+      
+      // 3. 获取 days 参数，如果没有则默认 365
+      const days = parseInt(parsedUrl.searchParams.get('days')) || 365;
+
+      // 执行分析
       const result = await analyzeFund(fundCode, days);
+      
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
     } catch (e) {
@@ -1245,7 +1325,8 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ success: false, error: e.message }));
     }
     return;
-  }
+}
+
 
   // 批量分析多只基金
   if (req.method === 'POST' && req.url === '/api/fund-drawdown/batch') {

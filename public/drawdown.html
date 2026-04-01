@@ -336,7 +336,7 @@
         }
         .fund-header {
             display: grid;
-            grid-template-columns: 1fr auto 1fr;
+            grid-template-columns: 1fr 85px 85px 85px;
             align-items: center;
             margin-bottom: 16px;
             padding-bottom: 16px;
@@ -1531,7 +1531,7 @@
                         else if (quote.priceDate === yesterdayStr) label = '昨日涨跌';
                     }
                     yesterdayChangeHtml = `
-                        <div style="display: flex; flex-direction: column; align-items: center; margin-right: 20px;">
+                        <div style="display: flex; flex-direction: column; align-items: center;">
                             <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
                             <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${sign}${change.toFixed(2)}%</span>
                         </div>`;
@@ -1557,9 +1557,9 @@
                             <span style="color: ${yieldColor}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${yieldSign}${holdingYieldPercent.toFixed(2)}%</span>
                         </div>`;
                         
-                        rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center; margin-left: 16px;">
+                        rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
                             <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益</span>
-                            <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${holdingProfit.toFixed(2)}</span>
+                            <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${Math.round(holdingProfit)}</span>
                         </div>`;
                     } else if (currentNav > 0 && estimate && !isNaN(estimate.estimateChange)) {
                         const estProfit = (currentNav * (1 + estimate.estimateChange / 100) - currentNav) * holdingFund.shares;
@@ -1589,18 +1589,16 @@
 
                 html += `<div class="fund-result-card">
                     <div class="fund-header">
-                        <div style="display: flex; flex-direction: column; align-items: flex-start; max-width: 140px;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
                             <div class="fund-code">${result.fundCode}</div>
                             <div class="fund-name" title="${result.fundName || ''}" style="max-width: 130px; font-size: 12px; line-height: 1.4; white-space: nowrap;">
                                 ${(result.fundName || '').replace(/\s+/g, '').slice(0, 6)}<br/>
                                 ${(result.fundName || '').replace(/\s+/g, '').length > 6 ? (result.fundName || '').replace(/\s+/g, '').slice(6, 12) : ''}
                             </div>
                         </div>
-                        ${yesterdayChangeHtml}
-                        <div style="display: flex; flex-direction: row; align-items: center; justify-content: flex-end;">
-                            ${holdingYieldHtml}
-                            ${rightHeaderHtml}
-                        </div>
+                        ${yesterdayChangeHtml || '<div></div>'}
+                        ${holdingYieldHtml || '<div></div>'}
+                        ${rightHeaderHtml || '<div></div>'}
                     </div>
                     <div class="fund-stats">
                         <div class="stat-item">

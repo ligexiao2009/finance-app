@@ -956,23 +956,23 @@
         });
     }
 
-    function drawChart(canvasId, navList, peakDate, troughDate) {
+    function drawChart(canvasId, navList, peakDate, troughDate, costChangePercent = null) {
         if (!navList || navList.length === 0) return;
-
+    
         const ctx = document.getElementById(canvasId);
         if (!ctx) return;
-
+    
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
         const textColor = isDark ? '#98989d' : '#8e8e93';
-
+    
         const firstNav = navList[0].nav;
         const normalData = [];
         const drawdownData = [];
         const normalizeDate = (d) => (d || '').replace(/\//g, '-');
         const pDate = normalizeDate(peakDate);
         const tDate = normalizeDate(troughDate);
-
+    
         navList.forEach((n, i) => {
             const nDate = normalizeDate(n.date);
             const isInRange = nDate >= pDate && nDate <= tDate;
@@ -980,44 +980,64 @@
             normalData.push(changePercent);           
             drawdownData.push(isInRange ? changePercent : null);  
         });
-
+    
+        // 构建数据集数组
+        const datasets = [
+            {
+                label: '净值',
+                data: normalData,
+                borderColor: '#007aff',
+                borderWidth: 2,
+                fill: true,
+                backgroundColor: (context) => {
+                    const chart = context.chart;
+                    const {ctx, chartArea} = chart;
+                    if (!chartArea) return null;
+                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                    gradient.addColorStop(0, isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)');
+                    gradient.addColorStop(1, 'rgba(0,122,255,0)');
+                    return gradient;
+                },
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            },
+            {
+                label: '回撤段',
+                data: drawdownData,
+                borderColor: '#ff3b30',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            }
+        ];
+    
+        // 如果有持仓成本，添加成本线
+        if (costChangePercent !== null && costChangePercent !== undefined) {
+            const costData = new Array(navList.length).fill(costChangePercent);
+            datasets.push({
+                label: '持仓成本',
+                data: costData,
+                borderColor: '#ff9500',
+                borderWidth: 2,
+                borderDash: [5, 5], // 虚线
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        }
+    
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: navList.map(n => n.date), 
-                datasets: [
-                    {
-                        label: '净值',
-                        data: normalData,
-                        borderColor: '#007aff',
-                        borderWidth: 2,
-                        fill: true,
-                        backgroundColor: (context) => {
-                            const chart = context.chart;
-                            const {ctx, chartArea} = chart;
-                            if (!chartArea) return null;
-                            const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                            gradient.addColorStop(0, isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)');
-                            gradient.addColorStop(1, 'rgba(0,122,255,0)');
-                            return gradient;
-                        },
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 15,
-                        spanGaps: true
-                    },
-                    {
-                        label: '回撤段',
-                        data: drawdownData,
-                        borderColor: '#ff3b30',
-                        borderWidth: 3,
-                        fill: false,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 15,
-                        spanGaps: true
-                    }
-                ]
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -1035,7 +1055,15 @@
                         callbacks: {
                             label: ctx => {
                                 if (ctx.parsed.y !== null) {
-                                    const prefix = ctx.datasetIndex === 1 ? '📉 回撤: ' : '📈 涨跌: ';
+                                    let prefix = '';
+                                    if (ctx.datasetIndex === 1) {
+                                        prefix = '📉 回撤：';
+                                    } else if (ctx.datasetIndex === 2 && costChangePercent !== null) {
+                                        prefix = '💰 持仓成本：';
+                                        return prefix + ctx.parsed.y.toFixed(2) + '%';
+                                    } else {
+                                        prefix = '📈 涨跌：';
+                                    }
                                     const sign = ctx.parsed.y >= 0 ? '+' : '';
                                     return prefix + sign + ctx.parsed.y.toFixed(2) + '%';
                                 }
@@ -1310,9 +1338,19 @@
             const results = [];
             for (let i = 0; i < fundCodes.length; i++) {
                 const code = fundCodes[i];
-                resultsEl.innerHTML = `<div class="loading-spinner">正在分析 ${i + 1}/${fundCodes.length} (代码: ${code})</div>`;
+                resultsEl.innerHTML = `<div class="loading-spinner">正在分析 ${i + 1}/${fundCodes.length} (代码：${code})</div>`;
                 try {
-                    const res = await fetch(window.API_BASE_URL + '/api/fund-drawdown/' + code + '?days=' + days);
+                    // 查找持仓基金的成本数据
+                    const holdingFund = holdingFunds.find(f => f.code === code);
+                    const costBasis = (holdingFund && holdingFund.cost && holdingFund.cost > 0) ? holdingFund.cost : null;
+                                
+                    // 构建 URL，如果有持仓成本则传递
+                    let url = window.API_BASE_URL + '/api/fund-drawdown/' + code + '?days=' + days;
+                    if (costBasis) {
+                        url += '&costBasis=' + encodeURIComponent(costBasis);
+                    }
+                                
+                    const res = await fetch(url);
                     const data = await res.json();
                     results.push(data);
                 } catch (e) {
@@ -1444,13 +1482,14 @@
                     id: chartId,
                     navList: result.navList,
                     peakDate: dd.peakDate,
-                    troughDate: dd.troughDate
+                    troughDate: dd.troughDate,
+                    costChangePercent: result.costChangePercent // 持仓成本相对于期初的涨跌幅
                 });
             }
             resultsEl.innerHTML = html;
 
             if (successResults.length > 1) drawCompareChart('compare-chart', successResults);
-            chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate));
+            chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent));
 
         } catch (e) {
             resultsEl.innerHTML = `<div class="error-msg">拉取数据失败: ${e.message}</div>`;

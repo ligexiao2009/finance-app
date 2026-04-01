@@ -211,7 +211,7 @@ function calculateReturn(navList) {
 }
 
 // ==================== 综合分析 ====================
-async function analyzeFund(fundCode, days = 365) {
+async function analyzeFund(fundCode, days = 365, costBasis = null) {
   console.log(`\n========== 分析基金 ${fundCode} ==========`);
   console.log(`获取最近 ${days} 天净值数据...`);
   
@@ -231,10 +231,19 @@ async function analyzeFund(fundCode, days = 365) {
   const maxDrawdown = calculateMaxDrawdown(navList);
   const returnData = calculateReturn(navList);
   
+  // 计算持仓成本相对于期初净值的涨跌幅
+  let costChangePercent = null;
+  if (costBasis && costBasis > 0 && navList.length > 0) {
+    const startNav = navList[0].nav;
+    costChangePercent = ((costBasis - startNav) / startNav) * 100;
+  }
+  
   const result = {
     success: true,
     fundCode,
     fundName,
+    costBasis, // 持仓成本
+    costChangePercent, // 持仓成本相对于期初的涨跌幅
     dataRange: {
       startDate: navList[0].date,
       endDate: navList[navList.length - 1].date,
@@ -247,21 +256,25 @@ async function analyzeFund(fundCode, days = 365) {
   };
   
   console.log(`\n分析结果:`);
-  console.log(`  数据区间: ${result.dataRange.startDate} ~ ${result.dataRange.endDate}`);
-  console.log(`  区间收益: ${returnData.returnPercent}%`);
-  console.log(`  最大回撤: ${maxDrawdown.maxDrawdownPercent}%`);
-  console.log(`  回撤区间: ${maxDrawdown.peakDate} -> ${maxDrawdown.troughDate}`);
+  console.log(`  数据区间：${result.dataRange.startDate} ~ ${result.dataRange.endDate}`);
+  console.log(`  区间收益：${returnData.returnPercent}%`);
+  console.log(`  最大回撤：${maxDrawdown.maxDrawdownPercent}%`);
+  console.log(`  回撤区间：${maxDrawdown.peakDate} -> ${maxDrawdown.troughDate}`);
+  if (costBasis) {
+    console.log(`  持仓成本：${costBasis} (${costChangePercent.toFixed(2)}%)`);
+  }
   console.log('========== 分析完成 ==========\n');
   
   return result;
 }
 
 // ==================== 批量分析多只基金 ====================
-async function analyzeMultipleFunds(fundCodes, days = 365) {
+async function analyzeMultipleFunds(fundCodes, days = 365, costBasisMap = {}) {
   const results = [];
   
   for (const code of fundCodes) {
-    const result = await analyzeFund(code, days);
+    const costBasis = costBasisMap[code] || null;
+    const result = await analyzeFund(code, days, costBasis);
     results.push(result);
     // 避免请求过快
     await new Promise(resolve => setTimeout(resolve, 500));

@@ -1313,9 +1313,12 @@ const server = http.createServer(async (req, res) => {
       
       // 3. 获取 days 参数，如果没有则默认 365
       const days = parseInt(parsedUrl.searchParams.get('days')) || 365;
+      
+      // 4. 获取持仓成本参数（可选）
+      const costBasis = parseFloat(parsedUrl.searchParams.get('costBasis')) || null;
 
       // 执行分析
-      const result = await analyzeFund(fundCode, days);
+      const result = await analyzeFund(fundCode, days, costBasis);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -1334,13 +1337,13 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', async () => {
       try {
-        const { fundCodes, days = 365 } = JSON.parse(body);
+        const { fundCodes, days = 365, costBasisMap = {} } = JSON.parse(body);
         if (!fundCodes || !Array.isArray(fundCodes)) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ success: false, error: 'fundCodes 必须是数组' }));
           return;
         }
-        const results = await analyzeMultipleFunds(fundCodes, days);
+        const results = await analyzeMultipleFunds(fundCodes, days, costBasisMap);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, results }));
       } catch (e) {

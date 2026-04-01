@@ -656,6 +656,8 @@
     let holdingFunds = [];
     let selectedFundCodes = new Set();
     let fundQuotes = {}; // 存储基金行情数据
+    let customFundNames = {}; // 缓存自定义基金名称
+    let loadingFundCodes = new Set(); // 正在加载中的基金代码
 
     // 初始化
     window.onload = function() {
@@ -1109,6 +1111,30 @@
         renderFundOptions(keyword);
     }
 
+    // 异步获取基金名称
+    async function fetchCustomFundName(fundCode) {
+        if (customFundNames[fundCode] || loadingFundCodes.has(fundCode)) {
+            return;
+        }
+        loadingFundCodes.add(fundCode);
+        try {
+            const res = await fetch(window.API_BASE_URL + '/api/fund-estimate/' + fundCode);
+            const data = await res.json();
+            if (data.success && data.fundName) {
+                customFundNames[fundCode] = data.fundName;
+                // 重新渲染列表
+                const searchInput = document.getElementById('fund-search-input');
+                if (searchInput) {
+                    renderFundOptions(searchInput.value);
+                }
+            }
+        } catch (e) {
+            console.error('获取基金名称失败:', e);
+        } finally {
+            loadingFundCodes.delete(fundCode);
+        }
+    }
+
     function renderFundOptions(searchKeyword = '') {
         const container = document.getElementById('fund-options-list');
         if (!container) return;
@@ -1165,16 +1191,35 @@
                 html += `<div style="height: 0.5px; background: var(--ios-border); margin: 0 16px;"></div>`;
             }
             const isSelected = selectedFundCodes.has(kw);
+            const fundName = customFundNames[kw];
+            const isLoading = loadingFundCodes.has(kw);
+
+            let displayName = '';
+            if (isSelected) {
+                displayName = fundName ? `${fundName} · 已添加` : '已添加';
+            } else if (fundName) {
+                displayName = fundName;
+            } else if (isLoading) {
+                displayName = '加载中...';
+            } else {
+                displayName = '添加此基金';
+            }
+
             html += `
             <div class="fund-option ${isSelected ? 'selected' : ''}" data-code="${kw}" data-custom="true">
                 <div class="fund-option-checkbox"></div>
                 <div class="fund-option-info">
                     <div class="fund-option-code">${kw}</div>
-                    <div class="fund-option-name" style="color: var(--ios-primary);">
-                        ${isSelected ? '已添加' : '添加此基金'}
+                    <div class="fund-option-name" style="color: ${isSelected && fundName ? 'var(--ios-secondary)' : 'var(--ios-primary)'};">
+                        ${displayName}
                     </div>
                 </div>
             </div>`;
+
+            // 如果没有缓存且不在加载中，触发获取
+            if (!fundName && !isLoading) {
+                fetchCustomFundName(kw);
+            }
         }
 
         if (!html) {

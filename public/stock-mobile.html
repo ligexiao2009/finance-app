@@ -886,7 +886,7 @@
                 <input type="text" id="searchInput" placeholder="搜索名称或代码..."
                        class="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl px-4 pr-12 py-3 text-sm focus:border-indigo-500 outline-none"
                        oninput="handleSearch(this.value)">
-                <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-white text-xl w-8 h-8 flex items-center justify-center">&times;</button>
+                <button onclick="clearSearch()" id="clearSearchBtn" style="display:none; position:absolute; right:12px; top:50%; transform:translateY(-50%); width:32px; height:32px; border:none; background:transparent; color:var(--text-muted); font-size:24px; line-height:1; cursor:pointer; padding:0; margin:0;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
             </div>
         </div>
 
@@ -2650,7 +2650,7 @@
 
             const clearBtn = document.getElementById('clearSearchBtn');
             if (clearBtn) {
-                clearBtn.classList.toggle('hidden', !query.trim());
+                clearBtn.style.display = query.trim() ? 'block' : 'none';
             }
 
             updatePagination();

@@ -880,6 +880,16 @@
             </div>
         </div>
 
+        <!-- 搜索框 -->
+        <div class="mb-4">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="搜索名称或代码..."
+                       class="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none"
+                       oninput="handleSearch(this.value)">
+                <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-white text-xl">&times;</button>
+            </div>
+        </div>
+
         <!-- Tab 和操作 -->
         <div class="flex items-center justify-between mb-4 gap-2">
             <div class="flex items-center gap-2 min-w-0">
@@ -1225,6 +1235,9 @@
         let currentPageNum = 1;
         let pageSize = 10;
 
+        // 搜索相关
+        let searchQuery = '';
+
         // 数据缓存
         let pendingTradesCache = [];
         let localTradeHistory = null;
@@ -1314,6 +1327,36 @@
             }, 15000);
         }
 
+        // ========== 弹框辅助函数 ==========
+        let openModalCount = 0;
+
+        function lockBodyScroll() {
+            openModalCount++;
+            if (openModalCount === 1) {
+                document.body.style.overflow = 'hidden';
+                document.body.style.position = 'fixed';
+                document.body.style.top = `-${window.scrollY}px`;
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+            }
+        }
+
+        function unlockBodyScroll() {
+            openModalCount--;
+            if (openModalCount <= 0) {
+                openModalCount = 0;
+                const scrollY = document.body.style.top;
+                document.body.style.overflow = '';
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.left = '';
+                document.body.style.right = '';
+                if (scrollY) {
+                    window.scrollTo(0, parseInt(scrollY || '0') * -1);
+                }
+            }
+        }
+
         function openEditUnlockModal(clearError = true) {
             const modal = document.getElementById('editUnlockModal');
             const input = document.getElementById('editUnlockPasswordInput');
@@ -1322,6 +1365,7 @@
             if (clearError) errorEl.textContent = '';
             input.value = '';
             modal.classList.remove('hidden');
+            lockBodyScroll();
             setTimeout(() => input.focus(), 50);
         }
 
@@ -1332,6 +1376,7 @@
             if (modal) modal.classList.add('hidden');
             if (input) input.value = '';
             if (errorEl) errorEl.textContent = '';
+            unlockBodyScroll();
         }
 
         function handleEditUnlockKeydown(event) {
@@ -1828,14 +1873,25 @@
                 card.style.display = '';
             });
 
-            // 获取所有卡片，按 tab 筛选
+            // 获取所有卡片，按 tab 和搜索筛选
             const allCards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
             let filteredCards = allCards.filter(card => {
                 const isF = card.dataset.isFund === 'true';
-                if (currentTab === 'all') return true;
-                if (currentTab === 'stock') return !isF;
-                if (currentTab === 'fund') return isF;
-                return true;
+                let inTab = true;
+                if (currentTab === 'all') inTab = true;
+                else if (currentTab === 'stock') inTab = !isF;
+                else if (currentTab === 'fund') inTab = isF;
+
+                // 搜索筛选
+                let matchesSearch = true;
+                if (searchQuery.trim()) {
+                    const q = searchQuery.trim().toLowerCase();
+                    const name = card.querySelector('.stock-name')?.innerText?.toLowerCase() || '';
+                    const code = card.querySelector('.code-input')?.value?.toLowerCase() || '';
+                    matchesSearch = name.includes(q) || code.includes(q);
+                }
+
+                return inTab && matchesSearch;
             });
 
             const totalCount = filteredCards.length;
@@ -1852,7 +1908,16 @@
                              (currentTab === 'stock' && !isF) ||
                              (currentTab === 'fund' && isF);
 
-                if (!inTab) {
+                // 搜索筛选
+                let matchesSearch = true;
+                if (searchQuery.trim()) {
+                    const q = searchQuery.trim().toLowerCase();
+                    const name = card.querySelector('.stock-name')?.innerText?.toLowerCase() || '';
+                    const code = card.querySelector('.code-input')?.value?.toLowerCase() || '';
+                    matchesSearch = name.includes(q) || code.includes(q);
+                }
+
+                if (!inTab || !matchesSearch) {
                     card.style.display = 'none';
                 } else {
                     const idx = filteredCards.indexOf(card);
@@ -1877,10 +1942,21 @@
             const allCards = Array.from(document.querySelectorAll('#stockBody [data-id]'));
             let filteredCards = allCards.filter(card => {
                 const isF = card.dataset.isFund === 'true';
-                if (currentTab === 'all') return true;
-                if (currentTab === 'stock') return !isF;
-                if (currentTab === 'fund') return isF;
-                return true;
+                let inTab = true;
+                if (currentTab === 'all') inTab = true;
+                else if (currentTab === 'stock') inTab = !isF;
+                else if (currentTab === 'fund') inTab = isF;
+
+                // 搜索筛选
+                let matchesSearch = true;
+                if (searchQuery.trim()) {
+                    const q = searchQuery.trim().toLowerCase();
+                    const name = card.querySelector('.stock-name')?.innerText?.toLowerCase() || '';
+                    const code = card.querySelector('.code-input')?.value?.toLowerCase() || '';
+                    matchesSearch = name.includes(q) || code.includes(q);
+                }
+
+                return inTab && matchesSearch;
             });
 
             const totalPages = Math.max(1, Math.ceil(filteredCards.length / pageSize));
@@ -2107,11 +2183,13 @@
             document.getElementById('mobileFundActions').classList.toggle('hidden', !isFund);
             document.getElementById('mobileStockActions').classList.toggle('hidden', isFund);
             document.getElementById('mobileActionSheet').classList.remove('hidden');
+            lockBodyScroll();
         }
 
         function closeMobileActionSheet() {
             activeActionCardId = null;
             document.getElementById('mobileActionSheet').classList.add('hidden');
+            unlockBodyScroll();
         }
 
         function openDeleteConfirmModal(card) {
@@ -2122,6 +2200,7 @@
             const modal = document.getElementById('deleteConfirmModal');
             if (nameEl) nameEl.innerText = name;
             if (modal) modal.classList.remove('hidden');
+            lockBodyScroll();
         }
 
         function closeDeleteConfirmModal() {
@@ -2130,6 +2209,7 @@
             const submitBtn = document.getElementById('deleteConfirmSubmitBtn');
             if (modal) modal.classList.add('hidden');
             if (submitBtn) submitBtn.disabled = false;
+            unlockBodyScroll();
         }
 
         async function confirmDeleteRow() {
@@ -2563,6 +2643,27 @@
             saveAndCalculate();
         }
 
+        // 搜索处理
+        function handleSearch(query) {
+            searchQuery = query;
+            currentPageNum = 1;
+
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (clearBtn) {
+                clearBtn.classList.toggle('hidden', !query.trim());
+            }
+
+            updatePagination();
+        }
+
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = '';
+            }
+            handleSearch('');
+        }
+
         function exportCSV() {
             const s = JSON.parse(localStorage.getItem('vDashboard_Final_Stable'));
             if (!s || !s.items) return;
@@ -2763,12 +2864,14 @@
             document.getElementById('modalTotalCost').innerText = '¥0';
 
             document.getElementById('addFundModal').classList.remove('hidden');
+            lockBodyScroll();
         }
 
         function closeAddFundModal() {
             document.getElementById('addFundModal').classList.add('hidden');
             currentAddFundRow = null;
             currentAddFundData = {};
+            unlockBodyScroll();
         }
 
         function previewAddFund() {
@@ -2907,12 +3010,14 @@
             document.getElementById('reduceModalRealizedPL').innerText = '¥0';
 
             document.getElementById('reduceFundModal').classList.remove('hidden');
+            lockBodyScroll();
         }
 
         function closeReduceFundModal() {
             document.getElementById('reduceFundModal').classList.add('hidden');
             currentReduceFundRow = null;
             currentReduceFundData = {};
+            unlockBodyScroll();
         }
 
         function applyReducePercent() {
@@ -3117,10 +3222,12 @@
             }
 
             document.getElementById('pendingTradesModal').classList.remove('hidden');
+            lockBodyScroll();
         }
 
         function closePendingTradesModal() {
             document.getElementById('pendingTradesModal').classList.add('hidden');
+            unlockBodyScroll();
         }
 
         async function confirmPendingTrade(tradeId) {
@@ -3370,11 +3477,13 @@
             }
 
             document.getElementById('tradeHistoryModal').classList.remove('hidden');
+            lockBodyScroll();
         }
 
         function closeTradeHistoryModal() {
             document.getElementById('tradeHistoryModal').classList.add('hidden');
             currentTradeHistoryRowId = null;
+            unlockBodyScroll();
         }
 
         async function confirmPendingTradeFromHistory(tradeId) {

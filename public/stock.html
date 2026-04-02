@@ -3336,7 +3336,7 @@
             
             // 加载现有规则
             try {
-                const response = await fetch(`/api/alert-rules/position/${positionId}`);
+                const response = await fetch(`${API_BASE_URL}/api/alert-rules/position/${positionId}`);
                 const data = await response.json();
                 currentAlertRules = data.rules || [];
             } catch (e) {
@@ -3443,12 +3443,12 @@
                 // 先删除该持仓的所有旧规则
                 const existingRules = await (await fetch(`/api/alert-rules/position/${currentAlertRulesPositionId}`)).json();
                 for (const rule of existingRules.rules || []) {
-                    await fetch(`/api/alert-rules/${rule.id}`, { method: 'DELETE' });
+                    await fetch(`${API_BASE_URL}/api/alert-rules/${rule.id}`, { method: 'DELETE' });
                 }
 
                 // 创建新规则
                 for (const rule of currentAlertRules) {
-                    await fetch('/api/alert-rules', {
+                    await fetch(`${API_BASE_URL}/api/alert-rules`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(rule)
@@ -3473,7 +3473,7 @@
             if (!btn) return;
 
             try {
-                const response = await fetch(`/api/alert-rules/position/${positionId}`);
+                const response = await fetch(`${API_BASE_URL}/api/alert-rules/position/${positionId}`);
                 const data = await response.json();
                 const rules = data.rules || [];
                 const enabledCount = rules.filter(r => r.enabled).length;

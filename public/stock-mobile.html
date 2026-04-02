@@ -2964,12 +2964,17 @@
             const remainShares = shares - reduceShares;
             const redeemAmount = reduceShares * price;
 
+            console.log('减仓操作:', { code: currentReduceFundData.code, shares, reduceShares, remainShares });
+
             // 更新该行数据（成本价保持不变）
             currentReduceFundRow.querySelector('.shares-input').value = remainShares.toFixed(2);
 
+            // 标记为脏并立即触发重新计算
+            markCardDirty(currentReduceFundRow);
+            saveAndCalculate();
+
             // 保存到后端
             await saveRow(currentReduceFundRow);
-            saveAndCalculate();
 
             // 记录交易历史
             const rowId = currentReduceFundRow.dataset.id;

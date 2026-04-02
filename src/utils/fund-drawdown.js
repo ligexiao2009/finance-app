@@ -5,6 +5,10 @@
 
 const fetch = require('node-fetch');
 
+// 数据缓存
+const navCache = new Map();
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10分钟缓存
+
 // ==================== 获取基金名称 ====================
 async function fetchFundName(fundCode) {
   try {
@@ -29,78 +33,60 @@ async function fetchFundName(fundCode) {
   }
 }
 
-// ==================== 获取基金历史净值 ====================
+// ==================== 获取基金历史净值 (使用 pingzhongdata 接口) ====================
 async function fetchFundHistoryNav(fundCode, days = 365) {
-  const endDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
-  const startDateObj = new Date(startDate.slice(0, 4), parseInt(startDate.slice(4, 6)) - 1, startDate.slice(6, 8));
-  
-  // 天天基金API每页最多40条，需要分页获取
-  const allNavList = [];
-  let page = 1;
-  const perPage = 40;
-  
-  try {
-    while (true) {
-      const url = `http://fund.eastmoney.com/f10/F10DataApi.aspx?type=lsjz&code=${fundCode}&page=${page}&sdate=${startDate}&edate=${endDate}&per=${perPage}`;
-      const response = await fetch(url);
-      const html = await response.text();
-      const navList = parseFundNavHtml(html);
-      
-      if (navList.length === 0) break; // 没有更多数据
-      
-      // 过滤掉早于startDate的数据
-      const filteredList = navList.filter(item => {
-        const itemDate = new Date(item.date.slice(0, 4), parseInt(item.date.slice(5, 7)) - 1, item.date.slice(8, 10));
-        return itemDate >= startDateObj;
-      });
-      
-      allNavList.push(...filteredList);
-      
-      if (navList.length < perPage) break; // 最后一页
-      
-      // 如果最后一条数据已经早于startDate，停止分页
-      const lastItem = navList[navList.length - 1];
-      const lastDate = new Date(lastItem.date.slice(0, 4), parseInt(lastItem.date.slice(5, 7)) - 1, lastItem.date.slice(8, 10));
-      if (lastDate < startDateObj) break;
-      
-      page++;
-      // 避免请求过快
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    
-    // 去重并按日期升序排列
-    const uniqueMap = new Map();
-    for (const item of allNavList) {
-      if (!uniqueMap.has(item.date)) {
-        uniqueMap.set(item.date, item);
-      }
-    }
-    return Array.from(uniqueMap.values()).sort((a, b) => a.date.localeCompare(b.date));
-    
-  } catch (error) {
-    console.error(`获取基金 ${fundCode} 历史净值失败:`, error.message);
-    return [];
-  }
-}
+  const cacheKey = `nav:${fundCode}`;
+  const now = Date.now();
 
-// 解析HTML表格获取净值数据
-function parseFundNavHtml(html) {
-  const navList = [];
-  // 匹配表格行：<tr><td>日期</td><td class='tor bold'>单位净值</td><td>累计净值</td><td class='tor bold red'>日增长率</td>...</tr>
-  const rowRegex = /<tr><td>(\d{4}-\d{2}-\d{2})<\/td><td[^>]*>([\d.]+)<\/td><td[^>]*>([\d.]+)<\/td>/g;
-  
-  let match;
-  while ((match = rowRegex.exec(html)) !== null) {
-    navList.push({
-      date: match[1],
-      nav: parseFloat(match[2]),        // 单位净值
-      accumulatedNav: parseFloat(match[3]) // 累计净值
-    });
+  // 检查缓存
+  const cached = navCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    console.log(`[缓存命中] 基金 ${fundCode} 历史净值`);
+  } else {
+    // 从 API 获取完整历史数据
+    try {
+      const url = `http://fund.eastmoney.com/pingzhongdata/${fundCode}.js`;
+      const response = await fetch(url);
+      const text = await response.text();
+
+      // 提取 Data_netWorthTrend 数据
+      const match = text.match(/Data_netWorthTrend\s*=\s*(\[.*?\]);/s);
+      if (!match) {
+        console.error(`解析基金 ${fundCode} 净值数据失败: 未找到 Data_netWorthTrend`);
+        return [];
+      }
+
+      const rawData = JSON.parse(match[1]);
+
+      // 转换数据格式
+      const fullNavList = rawData.map(item => ({
+        date: new Date(item.x).toISOString().slice(0, 10),
+        nav: item.y
+      }));
+
+      // 存入缓存
+      navCache.set(cacheKey, {
+        data: fullNavList,
+        expiresAt: now + CACHE_TTL_MS
+      });
+
+      console.log(`[缓存更新] 基金 ${fundCode} 历史净值 (${fullNavList.length} 条)`);
+    } catch (error) {
+      console.error(`获取基金 ${fundCode} 历史净值失败:`, error.message);
+      return [];
+    }
   }
-  
-  // 按日期升序排列
-  return navList.sort((a, b) => a.date.localeCompare(b.date));
+
+  const fullNavList = navCache.get(cacheKey).data;
+
+  // 根据请求的天数过滤数据
+  if (days > 0) {
+    const cutoffDate = new Date(now - days * 24 * 60 * 60 * 1000);
+    const cutoffDateStr = cutoffDate.toISOString().slice(0, 10);
+    return fullNavList.filter(item => item.date >= cutoffDateStr);
+  }
+
+  return fullNavList;
 }
 
 // ==================== 计算最大回撤 ====================
@@ -196,11 +182,11 @@ function calculateReturn(navList) {
   if (!navList || navList.length < 2) {
     return null;
   }
-  
+
   const startNav = navList[0].nav;
   const endNav = navList[navList.length - 1].nav;
   const returnPercent = ((endNav - startNav) / startNav) * 100;
-  
+
   return {
     startDate: navList[0].date,
     endDate: navList[navList.length - 1].date,
@@ -214,30 +200,30 @@ function calculateReturn(navList) {
 async function analyzeFund(fundCode, days = 365, costBasis = null) {
   console.log(`\n========== 分析基金 ${fundCode} ==========`);
   console.log(`获取最近 ${days} 天净值数据...`);
-  
+
   // 并行获取净值数据和基金名称
   const [navList, fundName] = await Promise.all([
     fetchFundHistoryNav(fundCode, days),
     fetchFundName(fundCode)
   ]);
-  
+
   if (navList.length === 0) {
     console.log('获取净值数据失败');
     return { success: false, error: '获取净值数据失败', fundCode };
   }
-  
+
   console.log(`成功获取 ${navList.length} 条净值记录`);
-  
+
   const maxDrawdown = calculateMaxDrawdown(navList);
   const returnData = calculateReturn(navList);
-  
+
   // 计算持仓成本相对于期初净值的涨跌幅
   let costChangePercent = null;
   if (costBasis && costBasis > 0 && navList.length > 0) {
     const startNav = navList[0].nav;
     costChangePercent = ((costBasis - startNav) / startNav) * 100;
   }
-  
+
   const result = {
     success: true,
     fundCode,
@@ -254,7 +240,7 @@ async function analyzeFund(fundCode, days = 365, costBasis = null) {
     // 返回净值列表用于绘图
     navList: navList.map(n => ({ date: n.date, nav: n.nav }))
   };
-  
+
   console.log(`\n分析结果:`);
   console.log(`  数据区间：${result.dataRange.startDate} ~ ${result.dataRange.endDate}`);
   console.log(`  区间收益：${returnData.returnPercent}%`);
@@ -264,22 +250,22 @@ async function analyzeFund(fundCode, days = 365, costBasis = null) {
     console.log(`  持仓成本：${costBasis} (${costChangePercent.toFixed(2)}%)`);
   }
   console.log('========== 分析完成 ==========\n');
-  
+
   return result;
 }
 
 // ==================== 批量分析多只基金 ====================
 async function analyzeMultipleFunds(fundCodes, days = 365, costBasisMap = {}) {
   const results = [];
-  
+
   for (const code of fundCodes) {
     const costBasis = costBasisMap[code] || null;
     const result = await analyzeFund(code, days, costBasis);
     results.push(result);
     // 避免请求过快
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
-  
+
   return results;
 }
 

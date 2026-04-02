@@ -521,7 +521,7 @@
         .fund-option-code { font-size: 15px; font-weight: 600; color: var(--ios-text); }
         .fund-option-name {
             font-size: 12px;
-            color: var(--ios-secondary);
+            color: var(-row input-ios-secondary);
             margin-top: 4px;
             white-space: nowrap;
             overflow: hidden;
@@ -532,16 +532,6 @@
             padding: 12px;
             background: var(--ios-card);
             border-bottom: 0.5px solid var(--ios-border);
-        }
-        .fund-search-input {
-            width: 100%;
-            padding: 10px 14px;
-            background: var(--ios-input-bg);
-            border: none;
-            border-radius: 10px;
-            font-size: 15px;
-            color: var(--ios-text);
-            outline: none;
         }
 
         /* 对比图 */
@@ -744,6 +734,16 @@
         .stat-item.clickable:active {
             transform: scale(0.96);
             background: rgba(0, 122, 255, 0.1);
+        }
+         .fund-search-input {
+            width: 100% !important;
+            padding: 10px 14px;
+            background: var(--ios-input-bg);
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            color: var(--ios-text);
+            outline: none;
         }
     </style>
 </head>

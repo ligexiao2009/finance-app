@@ -3441,7 +3441,7 @@
 
             try {
                 // 先删除该持仓的所有旧规则
-                const existingRules = await (await fetch(`/api/alert-rules/position/${currentAlertRulesPositionId}`)).json();
+                const existingRules = await (await fetch(`${API_BASE_URL}/api/alert-rules/position/${currentAlertRulesPositionId}`)).json();
                 for (const rule of existingRules.rules || []) {
                     await fetch(`${API_BASE_URL}/api/alert-rules/${rule.id}`, { method: 'DELETE' });
                 }

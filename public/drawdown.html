@@ -1520,20 +1520,11 @@
         
         // 显示 Loading 遮罩
         showLoading();
-        updateLoadingProgress(0, '正在获取预估数据...', '准备阶段');
+        updateLoadingProgress(0, '正在获取实时行情...', '准备阶段');
         
         try {
-            // 获取预估数据
-            const estimateRes = await fetch(window.API_BASE_URL + '/api/fund-estimate/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fundCodes })
-            });
-            const estimateData = await estimateRes.json();
+            // 不需要实时估值，直接跳过
             const estimates = {};
-            if (estimateData.success && estimateData.results) {
-                estimateData.results.forEach(r => { if (r.success) estimates[r.fundCode] = r; });
-            }
 
             updateLoadingProgress(20, '正在获取实时行情...', '获取行情');
             

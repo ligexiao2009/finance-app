@@ -2,10 +2,6 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="投资助手">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>投资管理 Pro</title>
 <style>
@@ -14,17 +10,16 @@
   --system-green: #34c759;
   --system-blue: #007aff;
   --bg-color: #f2f2f7;
-  --card-bg: rgba(255, 255, 255, 0.7);
-  --input-bg: rgba(255, 255, 255, 0.8);
+  --card-bg: rgba(255, 255, 255, 0.75);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   background-color: var(--bg-color);
-  background: radial-gradient(at 0% 0%, rgba(0,122,255,0.05) 0px, transparent 50%),
+  background: radial-gradient(at 0% 0%, rgba(0,122,255,0.08) 0px, transparent 50%),
               radial-gradient(at 100% 100%, rgba(255,59,48,0.05) 0px, transparent 50%),
               var(--bg-color);
   min-height: 100vh;
@@ -33,7 +28,7 @@ body {
 
 .container { max-width: 440px; margin: auto; padding: 24px 16px; }
 
-/* 头部资产概览卡片 */
+/* 主资产卡片 */
 .main-card {
   background: var(--card-bg);
   backdrop-filter: blur(20px) saturate(180%);
@@ -47,89 +42,92 @@ body {
 
 .header-label { font-size: 13px; color: #8e8e93; font-weight: 500; margin-bottom: 4px; }
 .profit-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 20px; }
-.big-num { font-size: 40px; font-weight: 700; letter-spacing: -1px; }
+.big-num { font-size: 40px; font-weight: 700; letter-spacing: -1px; transition: color 0.3s; }
 .percent-badge { 
   font-size: 14px; font-weight: 600; padding: 2px 8px; border-radius: 8px;
-  background: rgba(0,0,0,0.05);
+  transition: all 0.3s;
 }
 
-/* KPI 网格 */
+/* KPI 指标卡片 - 深度玻璃拟态 */
 .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
 .kpi {
-  background: rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   padding: 12px 8px;
-  border-radius: 16px;
+  border-radius: 18px;
   text-align: center;
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 4px 10px rgba(0,0,0,0.02);
 }
-.kpi .v { font-size: 15px; font-weight: 600; color: #1c1c1e; font-variant-numeric: tabular-nums; }
+.kpi .v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .kpi .l { font-size: 11px; color: #8e8e93; margin-top: 4px; }
 
-/* 核心输入区 */
+/* 输入组 */
 .price-input-group {
-  display: flex;
-  background: rgba(0,0,0,0.04);
-  padding: 4px;
-  border-radius: 14px;
+  display: flex; background: rgba(0,0,0,0.05); padding: 4px; border-radius: 14px;
 }
 .input-wrapper { flex: 1; position: relative; }
 .input-wrapper::before {
-  content: attr(data-label);
-  position: absolute; left: 12px; top: 8px;
-  font-size: 10px; color: #8e8e93; text-transform: uppercase;
+  content: attr(data-label); position: absolute; left: 12px; top: 8px;
+  font-size: 10px; color: #8e8e93;
 }
 .price-input-group input {
   width: 100%; padding: 22px 12px 8px; border: none; background: transparent;
-  font-size: 17px; font-weight: 600; color: var(--system-blue);
+  font-size: 17px; font-weight: 600; color: var(--system-blue); outline: none;
 }
 
-/* 列表部分 */
+/* 列表卡片 */
 .list-card {
   background: var(--card-bg);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-radius: 28px;
   padding: 8px 20px;
-  border: 1px solid rgba(255,255,255,0.7);
+  border: 1px solid rgba(255, 255, 255, 0.7);
 }
 .item {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 0; border-bottom: 0.5px solid rgba(0,0,0,0.1);
+  padding: 16px 0; border-bottom: 0.5px solid rgba(0,0,0,0.08);
 }
 .item:last-child { border: none; }
 
-.entry-fields { display: flex; gap: 8px; align-items: center; }
+.entry-fields { display: flex; gap: 6px; align-items: center; }
 .entry-fields input {
   width: 75px; padding: 8px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.05);
-  background: white; font-size: 14px; text-align: center; font-weight: 500;
+  background: white; font-size: 14px; text-align: center; font-weight: 600; outline: none;
 }
 .entry-fields span { font-size: 12px; color: #c7c7cc; }
 
-.item-right { text-align: right; }
-.item-profit { font-size: 16px; font-weight: 600; }
-.item-rate { font-size: 11px; font-weight: 500; margin-top: 2px; }
+.item-right-box { display: flex; align-items: center; }
+.item-right { text-align: right; min-width: 80px; }
+.item-profit { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.item-rate { font-size: 11px; margin-top: 2px; opacity: 0.8; }
 
-/* 按钮 */
+.delete-btn {
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: rgba(255, 59, 48, 0.1); color: var(--system-red);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; margin-left: 12px; cursor: pointer; transition: 0.2s;
+}
+.delete-btn:active { background: var(--system-red); color: white; transform: scale(0.9); }
+
 .add-btn {
-  width: 100%; padding: 16px; border-radius: 20px; border: none;
+  width: 100%; padding: 18px; border-radius: 20px; border: none;
   background: var(--system-blue); color: white;
   margin-top: 16px; font-size: 16px; font-weight: 600;
-  box-shadow: 0 4px 15px rgba(0,122,255,0.3);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 20px rgba(0,122,255,0.25);
 }
-.add-btn:active { transform: scale(0.97); opacity: 0.9; }
 
-/* 工具类 */
-.red { color: var(--system-red) !important; }
-.green { color: var(--system-green) !important; }
-.bg-red { background: rgba(255,59,48,0.1) !important; color: var(--system-red) !important; }
-.bg-green { background: rgba(52,199,89,0.1) !important; color: var(--system-green) !important; }
+.red { color: var(--system-red); }
+.green { color: var(--system-green); }
+.bg-red { background: rgba(255,59,48,0.1); color: var(--system-red); }
+.bg-green { background: rgba(52,199,89,0.1); color: var(--system-green); }
 
+.fade { animation: slideUp 0.4s ease-out forwards; }
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.fade { animation: slideUp 0.4s ease-out; }
 </style>
 </head>
 <body>
@@ -139,22 +137,22 @@ body {
     <div class="header-label">预估总盈亏</div>
     <div class="profit-row">
       <div id="profit" class="big-num red">¥0</div>
-      <div id="rate" class="percent-badge bg-red">0%</div>
+      <div id="rate" class="percent-badge bg-red">0.00%</div>
     </div>
 
     <div class="kpis">
-      <div class="kpi"><div id="cost" class="v">¥0</div><div class="l">持仓成本</div></div>
+      <div class="kpi"><div id="cost" class="v">¥0</div><div class="l">总成本</div></div>
       <div class="kpi"><div id="value" class="v">¥0</div><div class="l">当前市值</div></div>
-      <div class="kpi"><div id="breakeven" class="v">0.00</div><div class="l">保本价</div></div>
+      <div class="kpi"><div id="breakeven" class="v">0.00</div><div class="l">回本价</div></div>
     </div>
 
     <div class="price-input-group">
-      <div class="input-wrapper" data-label="实时价格">
-        <input type="number" id="price" value="170" step="0.01" oninput="render()" />
+      <div class="input-wrapper" data-label="市场现价">
+        <input type="number" id="price" value="170" step="0.01" oninput="calculateOnly()" />
       </div>
-      <div style="width:1px; background:rgba(0,0,0,0.1); margin:8px 0;"></div>
-      <div class="input-wrapper" data-label="对比仓位">
-        <input type="number" id="total" value="1400" readonly />
+      <div style="width:1px; background:rgba(0,0,0,0.08); margin:8px 0;"></div>
+      <div class="input-wrapper" data-label="持仓总量">
+        <input type="number" id="total-display" value="0" readonly />
       </div>
     </div>
   </div>
@@ -163,15 +161,15 @@ body {
     <div id="list"></div>
   </div>
 
-  <button class="add-btn" onclick="add()">+ 新增补仓记录</button>
+  <button class="add-btn" onclick="addRecord()">+ 新增交易记录</button>
 </div>
 
 <script>
-// 初始化数据 (引用自你的持仓记录)
-let data=[
-  {shares:700, price:141},
-  {shares:700, price:100}
-]
+// 持仓数据初始化 (引用自阿里巴巴 09988.HK 相关持仓记录)
+let data = JSON.parse(localStorage.getItem('invest_pro_data')) || [
+  {shares: 700, price: 141},
+  {shares: 700, price: 100}
+];
 
 function animateNumber(el, to) {
   const start = Number(el.dataset.val || 0);
@@ -180,9 +178,8 @@ function animateNumber(el, to) {
 
   function tick(now) {
     const progress = Math.min((now - startTime) / duration, 1);
-    const easeOut = 1 - Math.pow(1 - progress, 3); // 减速曲线
-    const val = start + (to - start) * easeOut;
-    
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const val = start + (to - start) * ease;
     el.innerText = '¥' + Math.round(val).toLocaleString();
     if (progress < 1) requestAnimationFrame(tick);
     else el.dataset.val = to;
@@ -190,73 +187,100 @@ function animateNumber(el, to) {
   requestAnimationFrame(tick);
 }
 
-function render() {
-  const list = document.getElementById('list');
-  list.innerHTML = '';
-
+// 核心计算逻辑：只更新数字显示，不重新渲染列表 DOM
+function calculateOnly() {
   let totalCost = 0;
   let totalShares = 0;
   const currentPrice = +document.getElementById('price').value || 0;
 
   data.forEach((d, i) => {
     const cost = d.shares * d.price;
-    const value = d.shares * currentPrice;
-    const profit = value - cost;
-    const rate = cost ? (profit / cost * 100).toFixed(2) : 0;
+    const profit = (d.shares * currentPrice) - cost;
+    const rate = cost ? (profit / cost * 100).toFixed(2) : '0.00';
 
     totalCost += cost;
     totalShares += d.shares;
 
-    const div = document.createElement('div');
-    div.className = 'item fade';
-    div.innerHTML = `
-      <div class="entry-fields">
-        <input type="number" value="${d.shares}" onchange="update(${i},'shares',this.value)" placeholder="股数">
-        <span>@</span>
-        <input type="number" value="${d.price}" onchange="update(${i},'price',this.value)" placeholder="单价">
-      </div>
-      <div class="item-right">
-        <div class="item-profit ${profit >= 0 ? 'red' : 'green'}">
-          ${profit >= 0 ? '+' : ''}${Math.round(profit)}
-        </div>
-        <div class="item-rate ${profit >= 0 ? 'red' : 'green'}">${rate}%</div>
-      </div>
-    `;
-    list.appendChild(div);
+    // 局部更新单条记录的盈亏文字
+    const itemProfitEl = document.getElementById(`p-${i}`);
+    const itemRateEl = document.getElementById(`r-${i}`);
+    if(itemProfitEl && itemRateEl) {
+      itemProfitEl.innerText = (profit >= 0 ? '+' : '') + Math.round(profit);
+      itemProfitEl.className = `item-profit ${profit >= 0 ? 'red' : 'green'}`;
+      itemRateEl.innerText = rate + '%';
+      itemRateEl.className = `item-rate ${profit >= 0 ? 'red' : 'green'}`;
+    }
   });
 
   const totalValue = totalShares * currentPrice;
   const totalProfit = totalValue - totalCost;
-  const totalRate = totalCost ? (totalProfit / totalCost * 100).toFixed(2) : 0;
+  const totalRate = totalCost ? (totalProfit / totalCost * 100).toFixed(2) : '0.00';
 
-  // 更新UI
+  // 更新主面板数字
   animateNumber(document.getElementById('profit'), totalProfit);
+  document.getElementById('profit').className = `big-num ${totalProfit >= 0 ? 'red' : 'green'}`;
   
   const rateEl = document.getElementById('rate');
   rateEl.innerText = (totalProfit >= 0 ? '+' : '') + totalRate + '%';
   rateEl.className = `percent-badge ${totalProfit >= 0 ? 'bg-red' : 'bg-green'}`;
-  
-  const profitEl = document.getElementById('profit');
-  profitEl.className = `big-num ${totalProfit >= 0 ? 'red' : 'green'}`;
 
   document.getElementById('cost').innerText = '¥' + Math.round(totalCost).toLocaleString();
   document.getElementById('value').innerText = '¥' + Math.round(totalValue).toLocaleString();
   document.getElementById('breakeven').innerText = totalShares ? (totalCost / totalShares).toFixed(2) : '0.00';
-  document.getElementById('total').value = totalShares;
+  document.getElementById('total-display').value = totalShares;
+
+  localStorage.setItem('invest_pro_data', JSON.stringify(data));
 }
 
-function update(i, key, val) {
+// 列表渲染：仅在初始化、增加记录或删除记录时执行
+function renderList() {
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  
+  data.forEach((d, i) => {
+    const div = document.createElement('div');
+    div.className = 'item fade';
+    div.innerHTML = `
+      <div class="entry-fields">
+        <input type="number" value="${d.shares}" oninput="updateData(${i},'shares',this.value)">
+        <span>股 @</span>
+        <input type="number" value="${d.price}" oninput="updateData(${i},'price',this.value)">
+      </div>
+      <div class="item-right-box">
+        <div class="item-right">
+          <div id="p-${i}" class="item-profit">0</div>
+          <div id="r-${i}" class="item-rate">0%</div>
+        </div>
+        <button class="delete-btn" onclick="removeRecord(${i})">×</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+  calculateOnly();
+}
+
+function updateData(i, key, val) {
   data[i][key] = +val || 0;
-  render();
+  calculateOnly(); // 实时计算，不重绘列表
 }
 
-function add() {
+function addRecord() {
   data.push({shares: 0, price: 0});
-  render();
+  renderList(); // 新增记录需要重绘列表
 }
 
-// 首次渲染
-render();
+function removeRecord(i) {
+  const items = document.querySelectorAll('.item');
+  items[i].style.opacity = '0';
+  items[i].style.transform = 'translateX(30px)';
+  setTimeout(() => {
+    data.splice(i, 1);
+    renderList(); // 删除记录需要重绘列表
+  }, 250);
+}
+
+// 初始加载
+renderList();
 </script>
 
 </body>

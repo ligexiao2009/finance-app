@@ -60,7 +60,7 @@ async function fetchFundHistoryNav(fundCode, days = 365) {
 
       // 转换数据格式
       const fullNavList = rawData.map(item => ({
-        date: new Date(item.x).toISOString().slice(0, 10),
+        date: new Intl.DateTimeFormat('sv-SE').format(new Date(item.x)),
         nav: item.y
       }));
 

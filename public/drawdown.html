@@ -821,7 +821,7 @@
                 <button type="button" class="days-preset-btn" data-days="1825" onclick="setDaysPreset(1825)">近5年</button>
             </div>
         </div>
-        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始深度分析</button>
+        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
         <div id="fund-results"></div>
     </div>
 
@@ -1764,7 +1764,7 @@
             resultsEl.innerHTML = `<div class="error-msg">拉取数据失败：${e.message}</div>`;
         } finally {
             btnEl.disabled = false;
-            btnEl.textContent = '开始深度分析';
+            btnEl.textContent = '开始分析';
         }
     }
     

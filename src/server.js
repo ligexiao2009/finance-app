@@ -480,8 +480,8 @@ async function calculateAndSaveDailyProfit() {
   const rows = await db.getPositions();
   const now = new Date();
   const dateStr = now.getFullYear().toString() + '-' +
-                 (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
-                 now.getDate().toString().padStart(2, '0');
+    (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
+    now.getDate().toString().padStart(2, '0');
 
   // 检查今天是否已经有数据
   const existingRecord = await db.getDailyProfitByDate(dateStr);
@@ -511,13 +511,13 @@ async function calculateAndSaveDailyProfit() {
 
   // 计算基金收益
   const todayStr = now.getFullYear().toString() +
-                   (now.getMonth() + 1).toString().padStart(2, '0') +
-                   now.getDate().toString().padStart(2, '0');
+    (now.getMonth() + 1).toString().padStart(2, '0') +
+    now.getDate().toString().padStart(2, '0');
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.getFullYear().toString() +
-                       (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                       yesterday.getDate().toString().padStart(2, '0');
+    (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+    yesterday.getDate().toString().padStart(2, '0');
   const hour = now.getHours();
   const minute = now.getMinutes();
   const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
@@ -619,17 +619,17 @@ async function autoConfirmPendingTrades() {
 
     console.log(`\n处理交易: ${trade.name} (${trade.code})`);
     console.log(`  交易时间(北京): ${tradeDateStr} ${tradeHour.toString().padStart(2, '0')}:${tradeDateBeijing.getUTCMinutes().toString().padStart(2, '0')}`);
-    console.log(`  15点前: ${trade.isBefore15 ? '是' : '否'}`);
+    console.log(`  15点前: ${trade.isBefore_15 ? '是' : '否'}`);
 
     // 判断是否应该自动确认：
     // 1. 如果是昨天15点前的交易，今天确认
     // 2. 如果是昨天15点后的交易，明天确认（暂时不处理）
     let shouldConfirm = false;
 
-    if (tradeDateStr === yesterdayStr && trade.isBefore15) {
+    if (tradeDateStr === yesterdayStr && trade.isBefore_15) {
       shouldConfirm = true;
       console.log('  → 符合条件：昨天15点前的交易，今天确认');
-    } else if (tradeDateStr === yesterdayStr && !trade.isBefore15) {
+    } else if (tradeDateStr === yesterdayStr && !trade.isBefore_15) {
       console.log('  → 跳过：昨天15点后的交易，明天确认');
     } else if (tradeDateStr < yesterdayStr) {
       shouldConfirm = true;
@@ -768,7 +768,7 @@ async function setupCronJob() {
     // 精确控制时间段
     const isMorningSession = (hour === 9 && minute >= 30) || (hour === 10) || (hour === 11 && minute <= 30);
     const isAfternoonSession = hour === 13 || hour === 14 || (hour === 15 && minute === 0);
-    
+
     if (isMorningSession || isAfternoonSession) {
       checkPriceAlerts(fetchQuotesBatch, sendWechatMessage);
     }
@@ -1126,7 +1126,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
       } catch (e) {
         // 回滚事务
-        await db.query('ROLLBACK').catch(() => {});
+        await db.query('ROLLBACK').catch(() => { });
         console.error('Error saving trade history:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
@@ -1326,19 +1326,19 @@ const server = http.createServer(async (req, res) => {
     try {
       // 1. 使用 URL 构造函数解析完整路径
       const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
-      
+
       // 2. 从 pathname 提取 fundCode (去掉末尾可能存在的斜杠)
       const fundCode = parsedUrl.pathname.split('/api/fund-drawdown/')[1].replace(/\/$/, '');
-      
+
       // 3. 获取 days 参数，如果没有则默认 365
       const days = parseInt(parsedUrl.searchParams.get('days')) || 365;
-      
+
       // 4. 获取持仓成本参数（可选）
       const costBasis = parseFloat(parsedUrl.searchParams.get('costBasis')) || null;
 
       // 执行分析
       const result = await analyzeFund(fundCode, days, costBasis);
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
     } catch (e) {
@@ -1347,7 +1347,7 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ success: false, error: e.message }));
     }
     return;
-}
+  }
 
 
   // 批量分析多只基金

@@ -521,7 +521,21 @@
             margin-top: 10px;
         }
 
-        .chart-nav-slider input[type="range"] {
+        .chart-nav-zoom {
+            margin-top: 10px;
+        }
+
+        .chart-nav-caption {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .chart-nav-slider input[type="range"],
+        .chart-nav-zoom input[type="range"] {
             width: 100%;
             margin: 0;
             background: transparent;
@@ -529,13 +543,15 @@
             -webkit-appearance: none;
         }
 
-        .chart-nav-slider input[type="range"]::-webkit-slider-runnable-track {
+        .chart-nav-slider input[type="range"]::-webkit-slider-runnable-track,
+        .chart-nav-zoom input[type="range"]::-webkit-slider-runnable-track {
             height: 6px;
             border-radius: 999px;
             background: rgba(148, 163, 184, 0.22);
         }
 
-        .chart-nav-slider input[type="range"]::-webkit-slider-thumb {
+        .chart-nav-slider input[type="range"]::-webkit-slider-thumb,
+        .chart-nav-zoom input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
             width: 18px;
@@ -547,13 +563,15 @@
             box-shadow: 0 4px 10px rgba(59, 130, 246, 0.28);
         }
 
-        .chart-nav-slider input[type="range"]::-moz-range-track {
+        .chart-nav-slider input[type="range"]::-moz-range-track,
+        .chart-nav-zoom input[type="range"]::-moz-range-track {
             height: 6px;
             border-radius: 999px;
             background: rgba(148, 163, 184, 0.22);
         }
 
-        .chart-nav-slider input[type="range"]::-moz-range-thumb {
+        .chart-nav-slider input[type="range"]::-moz-range-thumb,
+        .chart-nav-zoom input[type="range"]::-moz-range-thumb {
             width: 18px;
             height: 18px;
             border-radius: 50%;
@@ -717,7 +735,18 @@
                     <div class="chart-nav-selection" id="chart-nav-selection"></div>
                 </div>
                 <div class="chart-nav-slider">
+                    <div class="chart-nav-caption">
+                        <span>平移窗口</span>
+                        <span id="chart-window-caption">最近区间</span>
+                    </div>
                     <input id="chart-window-slider" type="range" min="0" max="0" step="1" value="0" oninput="handleChartWindowSlide(this.value)">
+                </div>
+                <div class="chart-nav-zoom">
+                    <div class="chart-nav-caption">
+                        <span>缩放K线</span>
+                        <span id="chart-zoom-caption">默认</span>
+                    </div>
+                    <input id="chart-window-size-slider" type="range" min="20" max="120" step="1" value="60" oninput="handleChartZoomSlide(this.value)">
                 </div>
                 <div class="chart-nav-labels">
                     <span id="chart-nav-start-label">-</span>
@@ -792,6 +821,7 @@
         let currentRangePreset = null;
         let currentWindowStartIndex = null;
         let currentVisibleCount = null;
+        let currentWindowSize = null;
 
         function getChartPeriodLabel(scale) {
             if (scale >= 7200) return '月K';
@@ -813,6 +843,24 @@
             }
 
             return getInitialVisibleCount(scale);
+        }
+
+        function getDefaultWindowCount(rangeKey, scale) {
+            if (scale >= 7200) {
+                return rangeKey === '5y' ? 24 : 18;
+            }
+
+            if (scale >= 1200) {
+                return rangeKey === '5y' ? 80 : 56;
+            }
+
+            return rangeKey === '5y' ? 220 : 160;
+        }
+
+        function getMinimumWindowCount(scale) {
+            if (scale >= 7200) return 6;
+            if (scale >= 1200) return 16;
+            return 30;
         }
 
         function getKlineDataLength(scale) {
@@ -1080,6 +1128,7 @@
         async function showKlineChart(stockCode) {
             currentStockCode = stockCode;
             currentWindowStartIndex = null;
+            currentWindowSize = null;
 
             // 显示K线图卡片
             const chartCard = document.getElementById('chart-card');
@@ -1139,18 +1188,22 @@
                 const parsedData = parseKlineData(klineData);
                 currentKlineData = parsedData;
 
-                // 绘制图表
-                renderKlineChart(parsedData);
-
-                // 隐藏加载状态，显示图表
+                // 先显示canvas，再绘图，避免隐藏状态下Chart.js尺寸计算异常
                 const loadingEl = document.getElementById('chart-loading');
                 const canvasEl = document.getElementById('kline-chart');
-                loadingEl.style.display = 'none';
                 canvasEl.style.display = 'block';
+                loadingEl.style.display = 'none';
+
+                // 绘制图表
+                renderKlineChart(parsedData);
 
             } catch (error) {
                 console.error('加载K线数据失败:', error);
                 const loadingEl = document.getElementById('chart-loading');
+                const navigator = document.getElementById('chart-navigator');
+                if (navigator) {
+                    navigator.hidden = true;
+                }
                 loadingEl.innerHTML = '加载K线数据失败<small>请稍后重试</small>';
             }
         }
@@ -1264,6 +1317,7 @@
 
             currentRangePreset = null;
             currentWindowStartIndex = null;
+            currentWindowSize = null;
             updateRangeButtons();
             if (typeof klineChart.resetZoom === 'function') {
                 klineChart.resetZoom();
@@ -1277,6 +1331,7 @@
         function setChartRange(rangeKey) {
             currentRangePreset = currentRangePreset === rangeKey ? null : rangeKey;
             currentWindowStartIndex = null;
+            currentWindowSize = null;
             updateRangeButtons();
 
             if (!currentKlineData) {
@@ -1330,10 +1385,13 @@
         function updateChartNavigator(data, startIndex, visibleCount) {
             const navigator = document.getElementById('chart-navigator');
             const slider = document.getElementById('chart-window-slider');
+            const sizeSlider = document.getElementById('chart-window-size-slider');
             const selection = document.getElementById('chart-nav-selection');
             const startLabel = document.getElementById('chart-nav-start-label');
             const endLabel = document.getElementById('chart-nav-end-label');
-            if (!navigator || !slider || !selection || !startLabel || !endLabel) {
+            const windowCaption = document.getElementById('chart-window-caption');
+            const zoomCaption = document.getElementById('chart-zoom-caption');
+            if (!navigator || !slider || !sizeSlider || !selection || !startLabel || !endLabel || !windowCaption || !zoomCaption) {
                 return;
             }
 
@@ -1349,6 +1407,14 @@
             const maxStart = Math.max(0, total - visibleCount);
             slider.max = String(maxStart);
             slider.value = String(startIndex);
+            windowCaption.textContent = `${startIndex + 1} / ${Math.max(1, maxStart + 1)}`;
+
+            const rangeMax = Math.min(getRangeCount(currentRangePreset, currentChartScale), total);
+            const minWindow = Math.min(getMinimumWindowCount(currentChartScale), rangeMax);
+            sizeSlider.min = String(minWindow);
+            sizeSlider.max = String(rangeMax);
+            sizeSlider.value = String(visibleCount);
+            zoomCaption.textContent = `${visibleCount} 根`;
 
             const leftPercent = (startIndex / total) * 100;
             const widthPercent = (visibleCount / total) * 100;
@@ -1368,6 +1434,16 @@
             renderKlineChart(currentKlineData);
         }
 
+        function handleChartZoomSlide(value) {
+            if (!currentKlineData) {
+                return;
+            }
+
+            currentWindowSize = Number(value) || null;
+            currentWindowStartIndex = clampChartWindowStart(currentWindowStartIndex, currentKlineData.timestamps.length, currentWindowSize || currentVisibleCount || getInitialVisibleCount(currentChartScale));
+            renderKlineChart(currentKlineData);
+        }
+
         // 绘制K线图
         function renderKlineChart(data) {
             const canvas = document.getElementById('kline-chart');
@@ -1379,6 +1455,15 @@
             // 检查数据是否有效
             if (!data || !Array.isArray(data.labels) || !Array.isArray(data.closes)) {
                 console.error('无效的K线数据格式:', data);
+                return;
+            }
+
+            if (!Array.isArray(data.timestamps) || data.timestamps.length === 0) {
+                console.warn('K线图无可用数据点');
+                const navigator = document.getElementById('chart-navigator');
+                if (navigator) {
+                    navigator.hidden = true;
+                }
                 return;
             }
 
@@ -1526,7 +1611,12 @@
             const minPrice = Math.min(...data.lows, ...(costLineData.length ? [breakevenPrice] : []));
             const maxPrice = Math.max(...data.highs, ...(costLineData.length ? [breakevenPrice] : []));
             const pricePadding = Math.max((maxPrice - minPrice) * 0.08, maxPrice * 0.01, 0.01);
-            const visibleCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
+            const rangeMaxCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
+            const defaultWindowCount = Math.min(getDefaultWindowCount(currentRangePreset, currentChartScale), rangeMaxCount);
+            const visibleCount = Math.max(
+                Math.min(currentWindowSize == null ? defaultWindowCount : currentWindowSize, rangeMaxCount, xValues.length),
+                Math.min(getMinimumWindowCount(currentChartScale), rangeMaxCount)
+            );
             const startIndex = currentWindowStartIndex == null
                 ? Math.max(0, xValues.length - visibleCount)
                 : clampChartWindowStart(currentWindowStartIndex, xValues.length, visibleCount);
@@ -1680,6 +1770,7 @@
             currentChartScale = scale;
             updateRangeButtons();
             currentWindowStartIndex = null;
+            currentWindowSize = null;
             const chartSubtitle = document.getElementById('chart-subtitle');
             if (chartSubtitle) {
                 chartSubtitle.textContent = `查看 ${getChartPeriodLabel(scale)} 趋势与价格波动`;

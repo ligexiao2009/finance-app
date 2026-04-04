@@ -285,6 +285,7 @@
             }
         }
     </style>
+    <script src="/app-config.js"></script>
 </head>
 
 <body>
@@ -322,6 +323,18 @@
                     <input type="number" id="total-display" value="0" readonly>
                 </div>
             </div>
+        </div>
+
+        <div class="list-card" style="margin-bottom: 12px; padding: 16px;">
+            <div style="flex: 1;">
+                <!-- <div style="font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px;">从持仓导入股票</div> -->
+                <select id="stock-select" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: white; font-size: 14px; font-weight: 600; outline: none; color: #1c1c1e;" onchange="onStockSelectChange(this)">
+                    <option value="">选择持仓股票...</option>
+                </select>
+            </div>
+            <!-- <div style="font-size: 11px; color: #8e8e93; margin-top: 8px; line-height: 1.4;">
+                选择后自动填充到第一条补仓记录
+            </div> -->
         </div>
 
         <div class="list-card">
@@ -412,19 +425,19 @@
                 const div = document.createElement('div');
                 div.className = 'item fade';
                 div.innerHTML = `
-      <div class="entry-fields">
-        <input type="number" value="${d.shares}" oninput="updateData(${i},'shares',this.value)" onfocus="handleFocus(this)">
-        <span>股 @</span>
-        <input type="number" value="${d.price}" oninput="updateData(${i},'price',this.value)" onfocus="handleFocus(this)">
-      </div>
-      <div class="item-right-box">
-        <div class="item-right">
-          <div id="p-${i}" class="item-profit">0</div>
-          <div id="r-${i}" class="item-rate">0%</div>
-        </div>
-        <button class="delete-btn" onclick="removeRecord(${i})">×</button>
-      </div>
-    `;
+                    <div class="entry-fields">
+                        <input type="number" value="${d.shares}" oninput="updateData(${i},'shares',this.value)" onfocus="handleFocus(this)">
+                        <span>股 @</span>
+                        <input type="number" value="${d.price}" oninput="updateData(${i},'price',this.value)" onfocus="handleFocus(this)">
+                    </div>
+                    <div class="item-right-box">
+                        <div class="item-right">
+                        <div id="p-${i}" class="item-profit">0</div>
+                        <div id="r-${i}" class="item-rate">0%</div>
+                        </div>
+                        <button class="delete-btn" onclick="removeRecord(${i})">×</button>
+                    </div>
+                    `;
                 list.appendChild(div);
             });
             calculateOnly();
@@ -451,6 +464,93 @@
         }
 
         renderList();
+        loadHoldings();
+
+        async function loadHoldings() {
+            try {
+                const apiBase = window.API_BASE_URL || '';
+                const url = apiBase + '/api/data';
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('获取持仓数据失败');
+                const data = await response.json();
+                const select = document.getElementById('stock-select');
+                // 清空现有选项（除了第一个placeholder）
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+                // 只添加股票持仓（非基金）
+                const stocks = data.rows.filter(row => !row.isFund);
+                stocks.forEach(stock => {
+                    const option = document.createElement('option');
+                    option.value = stock.id || stock.code;
+                    option.textContent = `${stock.name || stock.code} (${stock.shares}股 @ ${stock.cost})`;
+                    option.dataset.shares = stock.shares;
+                    option.dataset.cost = stock.cost;
+                    option.dataset.code = stock.code;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载持仓失败:', error);
+                // 如果API失败，可以尝试从本地存储获取？或者显示错误
+            }
+        }
+
+        async function onStockSelectChange(select) {
+            const selectedOption = select.options[select.selectedIndex];
+            if (!selectedOption.value) {
+                // 如果选择的是placeholder，不清除数据
+                return;
+            }
+            const shares = parseFloat(selectedOption.dataset.shares);
+            const cost = parseFloat(selectedOption.dataset.cost);
+            const stockCode = selectedOption.dataset.code;
+            if (isNaN(shares) || isNaN(cost) || shares <= 0 || cost <= 0) {
+                alert('持仓数据无效');
+                select.selectedIndex = 0;
+                return;
+            }
+            // 清除现有补仓记录数据
+            data.length = 0;
+            // 添加一条补仓记录（第一条）
+            data.push({ shares: shares, price: cost });
+            renderList();
+            // 保持选中当前股票，不清除选择
+
+            // 获取股票最新价格并更新市场价输入框
+            if (stockCode) {
+                try {
+                    const price = await fetchStockPrice(stockCode);
+                    if (price > 0) {
+                        const priceInput = document.getElementById('price');
+                        priceInput.value = price;
+                        // 触发计算
+                        calculateOnly();
+                    }
+                } catch (error) {
+                    console.error('获取股票价格失败:', error);
+                }
+            }
+        }
+
+        async function fetchStockPrice(stockCode) {
+            try {
+                const apiBase = window.API_BASE_URL || '';
+                // 股票是非基金，isFund为0
+                const url = `${apiBase}/api/quotes?items=${encodeURIComponent(stockCode + ':0')}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('获取价格失败');
+                const data = await response.json();
+                const key = `${stockCode}:0`;
+                const quote = data.quotes[key];
+                if (quote && quote.price > 0) {
+                    return quote.price;
+                }
+                return 0;
+            } catch (error) {
+                console.error('获取股票价格失败:', error);
+                return 0;
+            }
+        }
     </script>
 
 </body>

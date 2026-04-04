@@ -468,11 +468,22 @@
 
         async function loadHoldings() {
             try {
+                console.log('开始加载持仓数据...');
+                console.log('window.API_BASE_URL:', window.API_BASE_URL);
+                console.log('window.APP_CONFIG:', window.APP_CONFIG);
+
                 const apiBase = window.API_BASE_URL || '';
                 const url = apiBase + '/api/data';
+                console.log('请求URL:', url);
+
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('获取持仓数据失败');
+                if (!response.ok) {
+                    console.error('API响应状态:', response.status, response.statusText);
+                    throw new Error('获取持仓数据失败: ' + response.status);
+                }
                 const data = await response.json();
+                console.log('持仓数据加载成功，共', data.rows ? data.rows.length : 0, '条记录');
+
                 const select = document.getElementById('stock-select');
                 // 清空现有选项（除了第一个placeholder）
                 while (select.options.length > 1) {
@@ -480,6 +491,8 @@
                 }
                 // 只添加股票持仓（非基金）
                 const stocks = data.rows.filter(row => !row.isFund);
+                console.log('股票持仓数量:', stocks.length);
+
                 stocks.forEach(stock => {
                     const option = document.createElement('option');
                     option.value = stock.id || stock.code;
@@ -489,9 +502,14 @@
                     option.dataset.code = stock.code;
                     select.appendChild(option);
                 });
+
+                if (stocks.length === 0) {
+                    console.log('没有找到股票持仓数据');
+                }
             } catch (error) {
-                console.error('加载持仓失败:', error);
-                // 如果API失败，可以尝试从本地存储获取？或者显示错误
+                console.warn('加载持仓失败（API可能不可用）:', error.message);
+                // 如果API失败，静默失败，不显示错误
+                // 下拉框将保持为空，页面其他功能正常
             }
         }
 

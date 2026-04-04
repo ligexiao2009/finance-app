@@ -15,6 +15,7 @@ const PORT = 3000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
 const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
 const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);
+const KLINE_CACHE_TTL_MS = Number(process.env.KLINE_CACHE_TTL_MS || 5 * 60 * 1000);
 const responseCache = new Map();
 let EDIT_UNLOCK_PASSWORD_CACHE = undefined;
 
@@ -157,6 +158,24 @@ async function fetchQuotesBatch(items) {
   }
 
   return quotes;
+}
+
+// ==================== 获取K线数据 ====================
+async function fetchKlineData(symbol, scale = 240, datalen = 1023) {
+  try {
+    const url = `http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${symbol}&scale=${scale}&ma=no&datalen=${datalen}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const text = await decodeQtResponse(response);
+    // 新浪返回的是JSON格式字符串，直接解析
+    const data = JSON.parse(text);
+    return data;
+  } catch (error) {
+    console.error('获取K线数据失败:', error.message);
+    throw error;
+  }
 }
 
 // ==================== 获取基金实时估算 ====================
@@ -1352,6 +1371,43 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: false, error: e.message }));
       }
     });
+    return;
+  }
+
+  // ========== K线数据代理API ==========
+  if (req.method === 'GET' && req.url.startsWith('/api/kline/')) {
+    try {
+      // 解析参数: /api/kline/sz159321?scale=240&datalen=1023
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      const pathParts = parsedUrl.pathname.split('/');
+      const symbol = pathParts[pathParts.length - 1];
+      const scale = parseInt(parsedUrl.searchParams.get('scale')) || 240;
+      const datalen = parseInt(parsedUrl.searchParams.get('datalen')) || 1023;
+
+      // 验证参数
+      if (!symbol || !['sh', 'sz', 'hk'].some(prefix => symbol.startsWith(prefix))) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: '无效的股票代码格式' }));
+        return;
+      }
+
+      // 使用缓存
+      const cacheKey = `kline:${symbol}:${scale}:${datalen}`;
+      await sendCachedJson(req, res, cacheKey, async () => {
+        const klineData = await fetchKlineData(symbol, scale, datalen);
+        return {
+          success: true,
+          data: klineData,
+          updatedAt: Date.now()
+        };
+      }, {
+        ttlMs: KLINE_CACHE_TTL_MS
+      });
+    } catch (error) {
+      console.error('获取K线数据失败:', error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
     return;
   }
 

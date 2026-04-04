@@ -5,6 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>投资管理 Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --system-red: #ff3b30;
@@ -284,6 +285,71 @@
                 transform: translateY(0);
             }
         }
+
+        /* K线图容器 */
+        .chart-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 28px;
+            padding: 20px;
+            margin-top: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+            display: none; /* 默认隐藏，选择股票后显示 */
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1c1c1e;
+        }
+
+        .chart-period {
+            display: flex;
+            gap: 8px;
+        }
+
+        .period-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            background: white;
+            font-size: 12px;
+            font-weight: 600;
+            color: #8e8e93;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .period-btn.active {
+            background: var(--system-blue);
+            color: white;
+            border-color: var(--system-blue);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .chart-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 300px;
+            color: #8e8e93;
+            font-size: 14px;
+            font-weight: 600;
+        }
     </style>
     <script src="app-config.js"></script>
 </head>
@@ -342,6 +408,22 @@
         </div>
 
         <button class="add-btn" onclick="addRecord()">+ 新增补仓记录</button>
+
+        <div class="chart-card" id="chart-card">
+            <div class="chart-header">
+                <div class="chart-title" id="chart-title">K线图</div>
+                <div class="chart-period">
+                    <button class="period-btn active" data-scale="240" onclick="changeChartPeriod(240)">日线</button>
+                    <button class="period-btn" data-scale="60" onclick="changeChartPeriod(60)">60分</button>
+                    <button class="period-btn" data-scale="30" onclick="changeChartPeriod(30)">30分</button>
+                    <button class="period-btn" data-scale="15" onclick="changeChartPeriod(15)">15分</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="kline-chart"></canvas>
+                <div class="chart-loading" id="chart-loading">正在加载K线数据...</div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -350,6 +432,11 @@
             { shares: 700, price: 141 },
             { shares: 700, price: 100 }
         ];
+
+        // K线图相关变量
+        let klineChart = null;
+        let currentStockCode = null;
+        let currentChartScale = 240; // 默认日线
 
         function handleFocus(el) {
             if (el.value === "0") {
@@ -547,6 +634,9 @@
                 } catch (error) {
                     console.error('获取股票价格失败:', error);
                 }
+
+                // 显示K线图并加载数据
+                showKlineChart(stockCode);
             }
         }
 
@@ -568,6 +658,216 @@
                 console.error('获取股票价格失败:', error);
                 return 0;
             }
+        }
+
+        // 显示K线图并加载数据
+        async function showKlineChart(stockCode) {
+            currentStockCode = stockCode;
+
+            // 显示K线图卡片
+            const chartCard = document.getElementById('chart-card');
+            chartCard.style.display = 'block';
+
+            // 更新标题
+            const chartTitle = document.getElementById('chart-title');
+            chartTitle.textContent = `${stockCode} K线图`;
+
+            // 显示加载状态
+            const loadingEl = document.getElementById('chart-loading');
+            const canvasEl = document.getElementById('kline-chart');
+            loadingEl.style.display = 'flex';
+            canvasEl.style.display = 'none';
+
+            // 加载K线数据
+            await loadKlineData(stockCode, currentChartScale);
+        }
+
+        // 加载K线数据
+        async function loadKlineData(stockCode, scale) {
+            try {
+                // 确定股票市场前缀
+                let symbol;
+                if (stockCode.length === 5) {
+                    // 港股
+                    symbol = 'hk' + stockCode;
+                } else if (/^[569]/.test(stockCode)) {
+                    // 上海
+                    symbol = 'sh' + stockCode;
+                } else {
+                    // 深圳
+                    symbol = 'sz' + stockCode;
+                }
+
+                const url = `http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${symbol}&scale=${scale}&ma=no&datalen=1023`;
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const klineData = await response.json();
+
+                // 解析数据
+                const parsedData = parseKlineData(klineData);
+
+                // 绘制图表
+                renderKlineChart(parsedData);
+
+                // 隐藏加载状态，显示图表
+                const loadingEl = document.getElementById('chart-loading');
+                const canvasEl = document.getElementById('kline-chart');
+                loadingEl.style.display = 'none';
+                canvasEl.style.display = 'block';
+
+            } catch (error) {
+                console.error('加载K线数据失败:', error);
+                const loadingEl = document.getElementById('chart-loading');
+                loadingEl.textContent = '加载K线数据失败，请重试';
+            }
+        }
+
+        // 解析K线数据
+        function parseKlineData(klineData) {
+            if (!Array.isArray(klineData) || klineData.length === 0) {
+                return { labels: [], datasets: [] };
+            }
+
+            // 新浪财经数据格式: {day: "2024-01-01", open: "10.00", high: "10.50", low: "9.80", close: "10.20"}
+            const labels = [];
+            const opens = [];
+            const highs = [];
+            const lows = [];
+            const closes = [];
+
+            // 按时间顺序排序（新浪返回的数据可能是倒序）
+            const sortedData = [...klineData].sort((a, b) => {
+                return new Date(a.day) - new Date(b.day);
+            });
+
+            // 只取最近100个数据点以避免图表过于拥挤
+            const recentData = sortedData.slice(-100);
+
+            recentData.forEach(item => {
+                labels.push(item.day);
+                opens.push(parseFloat(item.open));
+                highs.push(parseFloat(item.high));
+                lows.push(parseFloat(item.low));
+                closes.push(parseFloat(item.close));
+            });
+
+            return {
+                labels,
+                opens,
+                highs,
+                lows,
+                closes
+            };
+        }
+
+        // 绘制K线图
+        function renderKlineChart(data) {
+            const ctx = document.getElementById('kline-chart').getContext('2d');
+
+            // 如果已有图表实例，先销毁
+            if (klineChart) {
+                klineChart.destroy();
+            }
+
+            // 准备K线图数据
+            const chartData = {
+                labels: data.labels,
+                datasets: [{
+                    label: '价格',
+                    data: data.closes.map((close, index) => ({
+                        x: data.labels[index],
+                        o: data.opens[index],
+                        h: data.highs[index],
+                        l: data.lows[index],
+                        c: close
+                    })),
+                    backgroundColor: (ctx) => {
+                        const item = ctx.raw;
+                        return item.c >= item.o ? 'rgba(255, 59, 48, 0.8)' : 'rgba(52, 199, 89, 0.8)';
+                    },
+                    borderColor: (ctx) => {
+                        const item = ctx.raw;
+                        return item.c >= item.o ? 'rgb(255, 59, 48)' : 'rgb(52, 199, 89)';
+                    },
+                    borderWidth: 1
+                }]
+            };
+
+            // 创建图表
+            klineChart = new Chart(ctx, {
+                type: 'candlestick',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const item = context.raw;
+                                    return [
+                                        `开盘: ${item.o.toFixed(2)}`,
+                                        `最高: ${item.h.toFixed(2)}`,
+                                        `最低: ${item.l.toFixed(2)}`,
+                                        `收盘: ${item.c.toFixed(2)}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 切换K线周期
+        async function changeChartPeriod(scale) {
+            if (scale === currentChartScale || !currentStockCode) {
+                return;
+            }
+
+            // 更新按钮状态
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                if (parseInt(btn.dataset.scale) === scale) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            currentChartScale = scale;
+
+            // 重新加载数据
+            const loadingEl = document.getElementById('chart-loading');
+            const canvasEl = document.getElementById('kline-chart');
+            loadingEl.style.display = 'flex';
+            canvasEl.style.display = 'none';
+            loadingEl.textContent = '正在加载K线数据...';
+
+            await loadKlineData(currentStockCode, scale);
         }
     </script>
 

@@ -5,11 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>投资管理 Pro</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@latest/dist/chartjs-chart-financial.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <!-- K线图前端依赖已注释，恢复时取消下面几行注释 -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@latest/dist/chartjs-chart-financial.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script> -->
     <style>
         :root {
             --system-red: #ff3b30;
@@ -290,7 +291,7 @@
             }
         }
 
-        /* K线图容器 */
+        /* K线图容器
         .chart-card {
             background:
                 radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 28%),
@@ -650,6 +651,7 @@
                 height: 300px;
             }
         }
+        */
     </style>
     <script src="app-config.js"></script>
 </head>
@@ -705,6 +707,7 @@
 
         <button class="add-btn" onclick="addRecord()">+ 新增补仓记录</button>
 
+        <!-- K线图前端区域已注释，恢复时取消整个块的注释
         <div class="chart-card" id="chart-card">
             <div class="chart-header">
                 <div class="chart-title-wrap">
@@ -754,9 +757,12 @@
                 </div>
             </div>
         </div>
+        -->
     </div>
 
     <script>
+        /*
+        // K线图前端逻辑已注释，恢复时取消本段注释
         // 检查Chart.js和插件加载状态
         window.addEventListener('load', function() {
             console.log('Chart.js版本:', Chart.version);
@@ -806,6 +812,7 @@
                 }
             }
         });
+        */
 
         // 持仓数据
         let data = JSON.parse(localStorage.getItem('invest_pro_data')) || [
@@ -1099,8 +1106,8 @@
                     console.error('获取股票价格失败:', error);
                 }
 
-                // 显示K线图并加载数据
-                showKlineChart(stockCode);
+                // K线图前端已注释
+                // showKlineChart(stockCode);
             }
         }
 
@@ -1124,6 +1131,8 @@
             }
         }
 
+        /*
+        // K线图前端逻辑已注释
         // 显示K线图并加载数据
         async function showKlineChart(stockCode) {
             currentStockCode = stockCode;
@@ -1785,6 +1794,7 @@
 
             await loadKlineData(currentStockCode, scale);
         }
+        */
     </script>
 
 </body>

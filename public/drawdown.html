@@ -767,7 +767,7 @@
             <div class="progress-bar-container">
                 <div class="progress-bar" id="progress-bar"></div>
             </div>
-            <div class="loading-subtext" id="loading-subtext">这可能需要几秒钟时间</div>
+            <div class="loading-subtext" id="loading-subtext">此次分析已耗时 0 秒</div>
         </div>
     </div>
 
@@ -882,6 +882,8 @@
     let fundQuotes = {}; // 存储基金行情数据
     let customFundNames = {}; // 缓存自定义基金名称
     let loadingFundCodes = new Set(); // 正在加载中的基金代码
+    let loadingTimerId = null;
+    let loadingStartTime = 0;
 
     // 初始化
     window.onload = function() {
@@ -1802,12 +1804,14 @@
     function showLoading() {
         const overlay = document.getElementById('loading-overlay');
         overlay.style.display = 'flex';
+        startLoadingTimer();
         document.body.style.overflow = 'hidden'; // 禁止背景滚动
     }
     
     function hideLoading() {
         const overlay = document.getElementById('loading-overlay');
         overlay.style.display = 'none';
+        stopLoadingTimer();
         document.body.style.overflow = ''; // 恢复滚动
     }
     
@@ -1826,6 +1830,29 @@
         if (loadingProgress) {
             loadingProgress.textContent = subtext;
         }
+    }
+
+    function updateLoadingElapsedText() {
+        const loadingSubtext = document.getElementById('loading-subtext');
+        if (!loadingSubtext || !loadingStartTime) return;
+
+        const elapsedSeconds = Math.floor((Date.now() - loadingStartTime) / 1000);
+        loadingSubtext.textContent = `此次分析已耗时 ${elapsedSeconds} 秒`;
+    }
+
+    function startLoadingTimer() {
+        stopLoadingTimer();
+        loadingStartTime = Date.now();
+        updateLoadingElapsedText();
+        loadingTimerId = setInterval(updateLoadingElapsedText, 1000);
+    }
+
+    function stopLoadingTimer() {
+        if (loadingTimerId) {
+            clearInterval(loadingTimerId);
+            loadingTimerId = null;
+        }
+        loadingStartTime = 0;
     }
 
     // ==================== 修复进度弹框函数 ====================

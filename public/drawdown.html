@@ -338,12 +338,19 @@
             position: relative;
             padding-top: 56px;
         }
-        .fund-sort-btn {
+        .fund-top-actions {
             position: absolute;
             top: 16px;
             right: 16px;
             display: inline-flex;
             align-items: center;
+            gap: 8px;
+        }
+        .fund-sort-btn,
+        .fund-toolbar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             gap: 4px;
             border: 1px solid rgba(60, 60, 67, 0.08);
             border-radius: 999px;
@@ -382,6 +389,11 @@
             padding-bottom: 16px;
             border-bottom: 0.5px solid var(--ios-border);
         }
+        .fund-result-card.collapsed .fund-header {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
         .fund-code {
             font-size: 18px;
             font-weight: 700;
@@ -397,6 +409,102 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(30%, 1fr));
             gap: 16px 8px;
+        }
+        .fund-card-body {
+            display: block;
+        }
+        .fund-card-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 14px;
+            margin-left: auto;
+            border: none;
+            background: transparent;
+            color: var(--ios-primary);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+        }
+        .fund-card-toggle .toggle-icon {
+            font-size: 10px;
+            transition: transform 0.2s ease;
+        }
+        .fund-result-card.collapsed .fund-card-toggle .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .fund-toolbar-btn {
+            background: rgba(118, 118, 128, 0.08);
+            color: var(--ios-primary);
+        }
+        .fund-toolbar-btn:active {
+            transform: scale(0.96);
+            opacity: 0.85;
+        }
+        .analysis-summary-card {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 18px 18px 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-md);
+        }
+        .analysis-summary-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .analysis-summary-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--ios-text);
+        }
+        .analysis-summary-meta {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            font-weight: 600;
+        }
+        .analysis-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .analysis-summary-item {
+            background: var(--ios-input-bg);
+            border-radius: var(--radius-md);
+            padding: 12px 10px;
+            text-align: center;
+        }
+        .analysis-summary-item.clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .analysis-summary-item.clickable.active {
+            background: rgba(0, 122, 255, 0.10);
+            box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.14);
+        }
+        .analysis-summary-item.clickable:active {
+            transform: scale(0.98);
+        }
+        .analysis-summary-label {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            font-weight: 600;
+        }
+        .analysis-summary-value {
+            margin-top: 6px;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--ios-text);
+            font-variant-numeric: tabular-nums;
+        }
+        .analysis-summary-value.up {
+            color: var(--ios-red);
+        }
+        .analysis-summary-value.down {
+            color: var(--ios-green);
         }
         .stat-item {
             text-align: center;
@@ -1109,6 +1217,9 @@
     let fundResultSortMode = 'drawdown';
     let chartInstances = {};
     let chartFocusStates = {};
+    let expandedFundCards = {};
+    const DEFAULT_EXPANDED_FUND_CARDS = 0;
+    let fundResultFilterMode = '';
     
     function getCSSVariableValue(name) {
         return getComputedStyle(document.body).getPropertyValue(name).trim();
@@ -1718,6 +1829,114 @@
         return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()"><span class="sort-icon">↕</span><span class="sort-label">${btnText}</span></button>`;
     }
 
+    function isFundCardExpanded(fundCode, index) {
+        if (Object.prototype.hasOwnProperty.call(expandedFundCards, fundCode)) {
+            return expandedFundCards[fundCode];
+        }
+        return index < DEFAULT_EXPANDED_FUND_CARDS;
+    }
+
+    function toggleFundCard(fundCode) {
+        const cardEl = document.querySelector(`[data-fund-code="${fundCode}"]`);
+        const currentExpanded = cardEl ? !cardEl.classList.contains('collapsed') : isFundCardExpanded(fundCode, DEFAULT_EXPANDED_FUND_CARDS);
+        expandedFundCards[fundCode] = !currentExpanded;
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    function setAllFundCardsExpanded(expanded) {
+        latestFundAnalysisResults
+            .filter(result => result && result.success)
+            .forEach(result => {
+                expandedFundCards[result.fundCode] = expanded;
+            });
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    function areAllFundCardsExpanded(results) {
+        const successResults = results.filter(result => result && result.success);
+        if (!successResults.length) return false;
+        return successResults.every((result, index) => isFundCardExpanded(result.fundCode, index));
+    }
+
+    function toggleAllFundCards() {
+        const shouldCollapse = areAllFundCardsExpanded(latestFundAnalysisResults);
+        setAllFundCardsExpanded(!shouldCollapse);
+    }
+
+    function getFundExpandToggleHtml(results) {
+        const isAllExpanded = areAllFundCardsExpanded(results);
+        return `<button type="button" class="fund-toolbar-btn" onclick="toggleAllFundCards()">${isAllExpanded ? '全部收起' : '全部展开'}</button>`;
+    }
+
+    function getHoldingProfit(result, quotes) {
+        const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+        const currentNav = Number(quotes?.[`${result.fundCode}:1`]?.price);
+        if (!holdingFund || !(holdingFund.shares > 0) || !(holdingFund.cost > 0) || !Number.isFinite(currentNav) || currentNav <= 0) {
+            return null;
+        }
+        return (currentNav - holdingFund.cost) * holdingFund.shares;
+    }
+
+    function toggleFundResultFilter(mode) {
+        fundResultFilterMode = fundResultFilterMode === mode ? '' : mode;
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    function getFundAnalysisSummaryHtml(results, quotes) {
+        const successResults = results.filter(result => result && result.success);
+        if (!successResults.length) return '';
+
+        let upCount = 0;
+        let unrecoveredCount = 0;
+        let positiveHoldingCount = 0;
+        let totalHoldingProfit = 0;
+        let hasHoldingProfit = false;
+
+        successResults.forEach(result => {
+            const quoteChange = Number(quotes?.[`${result.fundCode}:1`]?.change);
+            if (Number.isFinite(quoteChange) && quoteChange > 0) upCount += 1;
+            if (!result.maxDrawdown?.recovered) unrecoveredCount += 1;
+
+            const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+            const holdingProfit = getHoldingProfit(result, quotes);
+            if (holdingFund && holdingProfit !== null) {
+                totalHoldingProfit += holdingProfit;
+                hasHoldingProfit = true;
+                if (holdingProfit > 0) positiveHoldingCount += 1;
+            }
+        });
+
+        const totalHoldingProfitClass = hasHoldingProfit ? (totalHoldingProfit >= 0 ? 'up' : 'down') : '';
+        const totalHoldingProfitText = hasHoldingProfit
+            ? `${totalHoldingProfit >= 0 ? '+' : ''}${Math.round(totalHoldingProfit)}`
+            : '--';
+
+        return `<div class="analysis-summary-card">
+            <div class="analysis-summary-header">
+                <div class="analysis-summary-title">分析结果</div>
+                <div class="analysis-summary-meta">共 ${successResults.length} 支基金</div>
+            </div>
+            <div class="analysis-summary-grid">
+                <div class="analysis-summary-item">
+                    <div class="analysis-summary-label">今日上涨</div>
+                    <div class="analysis-summary-value up">${upCount}</div>
+                </div>
+                <div class="analysis-summary-item">
+                    <div class="analysis-summary-label">未修复</div>
+                    <div class="analysis-summary-value down">${unrecoveredCount}</div>
+                </div>
+                <div class="analysis-summary-item clickable${fundResultFilterMode === 'positive_holding' ? ' active' : ''}" onclick="toggleFundResultFilter('positive_holding')">
+                    <div class="analysis-summary-label">持仓盈利</div>
+                    <div class="analysis-summary-value up">${positiveHoldingCount}</div>
+                </div>
+                <div class="analysis-summary-item">
+                    <div class="analysis-summary-label">持仓总收益</div>
+                    <div class="analysis-summary-value ${totalHoldingProfitClass}">${totalHoldingProfitText}</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
     function renderFundAnalysisResults(results, quotes) {
         Object.values(chartInstances).forEach(chart => chart?.destroy());
         chartInstances = {};
@@ -1725,8 +1944,13 @@
         chartDataList = [];
         const resultsEl = document.getElementById('fund-results');
         const sortedResults = getSortedFundResults(results, quotes, fundResultSortMode);
-        const successResults = sortedResults.filter(r => r.success);
+        const filteredResults = fundResultFilterMode === 'positive_holding'
+            ? sortedResults.filter(result => !result.success || ((getHoldingProfit(result, quotes) ?? -Infinity) > 0))
+            : sortedResults;
+        const successResults = filteredResults.filter(r => r.success);
         let html = '';
+
+        html += getFundAnalysisSummaryHtml(sortedResults, quotes);
 
         if (successResults.length > 1) {
             html += `<div class="compare-chart-container">
@@ -1735,12 +1959,12 @@
             </div>`;
         }
 
-        for (let index = 0; index < sortedResults.length; index++) {
-            const result = sortedResults[index];
+        for (let index = 0; index < filteredResults.length; index++) {
+            const result = filteredResults[index];
 
             if (!result.success) {
                 html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
-                    ${index === 0 ? getFundSortButtonHtml(fundResultSortMode === 'change') : ''}
+                    ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
                     <div class="fund-code">${result.fundCode}</div>
                     <div class="error-msg">获取失败: ${result.error}</div>
                 </div>`;
@@ -1752,6 +1976,7 @@
             const isPositive = parseFloat(ret.returnPercent) >= 0;
             const chartId = 'chart-' + result.fundCode;
             const quote = quotes[`${result.fundCode}:1`];
+            const isExpanded = isFundCardExpanded(result.fundCode, index);
             
             let yesterdayChangeHtml = '';
             
@@ -1856,8 +2081,8 @@
                     </div>`;
             }
 
-            html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
-                ${index === 0 ? getFundSortButtonHtml(fundResultSortMode === 'change') : ''}
+            html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
+                ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
                 <div class="fund-header">
                     <div style="display: flex; flex-direction: column; align-items: flex-start;">
                         <div class="fund-code">${result.fundCode}</div>
@@ -1870,37 +2095,42 @@
                     ${holdingYieldHtml || '<div></div>'}
                     ${rightHeaderHtml || '<div></div>'}
                 </div>
-                <div class="fund-stats">
-                    <div class="stat-item clickable" data-chart-id="${chartId}" data-focus="drawdown" onclick="focusFundChart('${chartId}', 'drawdown')">
-                        <div class="stat-label">最大回撤</div>
-                        <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
-                        <div class="stat-sub">${dd.peakDate.slice(5)}至${dd.troughDate.slice(5)}</div>
+                <div class="fund-card-body"${isExpanded ? '' : ' style="display:none;"'}>
+                    <div class="fund-stats">
+                        <div class="stat-item clickable" data-chart-id="${chartId}" data-focus="drawdown" onclick="focusFundChart('${chartId}', 'drawdown')">
+                            <div class="stat-label">最大回撤</div>
+                            <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
+                            <div class="stat-sub">${dd.peakDate.slice(5)}至${dd.troughDate.slice(5)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">区间收益</div>
+                            <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
+                            <div class="stat-sub">共 ${result.dataRange.dataPoints} 交易日</div>
+                        </div>
+                        ${recoveryHtml}
                     </div>
-                    <div class="stat-item">
-                        <div class="stat-label">区间收益</div>
-                        <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
-                        <div class="stat-sub">共 ${result.dataRange.dataPoints} 交易日</div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">区间走势</div>
+                            <div class="chart-meta">${result.dataRange.dataPoints} 个交易日</div>
+                        </div>
+                        <canvas id="${chartId}"></canvas>
                     </div>
-                    ${recoveryHtml}
                 </div>
-                <div class="chart-container">
-                    <div class="chart-header">
-                        <div class="chart-title">区间走势</div>
-                        <div class="chart-meta">${result.dataRange.dataPoints} 个交易日</div>
-                    </div>
-                    <canvas id="${chartId}"></canvas>
-                </div>
+                <button type="button" class="fund-card-toggle" onclick="toggleFundCard('${result.fundCode}')"><span class="toggle-icon">⌃</span><span>${isExpanded ? '收起详情' : '展开详情'}</span></button>
             </div>`;
 
-            chartDataList.push({
-                id: chartId,
-                navList: result.navList,
-                peakDate: dd.peakDate,
-                troughDate: dd.troughDate,
-                costChangePercent: result.costChangePercent,
-                recoveryDate: dd.recoveryDate,
-                hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent)
-            });
+            if (isExpanded) {
+                chartDataList.push({
+                    id: chartId,
+                    navList: result.navList,
+                    peakDate: dd.peakDate,
+                    troughDate: dd.troughDate,
+                    costChangePercent: result.costChangePercent,
+                    recoveryDate: dd.recoveryDate,
+                    hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent)
+                });
+            }
         }
 
         resultsEl.innerHTML = html;

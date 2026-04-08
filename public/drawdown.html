@@ -370,6 +370,11 @@
             border-color: rgba(0, 122, 255, 0.14);
             background: rgba(0, 122, 255, 0.08);
         }
+        .fund-toolbar-btn.active {
+            color: var(--ios-primary);
+            border-color: rgba(0, 122, 255, 0.14);
+            background: rgba(0, 122, 255, 0.08);
+        }
         .fund-sort-btn .sort-icon {
             font-size: 10px;
             opacity: 0.78;
@@ -1819,6 +1824,18 @@
                 if (normalizedA !== normalizedB) return normalizedB - normalizedA;
             }
 
+            if (sortMode === 'holding_profit_desc' || sortMode === 'holding_profit_asc') {
+                const aProfit = getHoldingProfit(a, quotes);
+                const bProfit = getHoldingProfit(b, quotes);
+                const normalizedA = Number.isFinite(aProfit) ? aProfit : -Infinity;
+                const normalizedB = Number.isFinite(bProfit) ? bProfit : -Infinity;
+                if (normalizedA !== normalizedB) {
+                    return sortMode === 'holding_profit_desc'
+                        ? normalizedB - normalizedA
+                        : normalizedA - normalizedB;
+                }
+            }
+
             return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
         });
     }
@@ -1827,6 +1844,17 @@
         const btnClass = isActive ? 'fund-sort-btn active' : 'fund-sort-btn';
         const btnText = isActive ? '今日涨跌' : '排序';
         return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()"><span class="sort-icon">↕</span><span class="sort-label">${btnText}</span></button>`;
+    }
+
+    function getHoldingProfitSortButtonHtml(sortMode) {
+        const isActive = sortMode === 'holding_profit_desc' || sortMode === 'holding_profit_asc';
+        const btnClass = isActive ? 'fund-toolbar-btn active' : 'fund-toolbar-btn';
+        const btnText = sortMode === 'holding_profit_desc'
+            ? '收益倒序'
+            : sortMode === 'holding_profit_asc'
+                ? '收益正序'
+                : '持仓总收益';
+        return `<button type="button" class="${btnClass}" onclick="toggleHoldingProfitSort()">${btnText}</button>`;
     }
 
     function isFundCardExpanded(fundCode, index) {
@@ -1861,6 +1889,17 @@
     function toggleAllFundCards() {
         const shouldCollapse = areAllFundCardsExpanded(latestFundAnalysisResults);
         setAllFundCardsExpanded(!shouldCollapse);
+    }
+
+    function toggleHoldingProfitSort() {
+        if (fundResultSortMode === 'drawdown' || fundResultSortMode === 'change') {
+            fundResultSortMode = 'holding_profit_desc';
+        } else if (fundResultSortMode === 'holding_profit_desc') {
+            fundResultSortMode = 'holding_profit_asc';
+        } else {
+            fundResultSortMode = 'drawdown';
+        }
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
     }
 
     function getFundExpandToggleHtml(results) {
@@ -1964,7 +2003,7 @@
 
             if (!result.success) {
                 html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
-                    ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+                    ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${getHoldingProfitSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
                     <div class="fund-code">${result.fundCode}</div>
                     <div class="error-msg">获取失败: ${result.error}</div>
                 </div>`;
@@ -2082,7 +2121,7 @@
             }
 
             html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
-                ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+                ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${getHoldingProfitSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
                 <div class="fund-header">
                     <div style="display: flex; flex-direction: column; align-items: flex-start;">
                         <div class="fund-code">${result.fundCode}</div>

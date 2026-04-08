@@ -334,6 +334,46 @@
             box-shadow: var(--shadow-md);
             overflow: hidden;
         }
+        .fund-result-card.has-sort-control {
+            position: relative;
+            padding-top: 56px;
+        }
+        .fund-sort-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid rgba(60, 60, 67, 0.08);
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: rgba(118, 118, 128, 0.08);
+            color: var(--ios-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+        }
+        .fund-sort-btn.active {
+            color: var(--ios-primary);
+            border-color: rgba(0, 122, 255, 0.14);
+            background: rgba(0, 122, 255, 0.08);
+        }
+        .fund-sort-btn .sort-icon {
+            font-size: 10px;
+            opacity: 0.78;
+            transform: translateY(-0.5px);
+        }
+        .fund-sort-btn .sort-label {
+            letter-spacing: 0.1px;
+        }
+        .fund-sort-btn:active {
+            transform: scale(0.96);
+        }
         .fund-header {
             display: grid;
             grid-template-columns: 1fr 85px 85px 85px;
@@ -410,14 +450,42 @@
 
         /* 净值曲线图 */
         .chart-container {
-            margin-top: 20px;
-            padding: 16px 8px 8px;
-            background: var(--ios-input-bg);
+            margin-top: 16px;
+            padding: 14px 12px 10px;
+            background: linear-gradient(180deg, rgba(118, 118, 128, 0.08) 0%, rgba(118, 118, 128, 0.05) 100%);
             border-radius: var(--radius-lg);
+            border: 1px solid rgba(52, 199, 89, 0.22);
+            box-shadow: 0 10px 24px rgba(52, 199, 89, 0.10);
+            transform: translateY(-1px);
+            transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+        }
+        .chart-container.highlighted {
+            border-color: rgba(52, 199, 89, 0.22);
+            box-shadow: 0 10px 24px rgba(52, 199, 89, 0.10);
+            transform: translateY(-1px);
+        }
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+            padding: 0 2px;
+        }
+        .chart-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ios-text);
+            letter-spacing: 0.2px;
+        }
+        .chart-meta {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            font-weight: 500;
         }
         .chart-container canvas {
             width: 100% !important;
-            height: 160px !important;
+            height: 128px !important;
         }
 
         /* --- 多选下拉框样式 (Glassmorphism) --- */
@@ -731,6 +799,10 @@
             cursor: pointer;
             transition: transform 0.2s ease, background 0.2s ease;
         }
+        .stat-item.clickable.active {
+            background: rgba(0, 122, 255, 0.12);
+            box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.14);
+        }
         .stat-item.clickable:active {
             transform: scale(0.96);
             background: rgba(0, 122, 255, 0.1);
@@ -1032,9 +1104,231 @@
     }
 
     let chartDataList = [];
+    let latestFundAnalysisResults = [];
+    let latestFundQuotes = {};
+    let fundResultSortMode = 'drawdown';
+    let chartInstances = {};
+    let chartFocusStates = {};
     
     function getCSSVariableValue(name) {
         return getComputedStyle(document.body).getPropertyValue(name).trim();
+    }
+
+    function getFundShortName(name) {
+        const compactName = (name || '').replace(/\s+/g, '');
+        if (!compactName) return '';
+        if (compactName.length <= 8) return compactName;
+        return compactName.slice(0, 8);
+    }
+
+    function getChartConfig(navList, peakDate, troughDate, costChangePercent = null, focusState = '', recoveryDate = '', hasRecoveryProgress = false) {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+        const textColor = isDark ? '#98989d' : '#8e8e93';
+        const firstNav = navList[0].nav;
+        const normalData = [];
+        const drawdownData = [];
+        const recoveryData = [];
+        const normalizeDate = (d) => (d || '').replace(/\//g, '-');
+        const pDate = normalizeDate(peakDate);
+        const tDate = normalizeDate(troughDate);
+        const rDate = normalizeDate(recoveryDate);
+        const isDrawdownFocused = focusState === 'drawdown' || !focusState;
+        const recoveryEndDate = rDate || normalizeDate(navList[navList.length - 1]?.date);
+        const shouldShowRecovery = Boolean(tDate && recoveryEndDate && hasRecoveryProgress);
+
+        navList.forEach((n) => {
+            const nDate = normalizeDate(n.date);
+            const isInRange = nDate >= pDate && nDate <= tDate;
+            const isRecoveryRange = shouldShowRecovery && nDate >= tDate && nDate <= recoveryEndDate;
+            const changePercent = ((n.nav / firstNav) - 1) * 100;
+            normalData.push(changePercent);
+            drawdownData.push(isInRange ? changePercent : null);
+            recoveryData.push(isRecoveryRange ? changePercent : null);
+        });
+
+        const datasets = [
+            {
+                label: '净值',
+                data: normalData,
+                borderColor: isDrawdownFocused ? 'rgba(0,122,255,0.55)' : '#007aff',
+                borderWidth: isDrawdownFocused ? 1.5 : 2,
+                fill: true,
+                backgroundColor: (context) => {
+                    const chart = context.chart;
+                    const {ctx, chartArea} = chart;
+                    if (!chartArea) return null;
+                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                    gradient.addColorStop(0, isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)');
+                    gradient.addColorStop(1, 'rgba(0,122,255,0)');
+                    return gradient;
+                },
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            },
+            {
+                label: '回撤段',
+                data: drawdownData,
+                borderColor: '#34c759',
+                borderWidth: isDrawdownFocused ? 4 : 3,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            }
+        ];
+
+        if (shouldShowRecovery) {
+            datasets.push({
+                label: '修复区间',
+                data: recoveryData,
+                borderColor: '#ff9500',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        }
+
+        if (costChangePercent !== null && costChangePercent !== undefined) {
+            const costData = new Array(navList.length).fill(costChangePercent);
+            datasets.push({
+                label: '持仓成本',
+                data: costData,
+                borderColor: '#ff9500',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        }
+
+        return {
+            data: {
+                labels: navList.map(n => n.date),
+                datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)',
+                        titleColor: isDark ? '#fff' : '#000',
+                        bodyColor: isDark ? '#ccc' : '#333',
+                        borderColor: gridColor,
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: ctx => {
+                                if (ctx.parsed.y !== null) {
+                                    let prefix = '';
+                                    if (ctx.datasetIndex === 1) {
+                                        prefix = '回撤 ';
+                                    } else if (shouldShowRecovery && ctx.datasetIndex === 2) {
+                                        prefix = '修复 ';
+                                    } else if ((shouldShowRecovery && ctx.datasetIndex === 3) || (!shouldShowRecovery && ctx.datasetIndex === 2 && costChangePercent !== null)) {
+                                        prefix = '持仓成本 ';
+                                        return prefix + ctx.parsed.y.toFixed(2) + '%';
+                                    } else {
+                                        prefix = '涨跌 ';
+                                    }
+                                    const sign = ctx.parsed.y >= 0 ? '+' : '';
+                                    return prefix + sign + ctx.parsed.y.toFixed(2) + '%';
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: textColor,
+                            maxTicksLimit: 4,
+                            font: { size: 10 },
+                            callback: function(value, index, ticks) {
+                                const label = this.getLabelForValue(value);
+                                if (!label) return '';
+                                if (index === 0) return label;
+                                const prevValue = ticks[index - 1].value;
+                                const prevLabel = this.getLabelForValue(prevValue);
+                                if (label.substring(0, 4) !== prevLabel.substring(0, 4)) return label;
+                                return label;
+                            }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        border: { display: false },
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            maxTicksLimit: 5,
+                            font: { size: 10 },
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function renderFundChart(item) {
+        const ctx = document.getElementById(item.id);
+        if (!ctx || !item.navList || item.navList.length === 0) return;
+        if (chartInstances[item.id]) {
+            chartInstances[item.id].destroy();
+        }
+        const chartConfig = getChartConfig(
+            item.navList,
+            item.peakDate,
+            item.troughDate,
+            item.costChangePercent,
+            chartFocusStates[item.id] || '',
+            item.recoveryDate,
+            item.hasRecoveryProgress
+        );
+        chartInstances[item.id] = new Chart(ctx, {
+            type: 'line',
+            data: chartConfig.data,
+            options: chartConfig.options
+        });
+    }
+
+    function focusFundChart(chartId, focusType = 'drawdown') {
+        const nextState = chartFocusStates[chartId] === focusType ? '' : focusType;
+        chartFocusStates = {};
+        document.querySelectorAll('.chart-container.highlighted').forEach(el => el.classList.remove('highlighted'));
+        document.querySelectorAll('.stat-item.clickable.active').forEach(el => el.classList.remove('active'));
+
+        if (!nextState) {
+            chartDataList.forEach(item => renderFundChart(item));
+            return;
+        }
+
+        chartFocusStates[chartId] = nextState;
+        const canvas = document.getElementById(chartId);
+        const chartContainer = canvas?.closest('.chart-container');
+        const activeStat = document.querySelector(`[data-chart-id="${chartId}"][data-focus="${focusType}"]`);
+        if (chartContainer) {
+            chartContainer.classList.add('highlighted');
+            chartContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        if (activeStat) activeStat.classList.add('active');
+        chartDataList.forEach(item => renderFundChart(item));
     }
     
     function drawCompareChart(canvasId, results) {
@@ -1042,7 +1336,7 @@
         if (!ctx) return;
 
         const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+        const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(60,60,67,0.08)';
         const textColor = isDark ? '#98989d' : '#8e8e93';
 
         const colors = [
@@ -1085,7 +1379,8 @@
             });
 
             datasets.push({
-                label: `${r.fundCode} ${r.fundName || ''}`,
+                label: `${r.fundCode} ${getFundShortName(r.fundName)}`,
+                fullLabel: `${r.fundCode} ${r.fundName || ''}`,
                 data: data,
                 borderColor: colors[idx % colors.length],
                 borderWidth: 2,
@@ -1132,7 +1427,8 @@
                             label: ctx => {
                                 if (ctx.parsed.y !== null) {
                                     const sign = ctx.parsed.y >= 0 ? '+' : '';
-                                    return ` ${ctx.dataset.label}: ${sign}${ctx.parsed.y.toFixed(2)}%`;
+                                    const displayLabel = ctx.dataset.fullLabel || ctx.dataset.label;
+                                    return ` ${displayLabel}: ${sign}${ctx.parsed.y.toFixed(2)}%`;
                                 }
                                 return '';
                             }
@@ -1181,161 +1477,15 @@
         });
     }
 
-    function drawChart(canvasId, navList, peakDate, troughDate, costChangePercent = null) {
-        if (!navList || navList.length === 0) return;
-    
-        const ctx = document.getElementById(canvasId);
-        if (!ctx) return;
-    
-        const isDark = document.body.getAttribute('data-theme') === 'dark';
-        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-        const textColor = isDark ? '#98989d' : '#8e8e93';
-    
-        const firstNav = navList[0].nav;
-        const normalData = [];
-        const drawdownData = [];
-        const normalizeDate = (d) => (d || '').replace(/\//g, '-');
-        const pDate = normalizeDate(peakDate);
-        const tDate = normalizeDate(troughDate);
-    
-        navList.forEach((n, i) => {
-            const nDate = normalizeDate(n.date);
-            const isInRange = nDate >= pDate && nDate <= tDate;
-            const changePercent = ((n.nav / firstNav) - 1) * 100;
-            normalData.push(changePercent);           
-            drawdownData.push(isInRange ? changePercent : null);  
-        });
-    
-        // 构建数据集数组
-        const datasets = [
-            {
-                label: '净值',
-                data: normalData,
-                borderColor: '#007aff',
-                borderWidth: 2,
-                fill: true,
-                backgroundColor: (context) => {
-                    const chart = context.chart;
-                    const {ctx, chartArea} = chart;
-                    if (!chartArea) return null;
-                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                    gradient.addColorStop(0, isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)');
-                    gradient.addColorStop(1, 'rgba(0,122,255,0)');
-                    return gradient;
-                },
-                tension: 0.4,
-                pointRadius: 0,
-                pointHitRadius: 15,
-                spanGaps: true
-            },
-            {
-                label: '回撤段',
-                data: drawdownData,
-                borderColor: '#ff3b30',
-                borderWidth: 3,
-                fill: false,
-                tension: 0.4,
-                pointRadius: 0,
-                pointHitRadius: 15,
-                spanGaps: true
-            }
-        ];
-    
-        // 如果有持仓成本，添加成本线
-        if (costChangePercent !== null && costChangePercent !== undefined) {
-            const costData = new Array(navList.length).fill(costChangePercent);
-            datasets.push({
-                label: '持仓成本',
-                data: costData,
-                borderColor: '#ff9500',
-                borderWidth: 2,
-                borderDash: [5, 5], // 虚线
-                fill: false,
-                tension: 0,
-                pointRadius: 0,
-                pointHitRadius: 15,
-                spanGaps: true
-            });
-        }
-    
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: navList.map(n => n.date), 
-                datasets: datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)',
-                        titleColor: isDark ? '#fff' : '#000',
-                        bodyColor: isDark ? '#ccc' : '#333',
-                        borderColor: gridColor,
-                        borderWidth: 1,
-                        padding: 10,
-                        callbacks: {
-                            label: ctx => {
-                                if (ctx.parsed.y !== null) {
-                                    let prefix = '';
-                                    if (ctx.datasetIndex === 1) {
-                                        prefix = '📉 回撤：';
-                                    } else if (ctx.datasetIndex === 2 && costChangePercent !== null) {
-                                        prefix = '💰 持仓成本：';
-                                        return prefix + ctx.parsed.y.toFixed(2) + '%';
-                                    } else {
-                                        prefix = '📈 涨跌：';
-                                    }
-                                    const sign = ctx.parsed.y >= 0 ? '+' : '';
-                                    return prefix + sign + ctx.parsed.y.toFixed(2) + '%';
-                                }
-                                return '';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        grid: { display: false },
-                        ticks: { 
-                            color: textColor, 
-                            maxTicksLimit: 6, 
-                            font: { size: 10 },
-                            callback: function(value, index, ticks) {
-                            const label = this.getLabelForValue(value); // 拿到 "2025-01-16"
-                            if (!label) return '';
-                            
-                            // 第一个点必须带年份
-                            if (index === 0) return label;
-
-                            // 拿到前一个显示的点的索引（注意这里要用 ticks 数组）
-                            const prevValue = ticks[index - 1].value;
-                            const prevLabel = this.getLabelForValue(prevValue);
-                            
-                            // 比较年份是否变化
-                            if (label.substring(0, 4) !== prevLabel.substring(0, 4)) {
-                                return label; // 跨年了，显示全称
-                            }
-                            return label; // 同一年，显示 MM-DD
-                            }
-                        }
-                    },
-                    y: {
-                        display: true,
-                        border: { display: false },
-                        grid: { color: gridColor },
-                        ticks: {
-                            color: textColor,
-                            font: { size: 10 },
-                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
-                        }
-                    }
-                }
-            }
+    function drawChart(canvasId, navList, peakDate, troughDate, costChangePercent = null, recoveryDate = '', hasRecoveryProgress = false) {
+        renderFundChart({
+            id: canvasId,
+            navList,
+            peakDate,
+            troughDate,
+            costChangePercent,
+            recoveryDate,
+            hasRecoveryProgress
         });
     }
 
@@ -1536,6 +1686,226 @@
         if (!matched) document.querySelectorAll('.days-preset-btn').forEach(btn => btn.classList.remove('active'));
     }
 
+    function getSortedFundResults(results, quotes, sortMode = fundResultSortMode) {
+        return [...results].sort((a, b) => {
+            if (!a.success) return 1;
+            if (!b.success) return -1;
+
+            if (sortMode === 'change') {
+                const aChange = Number(quotes?.[`${a.fundCode}:1`]?.change);
+                const bChange = Number(quotes?.[`${b.fundCode}:1`]?.change);
+                const normalizedA = Number.isFinite(aChange) ? aChange : -Infinity;
+                const normalizedB = Number.isFinite(bChange) ? bChange : -Infinity;
+                if (normalizedA !== normalizedB) return normalizedB - normalizedA;
+            }
+
+            return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
+        });
+    }
+
+    function getFundSortButtonHtml(isActive) {
+        const btnClass = isActive ? 'fund-sort-btn active' : 'fund-sort-btn';
+        const btnText = isActive ? '今日涨跌' : '排序';
+        return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()"><span class="sort-icon">↕</span><span class="sort-label">${btnText}</span></button>`;
+    }
+
+    function renderFundAnalysisResults(results, quotes) {
+        Object.values(chartInstances).forEach(chart => chart?.destroy());
+        chartInstances = {};
+        chartFocusStates = {};
+        chartDataList = [];
+        const resultsEl = document.getElementById('fund-results');
+        const sortedResults = getSortedFundResults(results, quotes, fundResultSortMode);
+        const successResults = sortedResults.filter(r => r.success);
+        let html = '';
+
+        if (successResults.length > 1) {
+            html += `<div class="compare-chart-container">
+                <div class="compare-chart-title">组合收益走势对比</div>
+                <canvas id="compare-chart"></canvas>
+            </div>`;
+        }
+
+        for (let index = 0; index < sortedResults.length; index++) {
+            const result = sortedResults[index];
+
+            if (!result.success) {
+                html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
+                    ${index === 0 ? getFundSortButtonHtml(fundResultSortMode === 'change') : ''}
+                    <div class="fund-code">${result.fundCode}</div>
+                    <div class="error-msg">获取失败: ${result.error}</div>
+                </div>`;
+                continue;
+            }
+
+            const dd = result.maxDrawdown;
+            const ret = result.returnData;
+            const isPositive = parseFloat(ret.returnPercent) >= 0;
+            const chartId = 'chart-' + result.fundCode;
+            const quote = quotes[`${result.fundCode}:1`];
+            
+            let yesterdayChangeHtml = '';
+            
+            if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
+                const change = quote.change;
+                const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                const sign = change >= 0 ? '+' : '';
+                let label = '净值涨跌';
+                if (quote.priceDate) {
+                    const today = new Date();
+                    const todayStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+                    if (quote.priceDate === todayStr) label = '今日涨跌';
+                    else if (quote.priceDate === yesterdayStr) label = '昨日涨跌';
+                }
+                yesterdayChangeHtml = `
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
+                        <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${sign}${change.toFixed(2)}%</span>
+                    </div>`;
+            }
+
+            const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+            let rightHeaderHtml = '';
+            let holdingYieldHtml = '';
+            
+            if (holdingFund && holdingFund.shares && holdingFund.shares > 0) {
+                const currentNav = quote?.price || 0;
+                if (currentNav > 0 && holdingFund.cost && holdingFund.cost > 0) {
+                    const holdingProfit = (currentNav - holdingFund.cost) * holdingFund.shares;
+                    const holdingYieldPercent = ((currentNav - holdingFund.cost) / holdingFund.cost) * 100;
+                    const profitColor = holdingProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                    const yieldColor = holdingYieldPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                    const profitSign = holdingProfit >= 0 ? '+' : '';
+                    const yieldSign = holdingYieldPercent >= 0 ? '+' : '';
+                    
+                    holdingYieldHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益率</span>
+                        <span style="color: ${yieldColor}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${yieldSign}${holdingYieldPercent.toFixed(2)}%</span>
+                    </div>`;
+                    
+                    rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益</span>
+                        <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${Math.round(holdingProfit)}</span>
+                    </div>`;
+                }
+            }
+
+            let recoveryHtml = '';
+            let peakRecoveryProfit = null;
+            let peakNav = null;
+            let peakNavDate = null;
+
+            if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList && result.navList.length > 0) {
+                let maxNav = 0;
+                let maxNavItem = null;
+                for (const item of result.navList) {
+                    if (item.nav && item.nav > maxNav) {
+                        maxNav = item.nav;
+                        maxNavItem = item;
+                    }
+                }
+                if (maxNavItem) {
+                    peakNav = maxNavItem.nav;
+                    peakNavDate = maxNavItem.date;
+                    peakRecoveryProfit = (peakNav - holdingFund.cost) * holdingFund.shares;
+                }
+            }
+
+            const modalData = JSON.stringify({
+                fundCode: result.fundCode,
+                fundName: result.fundName,
+                peakDate: dd.peakDate,
+                troughDate: dd.troughDate,
+                recoveryDate: dd.recoveryDate,
+                recoveryDays: dd.recoveryDays,
+                recovered: dd.recovered,
+                currentRecoveryPercent: dd.currentRecoveryPercent,
+                remainingRecoveryPercent: dd.remainingRecoveryPercent,
+                peakNav: peakNav,
+                peakNavDate: peakNavDate,
+                costBasis: holdingFund?.cost,
+                shares: holdingFund?.shares,
+                peakRecoveryProfit: peakRecoveryProfit
+            });
+
+            if (dd.recovered && dd.recoveryDate) {
+                recoveryHtml = `
+                    <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
+                        <div class="stat-label">修复周期</div>
+                        <div class="stat-value" style="color: var(--ios-text);">${dd.recoveryDays}天</div>
+                        <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
+                    </div>`;
+            } else if (dd.currentRecoveryPercent) {
+                recoveryHtml = `
+                    <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
+                        <div class="stat-label">修复进度</div>
+                        <div class="stat-value" style="color: var(--ios-orange);">+${dd.currentRecoveryPercent}%</div>
+                        <div class="stat-sub">仍需 +${dd.remainingRecoveryPercent}%</div>
+                    </div>`;
+            }
+
+            html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
+                ${index === 0 ? getFundSortButtonHtml(fundResultSortMode === 'change') : ''}
+                <div class="fund-header">
+                    <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                        <div class="fund-code">${result.fundCode}</div>
+                        <div class="fund-name" title="${result.fundName || ''}" style="max-width: 130px; font-size: 12px; line-height: 1.4; white-space: nowrap;">
+                            ${(result.fundName || '').replace(/\s+/g, '').slice(0, 6)}<br/>
+                            ${(result.fundName || '').replace(/\s+/g, '').length > 6 ? (result.fundName || '').replace(/\s+/g, '').slice(6, 12) : ''}
+                        </div>
+                    </div>
+                    ${yesterdayChangeHtml || '<div></div>'}
+                    ${holdingYieldHtml || '<div></div>'}
+                    ${rightHeaderHtml || '<div></div>'}
+                </div>
+                <div class="fund-stats">
+                    <div class="stat-item clickable" data-chart-id="${chartId}" data-focus="drawdown" onclick="focusFundChart('${chartId}', 'drawdown')">
+                        <div class="stat-label">最大回撤</div>
+                        <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
+                        <div class="stat-sub">${dd.peakDate.slice(5)}至${dd.troughDate.slice(5)}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">区间收益</div>
+                        <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
+                        <div class="stat-sub">共 ${result.dataRange.dataPoints} 交易日</div>
+                    </div>
+                    ${recoveryHtml}
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <div class="chart-title">区间走势</div>
+                        <div class="chart-meta">${result.dataRange.dataPoints} 个交易日</div>
+                    </div>
+                    <canvas id="${chartId}"></canvas>
+                </div>
+            </div>`;
+
+            chartDataList.push({
+                id: chartId,
+                navList: result.navList,
+                peakDate: dd.peakDate,
+                troughDate: dd.troughDate,
+                costChangePercent: result.costChangePercent,
+                recoveryDate: dd.recoveryDate,
+                hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent)
+            });
+        }
+
+        resultsEl.innerHTML = html;
+
+        if (successResults.length > 1) drawCompareChart('compare-chart', successResults);
+        chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent, item.recoveryDate, item.hasRecoveryProgress));
+    }
+
+    function toggleFundResultSort() {
+        if (!latestFundAnalysisResults.length) return;
+        fundResultSortMode = fundResultSortMode === 'drawdown' ? 'change' : 'drawdown';
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
     async function analyzeFundDrawdown() {
         chartDataList = [];
         const codesInput = document.getElementById('in-fund-codes').value.trim();
@@ -1564,6 +1934,8 @@
             const quotesRes = await fetch(window.API_BASE_URL + '/api/quotes?items=' + fundCodes.map(c => `${c}:1`).join(','));
             const quotesData = await quotesRes.json();
             const quotes = quotesData?.quotes || {};
+            latestFundQuotes = quotes;
+            fundResultSortMode = 'drawdown';
 
             const results = [];
             // 逐个分析基金
@@ -1594,191 +1966,7 @@
                     results.push({ success: false, fundCode: code, error: e.message });
                 }
             }
-
-            const sortedResults = [...results].sort((a, b) => {
-                if (!a.success) return 1;
-                if (!b.success) return -1;
-                return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
-            });
-
-            const successResults = sortedResults.filter(r => r.success);
-            let html = '';
-
-            if (successResults.length > 1) {
-                html += `<div class="compare-chart-container">
-                    <div class="compare-chart-title">组合收益走势对比</div>
-                    <canvas id="compare-chart"></canvas>
-                </div>`;
-            }
-
-            for (const result of sortedResults) {
-                if (!result.success) {
-                    html += `<div class="fund-result-card">
-                        <div class="fund-code">${result.fundCode}</div>
-                        <div class="error-msg">获取失败: ${result.error}</div>
-                    </div>`;
-                    continue;
-                }
-
-                const dd = result.maxDrawdown;
-                const ret = result.returnData;
-                const isPositive = parseFloat(ret.returnPercent) >= 0;
-                const chartId = 'chart-' + result.fundCode;
-                const estimate = estimates[result.fundCode];
-                const quote = quotes[`${result.fundCode}:1`];
-                
-                let yesterdayChangeHtml = '';
-                
-                if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
-                    const change = quote.change;
-                    const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                    const sign = change >= 0 ? '+' : '';
-                    let label = '净值涨跌';
-                    if (quote.priceDate) {
-                        const today = new Date();
-                        const todayStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
-                        const yesterday = new Date(today);
-                        yesterday.setDate(yesterday.getDate() - 1);
-                        const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
-                        if (quote.priceDate === todayStr) label = '今日涨跌';
-                        else if (quote.priceDate === yesterdayStr) label = '昨日涨跌';
-                    }
-                    yesterdayChangeHtml = `
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
-                            <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${sign}${change.toFixed(2)}%</span>
-                        </div>`;
-                }
-
-                const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
-                let rightHeaderHtml = '';
-                let holdingYieldHtml = '';
-                
-                if (holdingFund && holdingFund.shares && holdingFund.shares > 0) {
-                    const currentNav = quote?.price || 0;
-                    if (currentNav > 0 && holdingFund.cost && holdingFund.cost > 0) {
-                        const holdingProfit = (currentNav - holdingFund.cost) * holdingFund.shares;
-                        const holdingYieldPercent = ((currentNav - holdingFund.cost) / holdingFund.cost) * 100;
-                        const profitColor = holdingProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                        const yieldColor = holdingYieldPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                        const profitSign = holdingProfit >= 0 ? '+' : '';
-                        const yieldSign = holdingYieldPercent >= 0 ? '+' : '';
-                        
-                        // 横排文字
-                        holdingYieldHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
-                            <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益率</span>
-                            <span style="color: ${yieldColor}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${yieldSign}${holdingYieldPercent.toFixed(2)}%</span>
-                        </div>`;
-                        
-                        rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
-                            <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益</span>
-                            <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${Math.round(holdingProfit)}</span>
-                        </div>`;
-                    } else if (currentNav > 0 && estimate && !isNaN(estimate.estimateChange)) {
-                        const estProfit = (currentNav * (1 + estimate.estimateChange / 100) - currentNav) * holdingFund.shares;
-                        const color = estProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                        const sign = estProfit >= 0 ? '+' : '';
-                        rightHeaderHtml = `<span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; font-weight: 600;">预估收益</span>
-                        <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top:2px;">${sign}¥${estProfit.toFixed(2)}</span>`;
-                    }
-                }
-
-                let recoveryHtml = '';
-                let peakRecoveryProfit = null;
-                let peakNav = null;
-                let peakNavDate = null;
-
-                // 计算回到前高的收益（使用整个周期内的最高净值）
-                if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList && result.navList.length > 0) {
-                    // 从整个周期的 navList 中找出最高净值
-                    let maxNav = 0;
-                    let maxNavItem = null;
-                    for (const item of result.navList) {
-                        if (item.nav && item.nav > maxNav) {
-                            maxNav = item.nav;
-                            maxNavItem = item;
-                        }
-                    }
-                    if (maxNavItem) {
-                        peakNav = maxNavItem.nav;
-                        peakNavDate = maxNavItem.date;
-                        peakRecoveryProfit = (peakNav - holdingFund.cost) * holdingFund.shares;
-                    }
-                }
-
-                const modalData = JSON.stringify({
-                    fundCode: result.fundCode,
-                    fundName: result.fundName,
-                    peakDate: dd.peakDate,
-                    troughDate: dd.troughDate,
-                    recoveryDate: dd.recoveryDate,
-                    recoveryDays: dd.recoveryDays,
-                    recovered: dd.recovered,
-                    currentRecoveryPercent: dd.currentRecoveryPercent,
-                    remainingRecoveryPercent: dd.remainingRecoveryPercent,
-                    peakNav: peakNav,
-                    peakNavDate: peakNavDate,
-                    costBasis: holdingFund?.cost,
-                    shares: holdingFund?.shares,
-                    peakRecoveryProfit: peakRecoveryProfit
-                });
-
-                if (dd.recovered && dd.recoveryDate) {
-                    recoveryHtml = `
-                        <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
-                            <div class="stat-label">修复周期</div>
-                            <div class="stat-value" style="color: var(--ios-text);">${dd.recoveryDays}天</div>
-                            <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
-                        </div>`;
-                } else if (dd.currentRecoveryPercent) {
-                    recoveryHtml = `
-                        <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
-                            <div class="stat-label">修复进度</div>
-                            <div class="stat-value" style="color: var(--ios-orange);">+${dd.currentRecoveryPercent}%</div>
-                            <div class="stat-sub">仍需 +${dd.remainingRecoveryPercent}%</div>
-                        </div>`;
-                }
-
-                html += `<div class="fund-result-card">
-                    <div class="fund-header">
-                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
-                            <div class="fund-code">${result.fundCode}</div>
-                            <div class="fund-name" title="${result.fundName || ''}" style="max-width: 130px; font-size: 12px; line-height: 1.4; white-space: nowrap;">
-                                ${(result.fundName || '').replace(/\s+/g, '').slice(0, 6)}<br/>
-                                ${(result.fundName || '').replace(/\s+/g, '').length > 6 ? (result.fundName || '').replace(/\s+/g, '').slice(6, 12) : ''}
-                            </div>
-                        </div>
-                        ${yesterdayChangeHtml || '<div></div>'}
-                        ${holdingYieldHtml || '<div></div>'}
-                        ${rightHeaderHtml || '<div></div>'}
-                    </div>
-                    <div class="fund-stats">
-                        <div class="stat-item">
-                            <div class="stat-label">最大回撤</div>
-                            <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
-                            <div class="stat-sub">${dd.peakDate.slice(5)}至${dd.troughDate.slice(5)}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">区间收益</div>
-                            <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
-                            <div class="stat-sub">共 ${result.dataRange.dataPoints} 交易日</div>
-                        </div>
-                        ${recoveryHtml}
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="${chartId}"></canvas>
-                    </div>
-                </div>`;
-
-                chartDataList.push({
-                    id: chartId,
-                    navList: result.navList,
-                    peakDate: dd.peakDate,
-                    troughDate: dd.troughDate,
-                    costChangePercent: result.costChangePercent // 持仓成本相对于期初的涨跌幅
-                });
-            }
-            resultsEl.innerHTML = html;
+            latestFundAnalysisResults = results;
     
             // 更新进度到 100%
             updateLoadingProgress(100, '分析完成！', '正在渲染图表...');
@@ -1787,9 +1975,7 @@
             await new Promise(resolve => setTimeout(resolve, 500));
             hideLoading();
     
-            // 绘制图表
-            if (successResults.length > 1) drawCompareChart('compare-chart', successResults);
-            chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent));
+            renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
     
         } catch (e) {
             hideLoading();

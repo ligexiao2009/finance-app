@@ -1137,14 +1137,23 @@
         const recoveryEndDate = rDate || normalizeDate(navList[navList.length - 1]?.date);
         const shouldShowRecovery = Boolean(tDate && recoveryEndDate && hasRecoveryProgress);
 
-        navList.forEach((n) => {
+        navList.forEach((n, index) => {
             const nDate = normalizeDate(n.date);
             const isInRange = nDate >= pDate && nDate <= tDate;
             const isRecoveryRange = shouldShowRecovery && nDate >= tDate && nDate <= recoveryEndDate;
             const changePercent = ((n.nav / firstNav) - 1) * 100;
-            normalData.push(changePercent);
+            normalData.push((isInRange || isRecoveryRange) ? null : changePercent);
             drawdownData.push(isInRange ? changePercent : null);
             recoveryData.push(isRecoveryRange ? changePercent : null);
+
+            // Let the highlighted segment inherit one point from the previous section
+            // so the transition looks continuous instead of leaving a small visual gap.
+            if (isInRange && index > 0 && drawdownData[index - 1] === null) {
+                drawdownData[index - 1] = normalData[index - 1];
+            }
+            if (isRecoveryRange && index > 0 && recoveryData[index - 1] === null) {
+                recoveryData[index - 1] = drawdownData[index - 1] ?? normalData[index - 1];
+            }
         });
 
         const datasets = [
@@ -1166,7 +1175,7 @@
                 tension: 0.4,
                 pointRadius: 0,
                 pointHitRadius: 15,
-                spanGaps: true
+                spanGaps: false
             },
             {
                 label: '回撤段',

@@ -2075,6 +2075,8 @@
         </div>`;
     }
 
+    const MAX_COMPARE_CHART_FUNDS = 5;
+
     function renderFundAnalysisResults(results, quotes) {
         Object.values(chartInstances).forEach(chart => chart?.destroy());
         chartInstances = {};
@@ -2086,9 +2088,10 @@
             ? sortedResults.filter(result => !result.success || ((getHoldingProfit(result, quotes) ?? -Infinity) > 0))
             : sortedResults;
         const successResults = filteredResults.filter(r => r.success);
+        const shouldShowCompareChart = successResults.length > 1 && successResults.length <= MAX_COMPARE_CHART_FUNDS;
         let html = '';
 
-        if (successResults.length > 1) {
+        if (shouldShowCompareChart) {
             html += `<div class="compare-chart-container">
                 <div class="compare-chart-title">组合收益走势对比</div>
                 <canvas id="compare-chart"></canvas>
@@ -2264,7 +2267,7 @@
 
         resultsEl.innerHTML = html;
 
-        if (successResults.length > 1) drawCompareChart('compare-chart', successResults);
+        if (shouldShowCompareChart) drawCompareChart('compare-chart', successResults);
         chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent, item.recoveryDate, item.hasRecoveryProgress));
     }
 

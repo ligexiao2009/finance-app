@@ -617,9 +617,8 @@
             padding: 14px 12px 10px;
             background: linear-gradient(180deg, rgba(118, 118, 128, 0.08) 0%, rgba(118, 118, 128, 0.05) 100%);
             border-radius: var(--radius-lg);
-            border: 1px solid rgba(52, 199, 89, 0.22);
-            box-shadow: 0 10px 24px rgba(52, 199, 89, 0.10);
-            transform: translateY(-1px);
+            border: 1px solid rgba(60, 60, 67, 0.10);
+            box-shadow: 0 8px 18px rgba(60, 60, 67, 0.05);
             transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
         }
         .chart-container.highlighted {
@@ -1332,6 +1331,8 @@
     let chartInstances = {};
     let chartFocusStates = {};
     let chartItemsByFundCode = {};
+    let tradeHistoryByFundCode = {};
+    let tradeHistoryLoadingByFundCode = {};
     let expandedFundCards = {};
     const DEFAULT_EXPANDED_FUND_CARDS = 0;
     let fundResultFilterMode = '';
@@ -1358,11 +1359,73 @@
             troughDate: dd.troughDate,
             costChangePercent: result.costChangePercent,
             recoveryDate: dd.recoveryDate,
-            hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent)
+            hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent),
+            tradeRecords: tradeHistoryByFundCode[result.fundCode] || []
         };
     }
 
-    function getChartConfig(navList, peakDate, troughDate, costChangePercent = null, focusState = '', recoveryDate = '', hasRecoveryProgress = false) {
+    function getTradeRecordDate(record) {
+        if (!record) return '';
+        if (record.localDate) return String(record.localDate).slice(0, 10).replace(/\//g, '-');
+        if (record.createdAt) return String(record.createdAt).slice(0, 10).replace(/\//g, '-');
+        return '';
+    }
+
+    function getTradeRecordKind(type) {
+        const text = String(type || '').toLowerCase();
+        if (/(reduce|sell|redeem|赎回|卖)/.test(text)) return 'sell';
+        if (/(add|buy|申购|买)/.test(text)) return 'buy';
+        return 'buy';
+    }
+
+    function getTradeMarkerData(navList, tradeRecords = []) {
+        if (!Array.isArray(navList) || !navList.length || !Array.isArray(tradeRecords) || !tradeRecords.length) {
+            return [];
+        }
+
+        const labels = navList.map(n => String(n.date || '').replace(/\//g, '-'));
+        const firstNav = navList[0].nav;
+        const navByDate = new Map();
+        navList.forEach(item => {
+            navByDate.set(String(item.date || '').replace(/\//g, '-'), item.nav);
+        });
+
+        const groupedMarkers = new Map();
+
+        tradeRecords.forEach(record => {
+            const tradeDate = getTradeRecordDate(record);
+            const matchedDate = labels.find(label => label >= tradeDate);
+            if (!matchedDate) return;
+            const nav = navByDate.get(matchedDate);
+            if (!nav || !firstNav) return;
+
+            const existing = groupedMarkers.get(matchedDate);
+            if (existing) {
+                existing.records.push(record);
+                if (getTradeRecordKind(record.type) === 'sell') existing.kind = 'mixed';
+                return;
+            }
+
+            groupedMarkers.set(matchedDate, {
+                x: matchedDate,
+                y: ((nav / firstNav) - 1) * 100,
+                records: [record],
+                kind: getTradeRecordKind(record.type),
+                tradeDate
+            });
+        });
+
+        return Array.from(groupedMarkers.values()).map(marker => {
+            const kinds = new Set(marker.records.map(record => getTradeRecordKind(record.type)));
+            const finalKind = kinds.size > 1 ? 'mixed' : marker.kind;
+            return {
+                ...marker,
+                kind: finalKind
+            };
+        });
+    }
+
+    function getChartConfig(navList, peakDate, troughDate, costChangePercent = null, focusState = '', recoveryDate = '', hasRecoveryProgress = false, tradeRecords = []) {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
         const textColor = isDark ? '#98989d' : '#8e8e93';
@@ -1370,11 +1433,12 @@
         const normalData = [];
         const drawdownData = [];
         const recoveryData = [];
+        const tradeMarkerData = getTradeMarkerData(navList, tradeRecords);
         const normalizeDate = (d) => (d || '').replace(/\//g, '-');
         const pDate = normalizeDate(peakDate);
         const tDate = normalizeDate(troughDate);
         const rDate = normalizeDate(recoveryDate);
-        const isDrawdownFocused = focusState === 'drawdown' || !focusState;
+        const isDrawdownFocused = focusState === 'drawdown';
         const recoveryEndDate = rDate || normalizeDate(navList[navList.length - 1]?.date);
         const shouldShowRecovery = Boolean(tDate && recoveryEndDate && hasRecoveryProgress);
 
@@ -1383,16 +1447,16 @@
             const isInRange = nDate >= pDate && nDate <= tDate;
             const isRecoveryRange = shouldShowRecovery && nDate >= tDate && nDate <= recoveryEndDate;
             const changePercent = ((n.nav / firstNav) - 1) * 100;
-            normalData.push((isInRange || isRecoveryRange) ? null : changePercent);
-            drawdownData.push(isInRange ? changePercent : null);
-            recoveryData.push(isRecoveryRange ? changePercent : null);
+            normalData.push(isDrawdownFocused && (isInRange || isRecoveryRange) ? null : changePercent);
+            drawdownData.push(isDrawdownFocused && isInRange ? changePercent : null);
+            recoveryData.push(isDrawdownFocused && isRecoveryRange ? changePercent : null);
 
             // Let the highlighted segment inherit one point from the previous section
             // so the transition looks continuous instead of leaving a small visual gap.
-            if (isInRange && index > 0 && drawdownData[index - 1] === null) {
+            if (isDrawdownFocused && isInRange && index > 0 && drawdownData[index - 1] === null) {
                 drawdownData[index - 1] = normalData[index - 1];
             }
-            if (isRecoveryRange && index > 0 && recoveryData[index - 1] === null) {
+            if (isDrawdownFocused && isRecoveryRange && index > 0 && recoveryData[index - 1] === null) {
                 recoveryData[index - 1] = drawdownData[index - 1] ?? normalData[index - 1];
             }
         });
@@ -1400,9 +1464,10 @@
         const datasets = [
             {
                 label: '净值',
+                kind: 'nav',
                 data: normalData,
-                borderColor: isDrawdownFocused ? 'rgba(0,122,255,0.55)' : '#007aff',
-                borderWidth: isDrawdownFocused ? 1.5 : 2,
+                borderColor: '#007aff',
+                borderWidth: 2,
                 fill: true,
                 backgroundColor: (context) => {
                     const chart = context.chart;
@@ -1417,23 +1482,28 @@
                 pointRadius: 0,
                 pointHitRadius: 15,
                 spanGaps: false
-            },
-            {
+            }
+        ];
+
+        if (isDrawdownFocused) {
+            datasets.push({
                 label: '回撤段',
+                kind: 'drawdown',
                 data: drawdownData,
                 borderColor: '#34c759',
-                borderWidth: isDrawdownFocused ? 4 : 3,
+                borderWidth: 4,
                 fill: false,
                 tension: 0.4,
                 pointRadius: 0,
                 pointHitRadius: 15,
                 spanGaps: true
-            }
-        ];
+            });
+        }
 
-        if (shouldShowRecovery) {
+        if (isDrawdownFocused && shouldShowRecovery) {
             datasets.push({
                 label: '修复区间',
+                kind: 'recovery',
                 data: recoveryData,
                 borderColor: '#ff9500',
                 borderWidth: 3,
@@ -1449,6 +1519,7 @@
             const costData = new Array(navList.length).fill(costChangePercent);
             datasets.push({
                 label: '持仓成本',
+                kind: 'cost',
                 data: costData,
                 borderColor: '#ff9500',
                 borderWidth: 2,
@@ -1461,9 +1532,30 @@
             });
         }
 
+        if (tradeMarkerData.length) {
+            datasets.push({
+                label: '交易记录',
+                kind: 'trade',
+                data: tradeMarkerData,
+                showLine: false,
+                borderWidth: 0,
+                pointRadius: ctx => (ctx.raw?.records?.length || 1) > 1 ? 4.2 : 3.4,
+                pointHoverRadius: 6,
+                pointHitRadius: 16,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: ctx => {
+                    if (ctx.raw?.kind === 'sell') return '#34c759';
+                    if (ctx.raw?.kind === 'mixed') return '#8e8e93';
+                    return '#0a66d9';
+                },
+                pointBorderWidth: ctx => (ctx.raw?.records?.length || 1) > 1 ? 2.2 : 1.8,
+                pointStyle: 'circle'
+            });
+        }
+
         return {
             data: {
-                labels: navList.map(n => n.date),
+                labels: navList.map(n => normalizeDate(n.date)),
                 datasets
             },
             options: {
@@ -1480,14 +1572,31 @@
                         borderWidth: 1,
                         padding: 10,
                         callbacks: {
+                            title: items => {
+                                if (!items?.length) return '';
+                                const raw = items[0].raw;
+                                if (raw?.records?.length) return raw.tradeDate || items[0].label || '';
+                                return items[0].label || '';
+                            },
                             label: ctx => {
+                                if (ctx.dataset.kind === 'trade' && ctx.raw?.records?.length) {
+                                    const records = ctx.raw.records;
+                                    const buyCount = records.filter(record => getTradeRecordKind(record.type) === 'buy').length;
+                                    const sellCount = records.length - buyCount;
+                                    const summary = [];
+                                    if (buyCount) summary.push(`加仓 ${buyCount} 笔`);
+                                    if (sellCount) summary.push(`减仓 ${sellCount} 笔`);
+                                    const totalAmount = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+                                    if (totalAmount) summary.push(`金额 ${Math.round(totalAmount)}`);
+                                    return summary.join(' · ');
+                                }
                                 if (ctx.parsed.y !== null) {
                                     let prefix = '';
-                                    if (ctx.datasetIndex === 1) {
+                                    if (ctx.dataset.kind === 'drawdown') {
                                         prefix = '回撤 ';
-                                    } else if (shouldShowRecovery && ctx.datasetIndex === 2) {
+                                    } else if (ctx.dataset.kind === 'recovery') {
                                         prefix = '修复 ';
-                                    } else if ((shouldShowRecovery && ctx.datasetIndex === 3) || (!shouldShowRecovery && ctx.datasetIndex === 2 && costChangePercent !== null)) {
+                                    } else if (ctx.dataset.kind === 'cost') {
                                         prefix = '持仓成本 ';
                                         return prefix + ctx.parsed.y.toFixed(2) + '%';
                                     } else {
@@ -1549,12 +1658,54 @@
             item.costChangePercent,
             chartFocusStates[item.id] || '',
             item.recoveryDate,
-            item.hasRecoveryProgress
+            item.hasRecoveryProgress,
+            item.tradeRecords || []
         );
         chartInstances[item.id] = new Chart(ctx, {
             type: 'line',
             data: chartConfig.data,
             options: chartConfig.options
+        });
+    }
+
+    async function ensureFundTradeHistory(fundCode) {
+        if (tradeHistoryByFundCode[fundCode]) return tradeHistoryByFundCode[fundCode];
+        if (tradeHistoryLoadingByFundCode[fundCode]) return tradeHistoryLoadingByFundCode[fundCode];
+
+        const holdingFund = holdingFunds.find(f => f.code === fundCode);
+        if (!holdingFund?.id) {
+            tradeHistoryByFundCode[fundCode] = [];
+            return [];
+        }
+
+        tradeHistoryLoadingByFundCode[fundCode] = fetch(window.API_BASE_URL + '/api/trade-history/' + holdingFund.id)
+            .then(res => res.json())
+            .then(data => {
+                const records = Array.isArray(data?.records) ? data.records : [];
+                tradeHistoryByFundCode[fundCode] = records;
+                return records;
+            })
+            .catch(error => {
+                console.error('加载交易历史失败:', fundCode, error);
+                tradeHistoryByFundCode[fundCode] = [];
+                return [];
+            })
+            .finally(() => {
+                delete tradeHistoryLoadingByFundCode[fundCode];
+            });
+
+        return tradeHistoryLoadingByFundCode[fundCode];
+    }
+
+    function hydrateExpandedFundTrades(items = []) {
+        items.forEach(item => {
+            if (!item?.fundCode || (Array.isArray(item.tradeRecords) && item.tradeRecords.length)) return;
+            ensureFundTradeHistory(item.fundCode).then(records => {
+                item.tradeRecords = records;
+                if (chartInstances[item.id]) {
+                    renderFundChart(item);
+                }
+            });
         });
     }
 
@@ -1727,7 +1878,7 @@
         });
     }
 
-    function drawChart(canvasId, navList, peakDate, troughDate, costChangePercent = null, recoveryDate = '', hasRecoveryProgress = false) {
+    function drawChart(canvasId, navList, peakDate, troughDate, costChangePercent = null, recoveryDate = '', hasRecoveryProgress = false, tradeRecords = []) {
         renderFundChart({
             id: canvasId,
             navList,
@@ -1735,7 +1886,8 @@
             troughDate,
             costChangePercent,
             recoveryDate,
-            hasRecoveryProgress
+            hasRecoveryProgress,
+            tradeRecords
         });
     }
 
@@ -1999,7 +2151,7 @@
         return index < DEFAULT_EXPANDED_FUND_CARDS;
     }
 
-    function toggleFundCard(fundCode) {
+    async function toggleFundCard(fundCode) {
         const cardEl = document.querySelector(`[data-fund-code="${fundCode}"]`);
         const currentExpanded = cardEl ? !cardEl.classList.contains('collapsed') : isFundCardExpanded(fundCode, DEFAULT_EXPANDED_FUND_CARDS);
         const nextExpanded = !currentExpanded;
@@ -2026,6 +2178,7 @@
             if (!chartDataList.some(item => item.fundCode === fundCode)) {
                 chartDataList.push(chartItem);
             }
+            chartItem.tradeRecords = await ensureFundTradeHistory(fundCode);
             drawChart(
                 chartItem.id,
                 chartItem.navList,
@@ -2033,7 +2186,8 @@
                 chartItem.troughDate,
                 chartItem.costChangePercent,
                 chartItem.recoveryDate,
-                chartItem.hasRecoveryProgress
+                chartItem.hasRecoveryProgress,
+                chartItem.tradeRecords
             );
             return;
         }
@@ -2362,7 +2516,8 @@
         resultsEl.innerHTML = html;
 
         if (shouldShowCompareChart) drawCompareChart('compare-chart', successResults);
-        chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent, item.recoveryDate, item.hasRecoveryProgress));
+        chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent, item.recoveryDate, item.hasRecoveryProgress, item.tradeRecords || []));
+        hydrateExpandedFundTrades(chartDataList);
     }
 
     function toggleFundResultSort() {

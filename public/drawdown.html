@@ -342,8 +342,15 @@
             overflow: hidden;
             position: relative;
         }
+        .fund-result-card.collapsed {
+            padding-top: 16px;
+            padding-bottom: 12px;
+        }
         .fund-result-card.has-sort-control {
             padding-top: 56px;
+        }
+        .fund-result-card.has-sort-control.collapsed {
+            padding-top: 52px;
         }
         .fund-top-actions {
             position: absolute;
@@ -406,6 +413,9 @@
             padding-bottom: 0;
             border-bottom: none;
         }
+        .fund-result-card.collapsed .fund-meta {
+            gap: 4px;
+        }
         .fund-code {
             font-size: 18px;
             font-weight: 700;
@@ -422,6 +432,10 @@
             color: var(--ios-secondary);
             margin-top: 4px;
             font-weight: 500;
+        }
+        .fund-result-card.collapsed .fund-name {
+            margin-top: 2px;
+            line-height: 1.28;
         }
         .fund-corner-ribbon {
             position: absolute;
@@ -471,6 +485,10 @@
             cursor: pointer;
             padding: 4px 0 0;
             text-align: right;
+        }
+        .fund-result-card.collapsed .fund-card-toggle {
+            margin-top: 8px;
+            padding-top: 0;
         }
         .fund-card-toggle .toggle-icon {
             font-size: 10px;
@@ -1402,7 +1420,6 @@
             const existing = groupedMarkers.get(matchedDate);
             if (existing) {
                 existing.records.push(record);
-                if (getTradeRecordKind(record.type) === 'sell') existing.kind = 'mixed';
                 return;
             }
 

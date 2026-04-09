@@ -189,6 +189,9 @@
             margin-bottom: 20px;
             overflow: hidden;
         }
+        .input-group.fund-input-group {
+            overflow: visible;
+        }
         .row {
             display: flex;
             align-items: center;
@@ -225,27 +228,31 @@
         /* 快捷操作区 (全选/清空) */
         .quick-actions {
             display: flex;
-            justify-content: space-between;
-            padding: 12px 20px;
-            background: var(--ios-bg);
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 10px 20px 14px;
+            background: var(--ios-card);
             border-bottom: 0.5px solid var(--ios-border);
         }
         .quick-btn {
-            flex: 1;
-            background: var(--ios-input-bg);
+            background: rgba(0, 122, 255, 0.08);
             color: var(--ios-primary);
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+            border: 1px solid rgba(0, 122, 255, 0.10);
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
             text-align: center;
+            line-height: 1;
         }
-        .quick-btn:first-child { margin-right: 12px; }
         .quick-btn:active { transform: scale(0.96); opacity: 0.8; }
-        .quick-btn.clear { color: var(--ios-text); }
+        .quick-btn.clear {
+            color: var(--ios-secondary);
+            background: rgba(118, 118, 128, 0.08);
+            border-color: rgba(60, 60, 67, 0.08);
+        }
 
         /* --- 按钮 --- */
         .btn-clear {
@@ -473,7 +480,7 @@
         }
         .analysis-summary-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 10px;
         }
         .analysis-summary-item {
@@ -497,19 +504,28 @@
             font-size: 11px;
             color: var(--ios-secondary);
             font-weight: 600;
+            line-height: 1.35;
+            word-break: break-word;
         }
         .analysis-summary-value {
             margin-top: 6px;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 800;
             color: var(--ios-text);
             font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+            word-break: break-word;
         }
         .analysis-summary-value.up {
             color: var(--ios-red);
         }
         .analysis-summary-value.down {
             color: var(--ios-green);
+        }
+        @media (min-width: 380px) {
+            .analysis-summary-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
         }
         .stat-item {
             text-align: center;
@@ -604,30 +620,80 @@
         /* --- 多选下拉框样式 (Glassmorphism) --- */
         .fund-select-wrapper {
             position: relative;
-            width: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            min-width: 250px;
+        }
+        .fund-select-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            width: 126px;
+            flex-shrink: 0;
         }
         .fund-select-display {
             background: transparent;
             border: none;
-            color: var(--ios-primary);
-            font-size: 16px;
-            text-align: right;
+            color: var(--ios-text);
+            font-size: 15px;
             width: 100%;
             outline: none;
             font-family: inherit;
             font-weight: 600;
             cursor: pointer;
             padding: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
         }
-        .fund-select-display::after {
-            content: "›";
-            margin-left: 6px;
-            font-size: 18px;
-            position: relative;
-            top: -1px;
+        .fund-select-text {
+            color: var(--ios-primary);
+        }
+        .fund-select-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(0, 122, 255, 0.10);
+            color: var(--ios-primary);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .fund-select-chevron {
+            color: var(--ios-secondary);
+            font-size: 16px;
+            line-height: 1;
+            transform: translateY(-0.5px);
+        }
+        .fund-inline-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(60, 60, 67, 0.08);
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: rgba(0, 122, 255, 0.08);
+            color: var(--ios-primary);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .fund-inline-btn:active {
+            transform: scale(0.96);
+            opacity: 0.85;
+        }
+        .fund-inline-btn.clear {
+            background: rgba(118, 118, 128, 0.08);
+            border-color: rgba(60, 60, 67, 0.08);
+            color: var(--ios-secondary);
         }
         .fund-dropdown {
             position: absolute;
@@ -971,11 +1037,15 @@
     </div>
 
     <div id="tab-fund" class="tool-content active">
-        <div class="input-group">
+        <div class="input-group fund-input-group">
             <div class="row">
                 <label>选择基金</label>
                 <div class="fund-select-wrapper">
-                    <button type="button" class="fund-select-display" id="fund-select-display">点击选择</button>
+                    <button type="button" class="fund-inline-btn" onclick="event.stopPropagation(); selectAllFunds();">全选</button>
+                    <button type="button" class="fund-inline-btn clear" onclick="event.stopPropagation(); clearFundSelection();">清空</button>
+                    <div class="fund-select-status">
+                        <button type="button" class="fund-select-display" id="fund-select-display">点击选择</button>
+                    </div>
                     <input type="hidden" id="in-fund-codes">
                     <div class="fund-dropdown" id="fund-dropdown">
                         <div class="fund-search-box">
@@ -985,11 +1055,6 @@
                     </div>
                 </div>
             </div>
-            <div class="quick-actions">
-                <button type="button" class="quick-btn" onclick="selectAllFunds()">全选持仓</button>
-                <button type="button" class="quick-btn clear" onclick="clearFundSelection()">清空选择</button>
-            </div>
-            
             <div class="row">
                 <label>分析周期</label>
                 <input type="number" id="in-fund-days" placeholder="90" value="90" oninput="onDaysInputChange()">
@@ -1776,13 +1841,13 @@
         document.getElementById('in-fund-codes').value = Array.from(selectedFundCodes).join(',');
         const displayBtn = document.getElementById('fund-select-display');
         if (selectedFundCodes.size === 0) {
-            displayBtn.textContent = '点击选择';
+            displayBtn.innerHTML = '<span class="fund-select-text">点击选择</span><span class="fund-select-chevron">›</span>';
         } else if (selectedFundCodes.size === 1) {
             const code = Array.from(selectedFundCodes)[0];
             const fund = holdingFunds.find(f => f.code === code);
-            displayBtn.textContent = fund ? fund.code : code;
+            displayBtn.innerHTML = `<span class="fund-select-pill">${fund ? fund.code : code}</span><span class="fund-select-chevron">›</span>`;
         } else {
-            displayBtn.textContent = `已选 ${selectedFundCodes.size} 支`;
+            displayBtn.innerHTML = `<span class="fund-select-pill">已选 ${selectedFundCodes.size} 支</span><span class="fund-select-chevron">›</span>`;
         }
 
         document.querySelectorAll('.fund-option').forEach(opt => {
@@ -1816,12 +1881,16 @@
             if (!a.success) return 1;
             if (!b.success) return -1;
 
-            if (sortMode === 'change') {
+            if (sortMode === 'change_desc' || sortMode === 'change_asc') {
                 const aChange = Number(quotes?.[`${a.fundCode}:1`]?.change);
                 const bChange = Number(quotes?.[`${b.fundCode}:1`]?.change);
                 const normalizedA = Number.isFinite(aChange) ? aChange : -Infinity;
                 const normalizedB = Number.isFinite(bChange) ? bChange : -Infinity;
-                if (normalizedA !== normalizedB) return normalizedB - normalizedA;
+                if (normalizedA !== normalizedB) {
+                    return sortMode === 'change_desc'
+                        ? normalizedB - normalizedA
+                        : normalizedA - normalizedB;
+                }
             }
 
             if (sortMode === 'holding_profit_desc' || sortMode === 'holding_profit_asc') {
@@ -1840,9 +1909,14 @@
         });
     }
 
-    function getFundSortButtonHtml(isActive) {
+    function getFundSortButtonHtml(sortMode) {
+        const isActive = sortMode === 'change_desc' || sortMode === 'change_asc';
         const btnClass = isActive ? 'fund-sort-btn active' : 'fund-sort-btn';
-        const btnText = isActive ? '今日涨跌' : '排序';
+        const btnText = sortMode === 'change_desc'
+            ? '涨跌倒序'
+            : sortMode === 'change_asc'
+                ? '涨跌正序'
+                : '今日涨跌';
         return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()"><span class="sort-icon">↕</span><span class="sort-label">${btnText}</span></button>`;
     }
 
@@ -1905,6 +1979,26 @@
         return (currentNav - holdingFund.cost) * holdingFund.shares;
     }
 
+    function getFundChangeLabel(fundCode, quotePriceDate) {
+        if (!quotePriceDate) return '净值涨跌';
+
+        const holdingFund = holdingFunds.find(f => f.code === fundCode);
+        if (holdingFund?.isOverseas && quotePriceDate.length === 8) {
+            return `${quotePriceDate.slice(4, 6)}-${quotePriceDate.slice(6, 8)}涨跌`;
+        }
+
+        const today = new Date();
+        const todayStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+
+        if (quotePriceDate === todayStr) return '今日涨跌';
+        if (quotePriceDate === yesterdayStr) return '昨日涨跌';
+        if (quotePriceDate.length === 8) return `${quotePriceDate.slice(4, 6)}-${quotePriceDate.slice(6, 8)}涨跌`;
+        return '净值涨跌';
+    }
+
     function toggleFundResultFilter(mode) {
         fundResultFilterMode = fundResultFilterMode === mode ? '' : mode;
         renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
@@ -1915,7 +2009,6 @@
         if (!successResults.length) return '';
 
         let upCount = 0;
-        let unrecoveredCount = 0;
         let positiveHoldingCount = 0;
         let totalHoldingProfit = 0;
         let hasHoldingProfit = false;
@@ -1923,7 +2016,6 @@
         successResults.forEach(result => {
             const quoteChange = Number(quotes?.[`${result.fundCode}:1`]?.change);
             if (Number.isFinite(quoteChange) && quoteChange > 0) upCount += 1;
-            if (!result.maxDrawdown?.recovered) unrecoveredCount += 1;
 
             const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
             const holdingProfit = getHoldingProfit(result, quotes);
@@ -1948,10 +2040,6 @@
                 <div class="analysis-summary-item">
                     <div class="analysis-summary-label">今日上涨</div>
                     <div class="analysis-summary-value up">${upCount}</div>
-                </div>
-                <div class="analysis-summary-item">
-                    <div class="analysis-summary-label">未修复</div>
-                    <div class="analysis-summary-value down">${unrecoveredCount}</div>
                 </div>
                 <div class="analysis-summary-item clickable${fundResultFilterMode === 'positive_holding' ? ' active' : ''}" onclick="toggleFundResultFilter('positive_holding')">
                     <div class="analysis-summary-label">持仓盈利</div>
@@ -1992,7 +2080,7 @@
 
             if (!result.success) {
                 html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
-                    ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+                    ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
                     <div class="fund-code">${result.fundCode}</div>
                     <div class="error-msg">获取失败: ${result.error}</div>
                 </div>`;
@@ -2012,16 +2100,7 @@
                 const change = quote.change;
                 const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
                 const sign = change >= 0 ? '+' : '';
-                let label = '净值涨跌';
-                if (quote.priceDate) {
-                    const today = new Date();
-                    const todayStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
-                    const yesterday = new Date(today);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
-                    if (quote.priceDate === todayStr) label = '今日涨跌';
-                    else if (quote.priceDate === yesterdayStr) label = '昨日涨跌';
-                }
+                const label = getFundChangeLabel(result.fundCode, quote.priceDate);
                 yesterdayChangeHtml = `
                     <div style="display: flex; flex-direction: column; align-items: center;">
                         <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
@@ -2110,7 +2189,7 @@
             }
 
             html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
-                ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode === 'change')}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+                ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
                 <div class="fund-header">
                     <div style="display: flex; flex-direction: column; align-items: flex-start;">
                         <div class="fund-code">${result.fundCode}</div>
@@ -2169,7 +2248,13 @@
 
     function toggleFundResultSort() {
         if (!latestFundAnalysisResults.length) return;
-        fundResultSortMode = fundResultSortMode === 'drawdown' ? 'change' : 'drawdown';
+        if (fundResultSortMode === 'drawdown' || fundResultSortMode === 'holding_profit_desc' || fundResultSortMode === 'holding_profit_asc') {
+            fundResultSortMode = 'change_desc';
+        } else if (fundResultSortMode === 'change_desc') {
+            fundResultSortMode = 'change_asc';
+        } else {
+            fundResultSortMode = 'drawdown';
+        }
         renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
     }
 

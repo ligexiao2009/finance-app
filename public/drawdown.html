@@ -340,9 +340,9 @@
             margin-bottom: 16px;
             box-shadow: var(--shadow-md);
             overflow: hidden;
+            position: relative;
         }
         .fund-result-card.has-sort-control {
-            position: relative;
             padding-top: 56px;
         }
         .fund-top-actions {
@@ -411,11 +411,45 @@
             font-weight: 700;
             letter-spacing: -0.3px;
         }
+        .fund-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
         .fund-name {
             font-size: 13px;
             color: var(--ios-secondary);
             margin-top: 4px;
             font-weight: 500;
+        }
+        .fund-corner-ribbon {
+            position: absolute;
+            top: 12px;
+            right: -42px;
+            width: 120px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(35deg);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            box-shadow: 0 6px 14px rgba(255, 149, 0, 0.08);
+            pointer-events: none;
+        }
+        .fund-corner-ribbon.with-controls {
+            top: 42px;
+        }
+        .fund-corner-ribbon.recovering {
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.14), rgba(255, 149, 0, 0.24));
+            color: #a35a00;
+        }
+        .fund-corner-ribbon.recovered {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.14), rgba(0, 122, 255, 0.22));
+            color: #0b63ce;
+            box-shadow: 0 6px 14px rgba(0, 122, 255, 0.08);
         }
         .fund-stats {
             display: grid;
@@ -2163,6 +2197,7 @@
             let peakRecoveryProfit = null;
             let peakNav = null;
             let peakNavDate = null;
+            let ribbonHtml = '';
 
             if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList && result.navList.length > 0) {
                 let maxNav = 0;
@@ -2198,6 +2233,7 @@
             });
 
             if (dd.recovered && dd.recoveryDate) {
+                ribbonHtml = index === 0 ? '' : '<div class="fund-corner-ribbon recovered">已修复</div>';
                 recoveryHtml = `
                     <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
                         <div class="stat-label">修复周期</div>
@@ -2205,6 +2241,7 @@
                         <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
                     </div>`;
             } else if (dd.currentRecoveryPercent) {
+                ribbonHtml = index === 0 ? '' : '<div class="fund-corner-ribbon recovering">修复中</div>';
                 recoveryHtml = `
                     <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
                         <div class="stat-label">修复进度</div>
@@ -2215,8 +2252,9 @@
 
             html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
                 ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+                ${ribbonHtml}
                 <div class="fund-header">
-                    <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                    <div class="fund-meta">
                         <div class="fund-code">${result.fundCode}</div>
                         <div class="fund-name" title="${result.fundName || ''}" style="max-width: 130px; font-size: 12px; line-height: 1.4; white-space: nowrap;">
                             ${(result.fundName || '').replace(/\s+/g, '').slice(0, 6)}<br/>

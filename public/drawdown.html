@@ -1425,6 +1425,12 @@
         });
     }
 
+    function getTradeSpotlightMarker(markers = []) {
+        if (!Array.isArray(markers) || !markers.length) return null;
+        const sorted = [...markers].sort((a, b) => String(b.tradeDate || '').localeCompare(String(a.tradeDate || '')));
+        return sorted.find(marker => marker.kind === 'buy') || sorted[0];
+    }
+
     function getChartConfig(navList, peakDate, troughDate, costChangePercent = null, focusState = '', recoveryDate = '', hasRecoveryProgress = false, tradeRecords = []) {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
@@ -1539,25 +1545,82 @@
                 data: tradeMarkerData,
                 showLine: false,
                 borderWidth: 0,
-                pointRadius: ctx => (ctx.raw?.records?.length || 1) > 1 ? 4.2 : 3.4,
-                pointHoverRadius: 6,
-                pointHitRadius: 16,
-                pointBackgroundColor: '#ffffff',
+                pointRadius: ctx => (ctx.raw?.records?.length || 1) > 1 ? 3.1 : 2.5,
+                pointHoverRadius: 5,
+                pointHitRadius: 14,
+                pointBackgroundColor: 'rgba(255,255,255,0.96)',
                 pointBorderColor: ctx => {
                     if (ctx.raw?.kind === 'sell') return '#34c759';
                     if (ctx.raw?.kind === 'mixed') return '#8e8e93';
-                    return '#0a66d9';
+                    return '#ff5a5f';
                 },
-                pointBorderWidth: ctx => (ctx.raw?.records?.length || 1) > 1 ? 2.2 : 1.8,
+                pointBorderWidth: ctx => (ctx.raw?.records?.length || 1) > 1 ? 1.8 : 1.4,
                 pointStyle: 'circle'
             });
         }
+
+        const spotlightTrade = getTradeSpotlightMarker(tradeMarkerData);
+        const spotlightPlugin = spotlightTrade ? {
+            id: `trade-spotlight-${spotlightTrade.x}-${spotlightTrade.kind}`,
+            afterDatasetsDraw(chart) {
+                const { ctx, chartArea, scales } = chart;
+                if (!chartArea || !scales.x || !scales.y) return;
+                const x = scales.x.getPixelForValue(spotlightTrade.x);
+                const y = scales.y.getPixelForValue(spotlightTrade.y);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+                const label = spotlightTrade.kind === 'sell' ? '减仓' : spotlightTrade.kind === 'mixed' ? '交易' : '加仓';
+                const bgColor = spotlightTrade.kind === 'sell' ? '#34c759' : spotlightTrade.kind === 'mixed' ? '#8e8e93' : '#ff5a5f';
+                const textColor = '#ffffff';
+                const fontSize = 10;
+                const padX = 8;
+                const padY = 5;
+                const radius = 6;
+                const pointerH = 5;
+                ctx.save();
+                ctx.font = `600 ${fontSize}px "SF Pro Display", sans-serif`;
+                const boxW = ctx.measureText(label).width + padX * 2;
+                const boxH = fontSize + padY * 2;
+                const prefersRight = x < chartArea.left + (chartArea.right - chartArea.left) * 0.65;
+                let boxX = prefersRight ? x + 7 : x - boxW - 7;
+                boxX = Math.max(chartArea.left + 4, Math.min(boxX, chartArea.right - boxW - 4));
+                let boxY = Math.max(chartArea.top + 4, y - boxH - 14);
+                const pointerX = Math.max(boxX + 10, Math.min(x, boxX + boxW - 10));
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = bgColor;
+
+                ctx.beginPath();
+                ctx.moveTo(boxX + radius, boxY);
+                ctx.lineTo(boxX + boxW - radius, boxY);
+                ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + radius);
+                ctx.lineTo(boxX + boxW, boxY + boxH - radius);
+                ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - radius, boxY + boxH);
+                ctx.lineTo(pointerX + 5, boxY + boxH);
+                ctx.lineTo(x, boxY + boxH + pointerH);
+                ctx.lineTo(pointerX - 5, boxY + boxH);
+                ctx.lineTo(boxX + radius, boxY + boxH);
+                ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - radius);
+                ctx.lineTo(boxX, boxY + radius);
+                ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+                ctx.closePath();
+                ctx.shadowColor = 'rgba(0,0,0,0.10)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 2;
+                ctx.fill();
+
+                ctx.shadowColor = 'transparent';
+                ctx.fillStyle = textColor;
+                ctx.fillText(label, boxX + padX, boxY + boxH / 2 + 0.5);
+                ctx.restore();
+            }
+        } : null;
 
         return {
             data: {
                 labels: navList.map(n => normalizeDate(n.date)),
                 datasets
             },
+            plugins: spotlightPlugin ? [spotlightPlugin] : [],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -1664,7 +1727,8 @@
         chartInstances[item.id] = new Chart(ctx, {
             type: 'line',
             data: chartConfig.data,
-            options: chartConfig.options
+            options: chartConfig.options,
+            plugins: chartConfig.plugins || []
         });
     }
 

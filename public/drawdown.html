@@ -686,6 +686,11 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
+        .fund-inline-btn.active {
+            background: rgba(0, 122, 255, 0.12);
+            border-color: rgba(0, 122, 255, 0.14);
+            color: var(--ios-primary);
+        }
         .fund-inline-btn:active {
             transform: scale(0.96);
             opacity: 0.85;
@@ -694,6 +699,11 @@
             background: rgba(118, 118, 128, 0.08);
             border-color: rgba(60, 60, 67, 0.08);
             color: var(--ios-secondary);
+        }
+        .fund-inline-btn.clear.active {
+            background: rgba(118, 118, 128, 0.16);
+            border-color: rgba(60, 60, 67, 0.12);
+            color: var(--ios-text);
         }
         .fund-dropdown {
             position: absolute;
@@ -1041,8 +1051,8 @@
             <div class="row">
                 <label>选择基金</label>
                 <div class="fund-select-wrapper">
-                    <button type="button" class="fund-inline-btn" onclick="event.stopPropagation(); selectAllFunds();">全选</button>
-                    <button type="button" class="fund-inline-btn clear" onclick="event.stopPropagation(); clearFundSelection();">清空</button>
+                    <button type="button" class="fund-inline-btn" id="select-all-funds-btn" onclick="event.stopPropagation(); selectAllFunds();">全选</button>
+                    <button type="button" class="fund-inline-btn clear" id="clear-funds-btn" onclick="event.stopPropagation(); clearFundSelection();">清空</button>
                     <div class="fund-select-status">
                         <button type="button" class="fund-select-display" id="fund-select-display">点击选择</button>
                     </div>
@@ -1840,6 +1850,8 @@
     function updateFundSelection() {
         document.getElementById('in-fund-codes').value = Array.from(selectedFundCodes).join(',');
         const displayBtn = document.getElementById('fund-select-display');
+        const selectAllBtn = document.getElementById('select-all-funds-btn');
+        const clearBtn = document.getElementById('clear-funds-btn');
         if (selectedFundCodes.size === 0) {
             displayBtn.innerHTML = '<span class="fund-select-text">点击选择</span><span class="fund-select-chevron">›</span>';
         } else if (selectedFundCodes.size === 1) {
@@ -1849,6 +1861,11 @@
         } else {
             displayBtn.innerHTML = `<span class="fund-select-pill">已选 ${selectedFundCodes.size} 支</span><span class="fund-select-chevron">›</span>`;
         }
+
+        const isAllSelected = holdingFunds.length > 0 && selectedFundCodes.size === holdingFunds.length;
+        const isNoneSelected = selectedFundCodes.size === 0;
+        if (selectAllBtn) selectAllBtn.classList.toggle('active', isAllSelected);
+        if (clearBtn) clearBtn.classList.toggle('active', isNoneSelected);
 
         document.querySelectorAll('.fund-option').forEach(opt => {
             opt.classList.toggle('selected', selectedFundCodes.has(opt.dataset.code));

@@ -1331,6 +1331,7 @@
     let fundResultSortMode = 'drawdown';
     let chartInstances = {};
     let chartFocusStates = {};
+    let chartItemsByFundCode = {};
     let expandedFundCards = {};
     const DEFAULT_EXPANDED_FUND_CARDS = 0;
     let fundResultFilterMode = '';
@@ -1344,6 +1345,21 @@
         if (!compactName) return '';
         if (compactName.length <= 8) return compactName;
         return compactName.slice(0, 8);
+    }
+
+    function getFundChartItem(result) {
+        if (!result?.success) return null;
+        const dd = result.maxDrawdown;
+        return {
+            id: 'chart-' + result.fundCode,
+            fundCode: result.fundCode,
+            navList: result.navList,
+            peakDate: dd.peakDate,
+            troughDate: dd.troughDate,
+            costChangePercent: result.costChangePercent,
+            recoveryDate: dd.recoveryDate,
+            hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent)
+        };
     }
 
     function getChartConfig(navList, peakDate, troughDate, costChangePercent = null, focusState = '', recoveryDate = '', hasRecoveryProgress = false) {
@@ -1986,8 +2002,50 @@
     function toggleFundCard(fundCode) {
         const cardEl = document.querySelector(`[data-fund-code="${fundCode}"]`);
         const currentExpanded = cardEl ? !cardEl.classList.contains('collapsed') : isFundCardExpanded(fundCode, DEFAULT_EXPANDED_FUND_CARDS);
-        expandedFundCards[fundCode] = !currentExpanded;
-        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+        const nextExpanded = !currentExpanded;
+        expandedFundCards[fundCode] = nextExpanded;
+
+        if (!cardEl) {
+            renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+            return;
+        }
+
+        const bodyEl = cardEl.querySelector('.fund-card-body');
+        const toggleEl = cardEl.querySelector('.fund-card-toggle');
+        const chartItem = chartItemsByFundCode[fundCode];
+
+        cardEl.classList.toggle('collapsed', !nextExpanded);
+        if (bodyEl) {
+            bodyEl.style.display = nextExpanded ? '' : 'none';
+        }
+        if (toggleEl) {
+            toggleEl.setAttribute('aria-label', nextExpanded ? '收起详情' : '展开详情');
+        }
+
+        if (nextExpanded && chartItem) {
+            if (!chartDataList.some(item => item.fundCode === fundCode)) {
+                chartDataList.push(chartItem);
+            }
+            drawChart(
+                chartItem.id,
+                chartItem.navList,
+                chartItem.peakDate,
+                chartItem.troughDate,
+                chartItem.costChangePercent,
+                chartItem.recoveryDate,
+                chartItem.hasRecoveryProgress
+            );
+            return;
+        }
+
+        chartDataList = chartDataList.filter(item => item.fundCode !== fundCode);
+        if (chartInstances[chartItem?.id]) {
+            chartInstances[chartItem.id].destroy();
+            delete chartInstances[chartItem.id];
+        }
+        delete chartFocusStates[chartItem?.id];
+        cardEl.querySelector('.chart-container.highlighted')?.classList.remove('highlighted');
+        cardEl.querySelector('.stat-item.clickable.active')?.classList.remove('active');
     }
 
     function setAllFundCardsExpanded(expanded) {
@@ -2116,6 +2174,7 @@
         chartInstances = {};
         chartFocusStates = {};
         chartDataList = [];
+        chartItemsByFundCode = {};
         const resultsEl = document.getElementById('fund-results');
         const sortedResults = getSortedFundResults(results, quotes, fundResultSortMode);
         const filteredResults = fundResultFilterMode === 'positive_holding'
@@ -2290,16 +2349,13 @@
                 <button type="button" class="fund-card-toggle" onclick="toggleFundCard('${result.fundCode}')" aria-label="${isExpanded ? '收起详情' : '展开详情'}"><span class="toggle-icon">⌃</span></button>
             </div>`;
 
-            if (isExpanded) {
-                chartDataList.push({
-                    id: chartId,
-                    navList: result.navList,
-                    peakDate: dd.peakDate,
-                    troughDate: dd.troughDate,
-                    costChangePercent: result.costChangePercent,
-                    recoveryDate: dd.recoveryDate,
-                    hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent)
-                });
+            const chartItem = getFundChartItem(result);
+            if (chartItem) {
+                chartItemsByFundCode[result.fundCode] = chartItem;
+            }
+
+            if (isExpanded && chartItem) {
+                chartDataList.push(chartItem);
             }
         }
 

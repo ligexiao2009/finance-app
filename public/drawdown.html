@@ -1929,12 +1929,17 @@
     function getFundSortButtonHtml(sortMode) {
         const isActive = sortMode === 'change_desc' || sortMode === 'change_asc';
         const btnClass = isActive ? 'fund-sort-btn active' : 'fund-sort-btn';
+        const btnIcon = sortMode === 'change_desc'
+            ? '↓'
+            : sortMode === 'change_asc'
+                ? '↑'
+                : '↕';
         const btnText = sortMode === 'change_desc'
             ? '涨跌倒序'
             : sortMode === 'change_asc'
                 ? '涨跌正序'
                 : '今日涨跌';
-        return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()"><span class="sort-icon">↕</span><span class="sort-label">${btnText}</span></button>`;
+        return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()"><span class="sort-icon">${btnIcon}</span><span class="sort-label">${btnText}</span></button>`;
     }
 
     function isFundCardExpanded(fundCode, index) {

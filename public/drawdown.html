@@ -2066,14 +2066,14 @@
         const successResults = filteredResults.filter(r => r.success);
         let html = '';
 
-        html += getFundAnalysisSummaryHtml(sortedResults, quotes);
-
         if (successResults.length > 1) {
             html += `<div class="compare-chart-container">
                 <div class="compare-chart-title">组合收益走势对比</div>
                 <canvas id="compare-chart"></canvas>
             </div>`;
         }
+
+        html += getFundAnalysisSummaryHtml(sortedResults, quotes);
 
         for (let index = 0; index < filteredResults.length; index++) {
             const result = filteredResults[index];

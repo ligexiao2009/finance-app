@@ -460,21 +460,21 @@
             display: block;
         }
         .fund-card-toggle {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 5px;
+            justify-content: flex-end;
             margin-top: 14px;
-            margin-left: auto;
+            width: 100%;
             border: none;
             background: transparent;
-            color: var(--ios-primary);
-            font-size: 12px;
-            font-weight: 700;
+            color: rgba(0, 122, 255, 0.82);
             cursor: pointer;
-            padding: 0;
+            padding: 4px 0 0;
+            text-align: right;
         }
         .fund-card-toggle .toggle-icon {
             font-size: 10px;
+            opacity: 0.72;
             transition: transform 0.2s ease;
         }
         .fund-result-card.collapsed .fund-card-toggle .toggle-icon {
@@ -2287,7 +2287,7 @@
                         <canvas id="${chartId}"></canvas>
                     </div>
                 </div>
-                <button type="button" class="fund-card-toggle" onclick="toggleFundCard('${result.fundCode}')"><span class="toggle-icon">⌃</span><span>${isExpanded ? '收起详情' : '展开详情'}</span></button>
+                <button type="button" class="fund-card-toggle" onclick="toggleFundCard('${result.fundCode}')" aria-label="${isExpanded ? '收起详情' : '展开详情'}"><span class="toggle-icon">⌃</span></button>
             </div>`;
 
             if (isExpanded) {

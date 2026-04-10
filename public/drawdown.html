@@ -2360,16 +2360,28 @@
         const successResults = results.filter(result => result && result.success);
         if (!successResults.length) return '';
 
-        let upCount = 0;
+        let todayTotalProfit = 0;
+        let hasTodayProfit = false;
         let positiveHoldingCount = 0;
         let totalHoldingProfit = 0;
         let hasHoldingProfit = false;
 
         successResults.forEach(result => {
-            const quoteChange = Number(quotes?.[`${result.fundCode}:1`]?.change);
-            if (Number.isFinite(quoteChange) && quoteChange > 0) upCount += 1;
-
+            const quote = quotes?.[`${result.fundCode}:1`];
             const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+
+            // 计算今日总收益 = (当前净值 - 昨日净值) * 持有份额
+            if (holdingFund && holdingFund.shares > 0 && quote && quote.price && quote.change !== undefined && quote.change !== null) {
+                const currentNav = Number(quote.price);
+                const changePercent = Number(quote.change);
+                if (Number.isFinite(currentNav) && Number.isFinite(changePercent)) {
+                    const previousNav = currentNav / (1 + changePercent / 100);
+                    const dailyProfit = (currentNav - previousNav) * holdingFund.shares;
+                    todayTotalProfit += dailyProfit;
+                    hasTodayProfit = true;
+                }
+            }
+
             const holdingProfit = getHoldingProfit(result, quotes);
             if (holdingFund && holdingProfit !== null) {
                 totalHoldingProfit += holdingProfit;
@@ -2378,6 +2390,13 @@
             }
         });
 
+        // 格式化今日总收益
+        const todayProfitClass = hasTodayProfit ? (todayTotalProfit >= 0 ? 'up' : 'down') : '';
+        const todayProfitText = hasTodayProfit
+            ? `${todayTotalProfit >= 0 ? '+' : ''}${Math.round(todayTotalProfit)}`
+            : '--';
+
+        // 格式化持仓总收益
         const totalHoldingProfitClass = hasHoldingProfit ? (totalHoldingProfit >= 0 ? 'up' : 'down') : '';
         const totalHoldingProfitText = hasHoldingProfit
             ? `${totalHoldingProfit >= 0 ? '+' : ''}${Math.round(totalHoldingProfit)}`
@@ -2390,8 +2409,8 @@
             </div>
             <div class="analysis-summary-grid">
                 <div class="analysis-summary-item">
-                    <div class="analysis-summary-label">今日上涨</div>
-                    <div class="analysis-summary-value up">${upCount}</div>
+                    <div class="analysis-summary-label">今日总收益</div>
+                    <div class="analysis-summary-value ${todayProfitClass}">${todayProfitText}</div>
                 </div>
                 <div class="analysis-summary-item clickable${fundResultFilterMode === 'positive_holding' ? ' active' : ''}" onclick="toggleFundResultFilter('positive_holding')">
                     <div class="analysis-summary-label">持仓盈利</div>

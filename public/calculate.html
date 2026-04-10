@@ -5,12 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>投资管理 Pro</title>
-    <!-- K线图前端依赖已注释，恢复时取消下面几行注释 -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@latest/dist/chartjs-chart-financial.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         :root {
             --system-red: #ff3b30;
@@ -291,7 +289,7 @@
             }
         }
 
-        /* K线图容器
+        /* 走势图容器 */
         .chart-card {
             background:
                 radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 28%),
@@ -651,7 +649,6 @@
                 height: 300px;
             }
         }
-        */
     </style>
     <script src="app-config.js"></script>
 </head>
@@ -707,19 +704,18 @@
 
         <button class="add-btn" onclick="addRecord()">+ 新增补仓记录</button>
 
-        <!-- K线图前端区域已注释，恢复时取消整个块的注释
         <div class="chart-card" id="chart-card">
             <div class="chart-header">
                 <div class="chart-title-wrap">
                     <div class="chart-eyebrow">趋势图表</div>
-                    <div class="chart-title" id="chart-title">K线图</div>
+                    <div class="chart-title" id="chart-title">收盘价走势图</div>
                     <div class="chart-subtitle" id="chart-subtitle">查看最近一段时间的价格波动，可缩放时间范围</div>
                 </div>
                 <div class="chart-controls">
                     <div class="chart-period">
                         <button class="period-btn active" data-scale="240" onclick="changeChartPeriod(240)">日线</button>
-                        <button class="period-btn" data-scale="1200" onclick="changeChartPeriod(1200)">周K</button>
-                        <button class="period-btn" data-scale="7200" onclick="changeChartPeriod(7200)">月K</button>
+                        <button class="period-btn" data-scale="1200" onclick="changeChartPeriod(1200)">周线</button>
+                        <button class="period-btn" data-scale="7200" onclick="changeChartPeriod(7200)">月线</button>
                     </div>
                     <div class="chart-range">
                         <button class="range-btn" type="button" data-range="2y" onclick="setChartRange('2y')">近2年</button>
@@ -730,7 +726,7 @@
             </div>
             <div class="chart-container">
                 <canvas id="kline-chart"></canvas>
-                <div class="chart-loading" id="chart-loading">正在加载K线数据...</div>
+                <div class="chart-loading" id="chart-loading">正在加载图表数据...</div>
             </div>
             <div class="chart-navigator" id="chart-navigator" hidden>
                 <div class="chart-nav-top">
@@ -746,7 +742,7 @@
                 </div>
                 <div class="chart-nav-zoom">
                     <div class="chart-nav-caption">
-                        <span>缩放K线</span>
+                        <span>缩放图表</span>
                         <span id="chart-zoom-caption">默认</span>
                     </div>
                     <input id="chart-window-size-slider" type="range" min="20" max="120" step="1" value="60" oninput="handleChartZoomSlide(this.value)">
@@ -757,53 +753,11 @@
                 </div>
             </div>
         </div>
-        -->
     </div>
 
     <script>
-        /*
-        // K线图前端逻辑已注释，恢复时取消本段注释
-        // 检查Chart.js和插件加载状态
+        // 确保插件正常注册
         window.addEventListener('load', function() {
-            console.log('Chart.js版本:', Chart.version);
-            console.log('可用的控制器:', Chart.controllers ? Object.keys(Chart.controllers) : '无');
-            console.log('全局变量FinancialController:', window.FinancialController ? '已定义' : '未定义');
-            console.log('全局变量CandlestickController:', window.CandlestickController ? '已定义' : '未定义');
-            console.log('全局变量CandlestickElement:', window.CandlestickElement ? '已定义' : '未定义');
-            console.log('全局变量FinancialElement:', window.FinancialElement ? '已定义' : '未定义');
-
-            // 如果插件需要手动注册，尝试注册
-            if (window.FinancialController) {
-                console.log('FinancialController已加载，尝试注册');
-                Chart.register(window.FinancialController);
-            }
-            if (window.CandlestickController) {
-                console.log('CandlestickController已加载，尝试注册');
-                Chart.register(window.CandlestickController);
-            }
-            // 对于chartjs-chart-financial 2.x，可能需要注册FinancialElement和CandlestickElement
-            if (window.FinancialElement) {
-                console.log('FinancialElement已加载，尝试注册');
-                Chart.register(window.FinancialElement);
-            }
-            if (window.CandlestickElement) {
-                console.log('CandlestickElement已加载，尝试注册');
-                Chart.register(window.CandlestickElement);
-            }
-            // 尝试直接注册financial控制器（如果插件已自动注册但不在Chart.controllers中）
-            try {
-                if (typeof Chart.controllers.financial === 'undefined' && window.FinancialController) {
-                    Chart.register(window.FinancialController);
-                    console.log('已手动注册FinancialController');
-                }
-                if (typeof Chart.controllers.candlestick === 'undefined' && window.CandlestickController) {
-                    Chart.register(window.CandlestickController);
-                    console.log('已手动注册CandlestickController');
-                }
-            } catch (e) {
-                console.error('注册控制器时出错:', e);
-            }
-
             if (window.ChartZoom) {
                 try {
                     Chart.register(window.ChartZoom);
@@ -812,7 +766,6 @@
                 }
             }
         });
-        */
 
         // 持仓数据
         let data = JSON.parse(localStorage.getItem('invest_pro_data')) || [
@@ -820,7 +773,7 @@
             { shares: 700, price: 100 }
         ];
 
-        // K线图相关变量
+        // 图表相关变量
         let klineChart = null;
         let currentStockCode = null;
         let currentChartScale = 240; // 默认日线
@@ -831,8 +784,8 @@
         let currentWindowSize = null;
 
         function getChartPeriodLabel(scale) {
-            if (scale >= 7200) return '月K';
-            if (scale >= 1200) return '周K';
+            if (scale >= 7200) return '月线';
+            if (scale >= 1200) return '周线';
             return '日线';
         }
 
@@ -1026,30 +979,20 @@
 
         async function loadHoldings() {
             try {
-                console.log('开始加载持仓数据...');
-                console.log('window.API_BASE_URL:', window.API_BASE_URL);
-                console.log('window.APP_CONFIG:', window.APP_CONFIG);
-
                 const apiBase = window.API_BASE_URL || '';
                 const url = apiBase + '/api/data';
-                console.log('请求URL:', url);
 
                 const response = await fetch(url);
                 if (!response.ok) {
-                    console.error('API响应状态:', response.status, response.statusText);
                     throw new Error('获取持仓数据失败: ' + response.status);
                 }
-                const data = await response.json();
-                console.log('持仓数据加载成功，共', data.rows ? data.rows.length : 0, '条记录');
+                const responseData = await response.json();
 
                 const select = document.getElementById('stock-select');
-                // 清空现有选项（除了第一个placeholder）
                 while (select.options.length > 1) {
                     select.remove(1);
                 }
-                // 只添加股票持仓（非基金）
-                const stocks = data.rows.filter(row => !row.isFund);
-                console.log('股票持仓数量:', stocks.length);
+                const stocks = responseData.rows.filter(row => !row.isFund);
 
                 stocks.forEach(stock => {
                     const option = document.createElement('option');
@@ -1060,21 +1003,14 @@
                     option.dataset.code = stock.code;
                     select.appendChild(option);
                 });
-
-                if (stocks.length === 0) {
-                    console.log('没有找到股票持仓数据');
-                }
             } catch (error) {
-                console.warn('加载持仓失败（API可能不可用）:', error.message);
-                // 如果API失败，静默失败，不显示错误
-                // 下拉框将保持为空，页面其他功能正常
+                console.warn('加载持仓失败:', error.message);
             }
         }
 
         async function onStockSelectChange(select) {
             const selectedOption = select.options[select.selectedIndex];
             if (!selectedOption.value) {
-                // 如果选择的是placeholder，不清除数据
                 return;
             }
             const shares = parseFloat(selectedOption.dataset.shares);
@@ -1085,42 +1021,35 @@
                 select.selectedIndex = 0;
                 return;
             }
-            // 清除现有补仓记录数据
             data.length = 0;
-            // 添加一条补仓记录（第一条）
             data.push({ shares: shares, price: cost });
             renderList();
-            // 保持选中当前股票，不清除选择
 
-            // 获取股票最新价格并更新市场价输入框
             if (stockCode) {
                 try {
                     const price = await fetchStockPrice(stockCode);
                     if (price > 0) {
                         const priceInput = document.getElementById('price');
                         priceInput.value = price;
-                        // 触发计算
                         calculateOnly();
                     }
                 } catch (error) {
                     console.error('获取股票价格失败:', error);
                 }
 
-                // K线图前端已注释
-                // showKlineChart(stockCode);
+                showKlineChart(stockCode);
             }
         }
 
         async function fetchStockPrice(stockCode) {
             try {
                 const apiBase = window.API_BASE_URL || '';
-                // 股票是非基金，isFund为0
                 const url = `${apiBase}/api/quotes?items=${encodeURIComponent(stockCode + ':0')}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('获取价格失败');
-                const data = await response.json();
+                const responseData = await response.json();
                 const key = `${stockCode}:0`;
-                const quote = data.quotes[key];
+                const quote = responseData.quotes[key];
                 if (quote && quote.price > 0) {
                     return quote.price;
                 }
@@ -1131,53 +1060,42 @@
             }
         }
 
-        /*
-        // K线图前端逻辑已注释
-        // 显示K线图并加载数据
+        // 显示图表并加载数据
         async function showKlineChart(stockCode) {
             currentStockCode = stockCode;
             currentWindowStartIndex = null;
             currentWindowSize = null;
 
-            // 显示K线图卡片
             const chartCard = document.getElementById('chart-card');
             chartCard.style.display = 'block';
 
-            // 更新标题
             const chartTitle = document.getElementById('chart-title');
-            chartTitle.textContent = `${stockCode} K线图`;
+            chartTitle.textContent = `${stockCode} 走势图`;
             const chartSubtitle = document.getElementById('chart-subtitle');
             chartSubtitle.textContent = `查看 ${getChartPeriodLabel(currentChartScale)} 趋势与价格波动`;
             updateRangeButtons();
 
-            // 显示加载状态
             const loadingEl = document.getElementById('chart-loading');
             const canvasEl = document.getElementById('kline-chart');
             loadingEl.style.display = 'flex';
             canvasEl.style.display = 'none';
-            loadingEl.innerHTML = '正在加载K线数据...<small>图表数据准备中</small>';
+            loadingEl.innerHTML = '正在加载图表数据...<small>图表数据准备中</small>';
 
-            // 加载K线数据
             await loadKlineData(stockCode, currentChartScale);
         }
 
-        // 加载K线数据
+        // 加载图表数据
         async function loadKlineData(stockCode, scale) {
             try {
-                // 确定股票市场前缀
                 let symbol;
                 if (stockCode.length === 5) {
-                    // 港股
                     symbol = 'hk' + stockCode;
                 } else if (/^[569]/.test(stockCode)) {
-                    // 上海
                     symbol = 'sh' + stockCode;
                 } else {
-                    // 深圳
                     symbol = 'sz' + stockCode;
                 }
 
-                // 使用代理API避免CORS问题
                 const apiBase = window.API_BASE_URL || '';
                 const url = `${apiBase}/api/kline/${symbol}?scale=${scale}&datalen=${getKlineDataLength(scale)}`;
 
@@ -1188,60 +1106,41 @@
 
                 const result = await response.json();
                 if (!result.success) {
-                    throw new Error(result.error || '获取K线数据失败');
+                    throw new Error(result.error || '获取图表数据失败');
                 }
 
-                const klineData = result.data;
-
-                // 解析数据
-                const parsedData = parseKlineData(klineData);
+                const parsedData = parseKlineData(result.data);
                 currentKlineData = parsedData;
 
-                // 先显示canvas，再绘图，避免隐藏状态下Chart.js尺寸计算异常
                 const loadingEl = document.getElementById('chart-loading');
                 const canvasEl = document.getElementById('kline-chart');
                 canvasEl.style.display = 'block';
                 loadingEl.style.display = 'none';
 
-                // 绘制图表
                 renderKlineChart(parsedData);
 
             } catch (error) {
-                console.error('加载K线数据失败:', error);
+                console.error('加载图表数据失败:', error);
                 const loadingEl = document.getElementById('chart-loading');
                 const navigator = document.getElementById('chart-navigator');
                 if (navigator) {
                     navigator.hidden = true;
                 }
-                loadingEl.innerHTML = '加载K线数据失败<small>请稍后重试</small>';
+                loadingEl.innerHTML = '加载图表数据失败<small>请稍后重试</small>';
             }
         }
 
-        // 解析K线数据
+        // 解析图表数据
         function parseKlineData(klineData) {
             if (!Array.isArray(klineData) || klineData.length === 0) {
-                return {
-                    labels: [],
-                    timestamps: [],
-                    opens: [],
-                    highs: [],
-                    lows: [],
-                    closes: [],
-                    dates: []
-                };
+                return { labels: [], timestamps: [], closes: [], dates: [] };
             }
 
-            // 统一处理后的K线格式:
-            // {day: "2024-01-01", open: "10.00", close: "10.20", high: "10.50", low: "9.80"}
             const labels = [];
             const timestamps = [];
-            const opens = [];
-            const highs = [];
-            const lows = [];
             const closes = [];
             const dates = [];
 
-            // 按时间顺序排序（新浪返回的数据可能是倒序）
             const sortedData = [...klineData].sort((a, b) => {
                 return new Date(a.day) - new Date(b.day);
             });
@@ -1249,62 +1148,19 @@
             sortedData.forEach(item => {
                 const date = new Date(item.day);
                 const timestamp = date.getTime();
-                const open = parseFloat(item.open);
-                const high = parseFloat(item.high);
-                const low = parseFloat(item.low);
                 const close = parseFloat(item.close);
 
-                if (
-                    Number.isNaN(timestamp) ||
-                    [open, high, low, close].some(value => !Number.isFinite(value))
-                ) {
+                if (Number.isNaN(timestamp) || !Number.isFinite(close)) {
                     return;
                 }
 
-                labels.push(item.day); // 保持向后兼容
+                labels.push(item.day);
                 timestamps.push(timestamp);
-                dates.push(item.day); // 原始日期字符串
-                opens.push(open);
-                highs.push(high);
-                lows.push(low);
+                dates.push(item.day);
                 closes.push(close);
             });
 
-            return {
-                labels,        // 日期字符串，用于显示
-                timestamps,    // 时间戳，用于图表x轴
-                opens,
-                highs,
-                lows,
-                closes,
-                dates          // 原始日期字符串
-            };
-        }
-
-        function getKlineControllerName() {
-            const candidates = ['candlestick', 'financial', 'Candlestick', 'Financial', 'CandlestickController', 'FinancialController'];
-
-            if (Chart.registry && Chart.registry.controllers) {
-                for (const name of candidates) {
-                    try {
-                        if (Chart.registry.controllers.get(name)) {
-                            return name;
-                        }
-                    } catch (error) {
-                        // 忽略未注册控制器异常，继续尝试下一个
-                    }
-                }
-            }
-
-            if (Chart.controllers) {
-                for (const name of candidates) {
-                    if (Chart.controllers[name]) {
-                        return name;
-                    }
-                }
-            }
-
-            return null;
+            return { labels, timestamps, closes, dates };
         }
 
         function getChartTimeUnit(scale) {
@@ -1320,9 +1176,7 @@
         }
 
         function resetChartZoom() {
-            if (!klineChart) {
-                return;
-            }
+            if (!klineChart) return;
 
             currentRangePreset = null;
             currentWindowStartIndex = null;
@@ -1343,9 +1197,7 @@
             currentWindowSize = null;
             updateRangeButtons();
 
-            if (!currentKlineData) {
-                return;
-            }
+            if (!currentKlineData) return;
 
             renderKlineChart(currentKlineData);
         }
@@ -1423,7 +1275,7 @@
             sizeSlider.min = String(minWindow);
             sizeSlider.max = String(rangeMax);
             sizeSlider.value = String(visibleCount);
-            zoomCaption.textContent = `${visibleCount} 根`;
+            zoomCaption.textContent = `${visibleCount} 个点`;
 
             const leftPercent = (startIndex / total) * 100;
             const widthPercent = (visibleCount / total) * 100;
@@ -1435,40 +1287,30 @@
         }
 
         function handleChartWindowSlide(value) {
-            if (!currentKlineData) {
-                return;
-            }
-
+            if (!currentKlineData) return;
             currentWindowStartIndex = Number(value) || 0;
             renderKlineChart(currentKlineData);
         }
 
         function handleChartZoomSlide(value) {
-            if (!currentKlineData) {
-                return;
-            }
-
+            if (!currentKlineData) return;
             currentWindowSize = Number(value) || null;
             currentWindowStartIndex = clampChartWindowStart(currentWindowStartIndex, currentKlineData.timestamps.length, currentWindowSize || currentVisibleCount || getInitialVisibleCount(currentChartScale));
             renderKlineChart(currentKlineData);
         }
 
-        // 绘制K线图
+        // 绘制折线图
         function renderKlineChart(data) {
             const canvas = document.getElementById('kline-chart');
-            if (!canvas) {
-                console.error('Canvas元素未找到');
-                return;
-            }
+            if (!canvas) return;
 
-            // 检查数据是否有效
             if (!data || !Array.isArray(data.labels) || !Array.isArray(data.closes)) {
-                console.error('无效的K线数据格式:', data);
+                console.error('无效的图表数据格式:', data);
                 return;
             }
 
             if (!Array.isArray(data.timestamps) || data.timestamps.length === 0) {
-                console.warn('K线图无可用数据点');
+                console.warn('图表无可用数据点');
                 const navigator = document.getElementById('chart-navigator');
                 if (navigator) {
                     navigator.hidden = true;
@@ -1478,26 +1320,6 @@
 
             const ctx = canvas.getContext('2d');
 
-            // 检查可用的K线图控制器
-            let chartType = getKlineControllerName();
-
-            if (!chartType) {
-                console.warn('K线图控制器未注册，使用折线图作为降级方案');
-
-                // 使用折线图作为降级方案
-                chartType = 'line';
-
-                // 显示警告信息
-                const loadingEl = document.getElementById('chart-loading');
-                loadingEl.innerHTML = 'K线图插件未加载<small>当前已切换为收盘价折线图</small>';
-                loadingEl.style.display = 'flex';
-
-                // 不立即返回，继续使用折线图
-            }
-
-            console.log('使用图表类型:', chartType);
-
-            // 确保销毁任何现有的图表实例
             if (klineChart) {
                 try {
                     klineChart.destroy();
@@ -1507,36 +1329,20 @@
                 }
             }
 
-            // 使用Chart.js API检查是否还有其他图表实例绑定到这个canvas
             const existingChart = Chart.getChart(canvas);
             if (existingChart) {
                 try {
                     existingChart.destroy();
-                } catch (error) {
-                    console.warn('通过Chart.getChart销毁图表时出错:', error);
-                }
+                } catch (error) {}
             }
 
-            // 准备K线图数据
-            // 验证数据长度一致性
-            // 优先使用timestamps，如果不存在则使用labels（向后兼容）
             const xValues = data.timestamps && data.timestamps.length > 0 ? data.timestamps : data.labels;
             const len = xValues.length;
-            if (len === 0 || data.opens.length !== len || data.highs.length !== len ||
-                data.lows.length !== len || data.closes.length !== len) {
-                console.error('K线数据长度不一致或为空', {
-                    xValues: xValues.length,
-                    opens: data.opens.length,
-                    highs: data.highs.length,
-                    lows: data.lows.length,
-                    closes: data.closes.length,
-                    timestamps: data.timestamps ? data.timestamps.length : '未定义',
-                    labels: data.labels ? data.labels.length : '未定义'
-                });
+            if (len === 0 || data.closes.length !== len) {
+                console.error('数据长度不一致或为空');
                 return;
             }
 
-            let chartData;
             const breakevenPrice = getBreakevenPrice();
             const costLineData = Number.isFinite(breakevenPrice)
                 ? xValues.map(timestamp => ({
@@ -1544,81 +1350,41 @@
                     y: breakevenPrice
                 }))
                 : [];
-            if (chartType === 'line') {
-                // 折线图数据格式 - 使用时间戳作为x值
-                chartData = {
-                    datasets: [
-                        {
-                            label: '收盘价',
-                            data: xValues.map((timestamp, index) => ({
-                                x: timestamp,
-                                y: data.closes[index]
-                            })),
-                            borderColor: 'rgb(0, 122, 255)',
-                            backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.15,
-                            pointRadius: 0,
-                            pointHitRadius: 10
-                        },
-                        ...(costLineData.length ? [{
-                            type: 'line',
-                            label: '成本线',
-                            data: costLineData,
-                            borderColor: 'rgba(245, 158, 11, 0.95)',
-                            borderWidth: 1.5,
-                            borderDash: [6, 6],
-                            pointRadius: 0,
-                            pointHitRadius: 8,
-                            fill: false,
-                            tension: 0,
-                            order: 0
-                        }] : [])
-                    ]
-                };
-            } else {
-                // K线图数据格式 - 使用时间戳作为x值
-                chartData = {
-                    datasets: [
-                        {
-                            label: '价格',
-                            data: xValues.map((timestamp, index) => ({
-                                x: timestamp,
-                                o: data.opens[index],
-                                h: data.highs[index],
-                                l: data.lows[index],
-                                c: data.closes[index]
-                            })),
-                            backgroundColor: (ctx) => {
-                                const item = ctx.raw;
-                                return item.c >= item.o ? 'rgba(255, 59, 48, 0.8)' : 'rgba(52, 199, 89, 0.8)';
-                            },
-                            borderColor: (ctx) => {
-                                const item = ctx.raw;
-                                return item.c >= item.o ? 'rgb(255, 59, 48)' : 'rgb(52, 199, 89)';
-                            },
-                            borderWidth: 1
-                        },
-                        ...(costLineData.length ? [{
-                            type: 'line',
-                            label: '成本线',
-                            data: costLineData,
-                            borderColor: 'rgba(245, 158, 11, 0.95)',
-                            borderWidth: 1.5,
-                            borderDash: [6, 6],
-                            pointRadius: 0,
-                            pointHitRadius: 8,
-                            fill: false,
-                            tension: 0,
-                            order: -1
-                        }] : [])
-                    ]
-                };
-            }
 
-            const minPrice = Math.min(...data.lows, ...(costLineData.length ? [breakevenPrice] : []));
-            const maxPrice = Math.max(...data.highs, ...(costLineData.length ? [breakevenPrice] : []));
+            const chartData = {
+                datasets: [
+                    {
+                        label: '收盘价',
+                        data: xValues.map((timestamp, index) => ({
+                            x: timestamp,
+                            y: data.closes[index]
+                        })),
+                        borderColor: 'rgb(0, 122, 255)',
+                        backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.15,
+                        pointRadius: 0,
+                        pointHitRadius: 10
+                    },
+                    ...(costLineData.length ? [{
+                        type: 'line',
+                        label: '成本线',
+                        data: costLineData,
+                        borderColor: 'rgba(245, 158, 11, 0.95)',
+                        borderWidth: 1.5,
+                        borderDash: [6, 6],
+                        pointRadius: 0,
+                        pointHitRadius: 8,
+                        fill: false,
+                        tension: 0,
+                        order: 0
+                    }] : [])
+                ]
+            };
+
+            const minPrice = Math.min(...data.closes, ...(costLineData.length ? [breakevenPrice] : []));
+            const maxPrice = Math.max(...data.closes, ...(costLineData.length ? [breakevenPrice] : []));
             const pricePadding = Math.max((maxPrice - minPrice) * 0.08, maxPrice * 0.01, 0.01);
             const rangeMaxCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
             const defaultWindowCount = Math.min(getDefaultWindowCount(currentRangePreset, currentChartScale), rangeMaxCount);
@@ -1629,14 +1395,14 @@
             const startIndex = currentWindowStartIndex == null
                 ? Math.max(0, xValues.length - visibleCount)
                 : clampChartWindowStart(currentWindowStartIndex, xValues.length, visibleCount);
+            
             currentWindowStartIndex = startIndex;
             currentVisibleCount = visibleCount;
             const initialMin = visibleCount > 0 ? xValues[startIndex] : undefined;
             const initialMax = visibleCount > 0 ? xValues[Math.min(xValues.length - 1, startIndex + visibleCount - 1)] : undefined;
 
-            // 创建图表
             klineChart = new Chart(ctx, {
-                type: chartType,
+                type: 'line', // 强制设为折线图
                 data: chartData,
                 options: {
                     responsive: true,
@@ -1677,7 +1443,7 @@
                                 }
                             }
                         },
-                        tooltip: chartType === 'line' ? {
+                        tooltip: {
                             displayColors: false,
                             backgroundColor: 'rgba(248, 250, 252, 0.96)',
                             titleColor: '#0f172a',
@@ -1692,29 +1458,6 @@
                                         return `成本线: ${context.parsed.y.toFixed(2)}`;
                                     }
                                     return `收盘价: ${context.parsed.y.toFixed(2)}`;
-                                }
-                            }
-                        } : {
-                            displayColors: false,
-                            backgroundColor: 'rgba(248, 250, 252, 0.96)',
-                            titleColor: '#0f172a',
-                            bodyColor: '#334155',
-                            borderColor: 'rgba(148, 163, 184, 0.25)',
-                            borderWidth: 1,
-                            padding: 12,
-                            callbacks: {
-                                title: (items) => items[0] ? data.dates[items[0].dataIndex] : '',
-                                label: (context) => {
-                                    if (context.dataset.label === '成本线') {
-                                        return `成本线: ${context.parsed.y.toFixed(2)}`;
-                                    }
-                                    const item = context.raw;
-                                    return [
-                                        `开盘: ${item.o.toFixed(2)}`,
-                                        `最高: ${item.h.toFixed(2)}`,
-                                        `最低: ${item.l.toFixed(2)}`,
-                                        `收盘: ${item.c.toFixed(2)}`
-                                    ];
                                 }
                             }
                         }
@@ -1761,13 +1504,10 @@
             updateChartNavigator(data, startIndex, visibleCount);
         }
 
-        // 切换K线周期
+        // 切换周期
         async function changeChartPeriod(scale) {
-            if (scale === currentChartScale || !currentStockCode) {
-                return;
-            }
+            if (scale === currentChartScale || !currentStockCode) return;
 
-            // 更新按钮状态（使用 == 进行宽松判断，支持数字或字符串形式的 scale）
             document.querySelectorAll('.period-btn').forEach(btn => {
                 if (btn.dataset.scale == scale) {
                     btn.classList.add('active');
@@ -1785,16 +1525,14 @@
                 chartSubtitle.textContent = `查看 ${getChartPeriodLabel(scale)} 趋势与价格波动`;
             }
 
-            // 重新加载数据
             const loadingEl = document.getElementById('chart-loading');
             const canvasEl = document.getElementById('kline-chart');
             loadingEl.style.display = 'flex';
             canvasEl.style.display = 'none';
-            loadingEl.innerHTML = '正在加载K线数据...<small>切换到新的周期视图</small>';
+            loadingEl.innerHTML = '正在加载图表数据...<small>切换到新的周期视图</small>';
 
             await loadKlineData(currentStockCode, scale);
         }
-        */
     </script>
 
 </body>

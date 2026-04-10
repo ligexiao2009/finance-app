@@ -728,7 +728,7 @@
                 <canvas id="kline-chart"></canvas>
                 <div class="chart-loading" id="chart-loading">正在加载图表数据...</div>
             </div>
-            <div class="chart-navigator" id="chart-navigator" hidden>
+            <!-- <div class="chart-navigator" id="chart-navigator" hidden>
                 <div class="chart-nav-top">
                     <canvas id="kline-overview"></canvas>
                     <div class="chart-nav-selection" id="chart-nav-selection"></div>
@@ -751,7 +751,7 @@
                     <span id="chart-nav-start-label">-</span>
                     <span id="chart-nav-end-label">-</span>
                 </div>
-            </div>
+            </div> -->
         </div>
     </div>
 
@@ -767,8 +767,8 @@
             }
         });
 
-        // 持仓数据
-        let data = JSON.parse(localStorage.getItem('invest_pro_data')) || [
+        // 持仓数据 (重命名为 holdingsData 避免和图表数据变量名冲突)
+        let holdingsData = JSON.parse(localStorage.getItem('invest_pro_data')) || [
             { shares: 700, price: 141 },
             { shares: 700, price: 100 }
         ];
@@ -844,18 +844,28 @@
             return Math.max(0, Math.min(Number(start) || 0, maxStart));
         }
 
-        function getBreakevenPrice() {
-            let totalCost = 0;
+        // 获取每个加仓阶段的历史成本线数组
+        function getHistoricalBreakevenPrices() {
+            let prices = [];
             let totalShares = 0;
+            let totalCost = 0;
 
-            data.forEach(item => {
-                const shares = Number(item.shares) || 0;
-                const price = Number(item.price) || 0;
-                totalCost += shares * price;
-                totalShares += shares;
+            holdingsData.forEach((item, index) => {
+                const s = Number(item.shares) || 0;
+                const p = Number(item.price) || 0;
+                
+                // 只有当存在份额时才计算新的阶段成本
+                if (s > 0) {
+                    totalShares += s;
+                    totalCost += s * p;
+                    prices.push({
+                        label: index === holdingsData.length - 1 ? '最新总成本' : `阶段成本 ${index + 1}`,
+                        price: totalCost / totalShares
+                    });
+                }
             });
 
-            return totalShares > 0 ? totalCost / totalShares : null;
+            return prices;
         }
 
         function handleFocus(el) {
@@ -887,7 +897,7 @@
             let totalShares = 0;
             const currentPrice = +document.getElementById('price').value || 0;
 
-            data.forEach((d, i) => {
+            holdingsData.forEach((d, i) => {
                 const cost = d.shares * d.price;
                 const profit = (d.shares * currentPrice) - cost;
                 const rate = cost ? (profit / cost * 100).toFixed(2) : '0.00';
@@ -921,7 +931,7 @@
             document.getElementById('breakeven').innerText = totalShares ? (totalCost / totalShares).toFixed(2) : '0.00';
             document.getElementById('total-display').value = totalShares;
 
-            localStorage.setItem('invest_pro_data', JSON.stringify(data));
+            localStorage.setItem('invest_pro_data', JSON.stringify(holdingsData));
 
             if (currentStockCode && currentKlineData) {
                 renderKlineChart(currentKlineData);
@@ -932,7 +942,7 @@
             const list = document.getElementById('list');
             list.innerHTML = '';
 
-            data.forEach((d, i) => {
+            holdingsData.forEach((d, i) => {
                 const div = document.createElement('div');
                 div.className = 'item fade';
                 div.innerHTML = `
@@ -955,12 +965,12 @@
         }
 
         function updateData(i, key, val) {
-            data[i][key] = +val || 0;
+            holdingsData[i][key] = +val || 0;
             calculateOnly();
         }
 
         function addRecord() {
-            data.push({ shares: 0, price: 0 });
+            holdingsData.push({ shares: 0, price: 0 });
             renderList();
         }
 
@@ -969,7 +979,7 @@
             items[i].style.opacity = '0';
             items[i].style.transform = 'translateX(40px)';
             setTimeout(() => {
-                data.splice(i, 1);
+                holdingsData.splice(i, 1);
                 renderList();
             }, 250);
         }
@@ -1021,8 +1031,8 @@
                 select.selectedIndex = 0;
                 return;
             }
-            data.length = 0;
-            data.push({ shares: shares, price: cost });
+            holdingsData.length = 0;
+            holdingsData.push({ shares: shares, price: cost });
             renderList();
 
             if (stockCode) {
@@ -1202,7 +1212,7 @@
             renderKlineChart(currentKlineData);
         }
 
-        function drawOverviewChart(data) {
+        function drawOverviewChart(chartData) {
             const canvas = document.getElementById('kline-overview');
             if (!canvas) return;
 
@@ -1218,7 +1228,7 @@
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, width, height);
 
-            const values = data.closes || [];
+            const values = chartData.closes || [];
             if (values.length < 2) return;
 
             const min = Math.min(...values);
@@ -1243,7 +1253,7 @@
             ctx.fill();
         }
 
-        function updateChartNavigator(data, startIndex, visibleCount) {
+        function updateChartNavigator(chartData, startIndex, visibleCount) {
             const navigator = document.getElementById('chart-navigator');
             const slider = document.getElementById('chart-window-slider');
             const sizeSlider = document.getElementById('chart-window-size-slider');
@@ -1256,14 +1266,14 @@
                 return;
             }
 
-            const total = data.timestamps.length;
+            const total = chartData.timestamps.length;
             if (!total || total <= visibleCount) {
                 navigator.hidden = true;
                 return;
             }
 
             navigator.hidden = false;
-            drawOverviewChart(data);
+            drawOverviewChart(chartData);
 
             const maxStart = Math.max(0, total - visibleCount);
             slider.max = String(maxStart);
@@ -1282,8 +1292,8 @@
             selection.style.left = `${leftPercent}%`;
             selection.style.width = `${Math.max(widthPercent, 6)}%`;
 
-            startLabel.textContent = data.dates[startIndex] || '-';
-            endLabel.textContent = data.dates[Math.min(total - 1, startIndex + visibleCount - 1)] || '-';
+            startLabel.textContent = chartData.dates[startIndex] || '-';
+            endLabel.textContent = chartData.dates[Math.min(total - 1, startIndex + visibleCount - 1)] || '-';
         }
 
         function handleChartWindowSlide(value) {
@@ -1300,16 +1310,16 @@
         }
 
         // 绘制折线图
-        function renderKlineChart(data) {
+        function renderKlineChart(chartData) {
             const canvas = document.getElementById('kline-chart');
             if (!canvas) return;
 
-            if (!data || !Array.isArray(data.labels) || !Array.isArray(data.closes)) {
-                console.error('无效的图表数据格式:', data);
+            if (!chartData || !Array.isArray(chartData.labels) || !Array.isArray(chartData.closes)) {
+                console.error('无效的图表数据格式:', chartData);
                 return;
             }
 
-            if (!Array.isArray(data.timestamps) || data.timestamps.length === 0) {
+            if (!Array.isArray(chartData.timestamps) || chartData.timestamps.length === 0) {
                 console.warn('图表无可用数据点');
                 const navigator = document.getElementById('chart-navigator');
                 if (navigator) {
@@ -1336,28 +1346,52 @@
                 } catch (error) {}
             }
 
-            const xValues = data.timestamps && data.timestamps.length > 0 ? data.timestamps : data.labels;
+            const xValues = chartData.timestamps && chartData.timestamps.length > 0 ? chartData.timestamps : chartData.labels;
             const len = xValues.length;
-            if (len === 0 || data.closes.length !== len) {
+            if (len === 0 || chartData.closes.length !== len) {
                 console.error('数据长度不一致或为空');
                 return;
             }
 
-            const breakevenPrice = getBreakevenPrice();
-            const costLineData = Number.isFinite(breakevenPrice)
-                ? xValues.map(timestamp => ({
-                    x: timestamp,
-                    y: breakevenPrice
-                }))
-                : [];
+            // 获取各阶段的历史持仓成本
+            const costPrices = getHistoricalBreakevenPrices();
+            const costPriceValues = costPrices.map(cp => cp.price);
 
-            const chartData = {
+            // 将每一次的成本线转换为 Dataset，并分配不同的颜色
+            const costDatasets = costPrices.map((cp, idx) => {
+                const isLatest = idx === costPrices.length - 1; // 最后一个就是“最新总成本”
+                // 内置几个漂亮的备选颜色
+                const lineColors = [
+                    'rgba(245, 158, 11, 0.95)',  // 橙色
+                    'rgba(16, 185, 129, 0.95)',  // 翠绿
+                    'rgba(139, 92, 246, 0.95)',  // 紫色
+                    'rgba(236, 72, 153, 0.95)',  // 粉红
+                    'rgba(6, 182, 212, 0.95)'    // 青色
+                ];
+                const color = lineColors[idx % lineColors.length];
+
+                return {
+                    type: 'line',
+                    label: cp.label,
+                    data: xValues.map(timestamp => ({ x: timestamp, y: cp.price })),
+                    borderColor: color,
+                    borderWidth: isLatest ? 2 : 1.5,
+                    borderDash: isLatest ? [] : [6, 6], // 最新成本用实线，历史成本保留用虚线
+                    pointRadius: 0,
+                    pointHitRadius: 8,
+                    fill: false,
+                    tension: 0,
+                    order: isLatest ? -1 : 0 // 最新成本展示在最上层
+                };
+            });
+
+            const configData = {
                 datasets: [
                     {
                         label: '收盘价',
                         data: xValues.map((timestamp, index) => ({
                             x: timestamp,
-                            y: data.closes[index]
+                            y: chartData.closes[index]
                         })),
                         borderColor: 'rgb(0, 122, 255)',
                         backgroundColor: 'rgba(0, 122, 255, 0.1)',
@@ -1365,27 +1399,18 @@
                         fill: true,
                         tension: 0.15,
                         pointRadius: 0,
-                        pointHitRadius: 10
+                        pointHitRadius: 10,
+                        order: 1 // 走势图放在下面
                     },
-                    ...(costLineData.length ? [{
-                        type: 'line',
-                        label: '成本线',
-                        data: costLineData,
-                        borderColor: 'rgba(245, 158, 11, 0.95)',
-                        borderWidth: 1.5,
-                        borderDash: [6, 6],
-                        pointRadius: 0,
-                        pointHitRadius: 8,
-                        fill: false,
-                        tension: 0,
-                        order: 0
-                    }] : [])
+                    ...costDatasets // 展开所有的历史和最新成本线
                 ]
             };
 
-            const minPrice = Math.min(...data.closes, ...(costLineData.length ? [breakevenPrice] : []));
-            const maxPrice = Math.max(...data.closes, ...(costLineData.length ? [breakevenPrice] : []));
+            // 计算包含图表价格和所有历史成本线在内的 Y 轴范围
+            const minPrice = Math.min(...chartData.closes, ...(costPriceValues.length ? costPriceValues : []));
+            const maxPrice = Math.max(...chartData.closes, ...(costPriceValues.length ? costPriceValues : []));
             const pricePadding = Math.max((maxPrice - minPrice) * 0.08, maxPrice * 0.01, 0.01);
+            
             const rangeMaxCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
             const defaultWindowCount = Math.min(getDefaultWindowCount(currentRangePreset, currentChartScale), rangeMaxCount);
             const visibleCount = Math.max(
@@ -1402,8 +1427,8 @@
             const initialMax = visibleCount > 0 ? xValues[Math.min(xValues.length - 1, startIndex + visibleCount - 1)] : undefined;
 
             klineChart = new Chart(ctx, {
-                type: 'line', // 强制设为折线图
-                data: chartData,
+                type: 'line',
+                data: configData,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -1452,10 +1477,11 @@
                             borderWidth: 1,
                             padding: 12,
                             callbacks: {
-                                title: (items) => items[0] ? data.dates[items[0].dataIndex] : '',
+                                title: (items) => items[0] ? chartData.dates[items[0].dataIndex] : '',
                                 label: (context) => {
-                                    if (context.dataset.label === '成本线') {
-                                        return `成本线: ${context.parsed.y.toFixed(2)}`;
+                                    // 格式化 Tooltip，包含“阶段成本”、“最新总成本”或“收盘价”
+                                    if (context.dataset.label.includes('成本')) {
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
                                     }
                                     return `收盘价: ${context.parsed.y.toFixed(2)}`;
                                 }
@@ -1501,7 +1527,7 @@
                 }
             });
 
-            updateChartNavigator(data, startIndex, visibleCount);
+            updateChartNavigator(chartData, startIndex, visibleCount);
         }
 
         // 切换周期

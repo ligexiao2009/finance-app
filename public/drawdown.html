@@ -2532,7 +2532,7 @@
             });
 
             if (dd.recovered && dd.recoveryDate) {
-                ribbonHtml = index === 0 ? '' : '<div class="fund-corner-ribbon recovered">已修复</div>';
+                ribbonHtml = index === 0 && shouldShowTopActions ? '' : '<div class="fund-corner-ribbon recovered">已修复</div>';
                 recoveryHtml = `
                     <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
                         <div class="stat-label">修复周期</div>
@@ -2540,7 +2540,7 @@
                         <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
                     </div>`;
             } else if (dd.currentRecoveryPercent) {
-                ribbonHtml = index === 0 ? '' : '<div class="fund-corner-ribbon recovering">修复中</div>';
+                ribbonHtml = index === 0 && shouldShowTopActions ? '' : '<div class="fund-corner-ribbon recovering">修复中</div>';
                 recoveryHtml = `
                     <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
                         <div class="stat-label">修复进度</div>

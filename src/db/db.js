@@ -230,13 +230,13 @@ async function getPendingTradesByRowId(rowId) {
 
 async function createPendingTrade(trade) {
   const {
-    id, rowId, code, name, amount, isBefore15 = true, createdAt
+    id, rowId, code, name, type = 'add', amount, shares = null, isBefore15 = true, createdAt
   } = trade;
 
   await query(
-    `INSERT INTO pending_trades (id, row_id, code, name, amount, is_before_15, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, rowId, code, name, amount, isBefore15, createdAt]
+    `INSERT INTO pending_trades (id, row_id, code, name, type, amount, shares, is_before_15, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [id, rowId, code, name, type, amount, shares, isBefore15, createdAt]
   );
   return trade;
 }

@@ -38,11 +38,16 @@ CREATE TABLE IF NOT EXISTS pending_trades (
     row_id VARCHAR(50) NOT NULL,
     code VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
+    type VARCHAR(10) NOT NULL DEFAULT 'add' CHECK (type IN ('add', 'reduce')),
     amount DECIMAL(15, 2) NOT NULL,
+    shares DECIMAL(15, 4),
     is_before_15 BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY (row_id) REFERENCES positions(id) ON DELETE CASCADE
 );
+
+ALTER TABLE pending_trades ADD COLUMN IF NOT EXISTS type VARCHAR(10) NOT NULL DEFAULT 'add';
+ALTER TABLE pending_trades ADD COLUMN IF NOT EXISTS shares DECIMAL(15, 4);
 
 -- 索引优化查询
 CREATE INDEX IF NOT EXISTS idx_pending_trades_row_id ON pending_trades(row_id);

@@ -705,39 +705,76 @@ async function autoConfirmPendingTrades() {
 
       console.log(`  当前净值: ${fundData.netValue}`);
 
-      // 计算新的份额和成本
-      const newShares = trade.amount / fundData.netValue;
-      const totalShares = (row.shares || 0) + newShares;
-      const totalCost = ((row.shares || 0) * (row.cost || 0)) + trade.amount;
-      const newCost = totalCost / totalShares;
+      const tradeType = trade.type || 'add';
+      if (tradeType === 'reduce') {
+        const reduceShares = parseFloat(Number(trade.shares || 0).toFixed(2));
+        if (!(reduceShares > 0)) {
+          console.log('  → 减仓份额无效，跳过');
+          remainingTrades.push(trade);
+          continue;
+        }
+        if (reduceShares > (row.shares || 0)) {
+          console.log('  → 减仓份额超过当前持仓，跳过');
+          remainingTrades.push(trade);
+          continue;
+        }
 
-      console.log(`  新增份额: ${newShares.toFixed(4)}, 总份额: ${totalShares.toFixed(4)}, 新成本: ${newCost.toFixed(4)}`);
+        const remainShares = (row.shares || 0) - reduceShares;
+        const redeemAmount = reduceShares * fundData.netValue;
+        const updatedShares = parseFloat(remainShares.toFixed(2));
 
-      // 更新持仓（shares保留2位小数，cost保留4位小数）
-      const updatedShares = parseFloat(totalShares.toFixed(2));
-      const updatedCost = parseFloat(newCost.toFixed(4));
-      const updatedPlanBuy = row.planBuy && row.planBuy > 0 ? Math.max(0, row.planBuy - trade.amount) : row.planBuy;
+        console.log(`  减仓份额: ${reduceShares.toFixed(2)}, 剩余份额: ${updatedShares.toFixed(2)}, 赎回金额: ${redeemAmount.toFixed(2)}`);
 
-      // 更新数据库中的持仓
-      await db.updatePosition(row.id, {
-        shares: updatedShares,
-        cost: updatedCost,
-        planBuy: updatedPlanBuy
-      });
+        await db.updatePosition(row.id, {
+          shares: updatedShares,
+          cost: row.cost
+        });
 
+        await db.createTradeRecord({
+          id: trade.id,
+          rowId: trade.rowId,
+          type: 'reduce',
+          amount: parseFloat(redeemAmount.toFixed(2)),
+          shares: reduceShares,
+          netValue: parseFloat(fundData.netValue.toFixed(4)),
+          isBefore15: trade.isBefore15,
+          createdAt: trade.createdAt,
+          localDate: tradeDateStr
+        });
+      } else {
+        // 计算新的份额和成本
+        const newShares = trade.amount / fundData.netValue;
+        const totalShares = (row.shares || 0) + newShares;
+        const totalCost = ((row.shares || 0) * (row.cost || 0)) + trade.amount;
+        const newCost = totalCost / totalShares;
 
-      // 添加交易历史记录到数据库
-      await db.createTradeRecord({
-        id: trade.id,
-        rowId: trade.rowId,
-        type: 'add',
-        amount: trade.amount,
-        shares: parseFloat(newShares.toFixed(2)),
-        netValue: parseFloat(fundData.netValue.toFixed(4)),
-        isBefore15: trade.isBefore15,
-        createdAt: trade.createdAt,
-        localDate: tradeDateStr
-      });
+        console.log(`  新增份额: ${newShares.toFixed(4)}, 总份额: ${totalShares.toFixed(4)}, 新成本: ${newCost.toFixed(4)}`);
+
+        // 更新持仓（shares保留2位小数，cost保留4位小数）
+        const updatedShares = parseFloat(totalShares.toFixed(2));
+        const updatedCost = parseFloat(newCost.toFixed(4));
+        const updatedPlanBuy = row.planBuy && row.planBuy > 0 ? Math.max(0, row.planBuy - trade.amount) : row.planBuy;
+
+        // 更新数据库中的持仓
+        await db.updatePosition(row.id, {
+          shares: updatedShares,
+          cost: updatedCost,
+          planBuy: updatedPlanBuy
+        });
+
+        // 添加交易历史记录到数据库
+        await db.createTradeRecord({
+          id: trade.id,
+          rowId: trade.rowId,
+          type: 'add',
+          amount: trade.amount,
+          shares: parseFloat(newShares.toFixed(2)),
+          netValue: parseFloat(fundData.netValue.toFixed(4)),
+          isBefore15: trade.isBefore15,
+          createdAt: trade.createdAt,
+          localDate: tradeDateStr
+        });
+      }
 
       // 从数据库中删除已确认的待确认交易
       await db.deletePendingTrade(trade.id);

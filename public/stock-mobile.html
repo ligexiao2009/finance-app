@@ -208,6 +208,19 @@
         .toolbar-chip-unlocked.is-counting {
             min-width: 4.2rem;
         }
+        .edit-lock-chip {
+            gap: 0.28rem;
+            white-space: nowrap;
+        }
+        .edit-lock-icon {
+            font-size: 0.86rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .edit-lock-label {
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+        }
         .toolbar-chip:disabled {
             opacity: 0.45;
             cursor: not-allowed;
@@ -808,25 +821,56 @@
             font-weight: 600;
             color: var(--text-muted);
         }
-        .compact-mode-fab {
-            width: 2.35rem;
-            height: 2.35rem;
+        .top-action-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.22rem;
             border-radius: 999px;
-            border: 1px solid var(--border-color);
+            border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+            background: color-mix(in srgb, var(--bg-card) 94%, white 6%);
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+        }
+        .top-action-btn {
+            width: 2.1rem;
+            height: 2.1rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
             background: transparent;
             color: var(--text-muted);
-            font-size: 0.92rem;
+            font-size: 0.82rem;
             font-weight: 800;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: 0.2s;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .compact-mode-fab.is-active {
+        .top-action-btn:active {
+            transform: scale(0.97);
+        }
+        .top-action-btn svg {
+            width: 1rem;
+            height: 1rem;
+            stroke: currentColor;
+        }
+        .top-action-btn.is-accent {
+            background: color-mix(in srgb, #4f46e5 10%, var(--bg-card));
+            border-color: color-mix(in srgb, #4f46e5 18%, transparent);
+            color: #4f46e5;
+        }
+        .top-action-btn.is-accent.is-active {
             background: #4f46e5;
             border-color: #4f46e5;
             color: white;
-            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.25);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.22);
+        }
+        .top-action-btn.is-neutral {
+            border-color: color-mix(in srgb, var(--border-color) 90%, transparent);
+            background: color-mix(in srgb, var(--bg-card) 90%, white 10%);
+        }
+        .top-action-btn.is-neutral:hover {
+            color: var(--text-main);
+            border-color: color-mix(in srgb, var(--border-color) 65%, transparent);
         }
     </style>
 </head>
@@ -839,12 +883,16 @@
                 <h1 class="page-title italic uppercase">持仓看板</h1>
                 <span class="text-indigo-500 text-xs font-extrabold">PRO</span>
             </div>
-            <div class="flex items-center gap-2">
-                <button id="compactModeBtn" onclick="toggleCompactMode()" class="compact-mode-fab" title="切换简洁模式">简</button>
-                <button onclick="refreshAllPrices()" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500 text-white px-3" title="立即刷新">
+            <div class="top-action-group" role="group" aria-label="页面快捷操作">
+                <button id="compactModeBtn" onclick="toggleCompactMode()" class="top-action-btn is-accent" title="切换简洁模式" aria-label="切换简洁模式">简</button>
+                <button onclick="refreshAllPrices()" class="top-action-btn is-neutral" title="立即刷新" aria-label="立即刷新">
                     <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M23 4v6h-6M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
                 </button>
-                <button onclick="toggleThemeMode()" class="toolbar-chip toolbar-chip-soft px-3" title="切换模式">🌓</button>
+                <button onclick="toggleThemeMode()" class="top-action-btn is-neutral" title="切换模式" aria-label="切换明暗模式">
+                    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.9">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A8.98 8.98 0 0 1 11.2 3a9 9 0 1 0 9.8 9.8Z"></path>
+                    </svg>
+                </button>
             </div>
         </div>
 
@@ -900,7 +948,10 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-lock">🔒</button>
+                <button id="editLockBtn" onclick="requestEditingUnlock()" class="toolbar-chip toolbar-chip-lock edit-lock-chip">
+                    <span class="edit-lock-icon" aria-hidden="true">🔒</span>
+                    <span class="edit-lock-label">锁定</span>
+                </button>
                 <button id="addStockBtn" onclick="createNewAsset(false)" class="toolbar-chip toolbar-chip-strong bg-slate-800 hover:bg-slate-700">+股</button>
                 <button id="addFundBtn" onclick="createNewAsset(true)" class="toolbar-chip toolbar-chip-strong bg-indigo-600 hover:bg-indigo-500">+基</button>
             </div>
@@ -1072,6 +1123,19 @@
                                 <option value="75">3/4 (75%)</option>
                                 <option value="100">全部 (100%)</option>
                             </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="modal-label mb-2 block">交易时间</label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="reduceTradeTime" id="reduceTradeTimeBefore" value="before" checked class="accent-rose-500">
+                                <span class="text-sm font-bold">15:00前</span>
+                            </label>
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="reduceTradeTime" id="reduceTradeTimeAfter" value="after" class="accent-rose-500">
+                                <span class="text-sm font-bold">15:00后</span>
+                            </label>
                         </div>
                     </div>
                     <div class="bg-rose-500/10 p-3 rounded-lg border border-rose-500/20">
@@ -1283,9 +1347,9 @@
 
         function getUnlockCountdownLabel() {
             const remaining = getRemainingUnlockMs();
-            if (remaining <= 0) return '🔒';
+            if (remaining <= 0) return '锁定';
             const minutesLeft = Math.max(1, Math.ceil(remaining / 60000));
-            return `🔓 ${minutesLeft}m`;
+            return `${minutesLeft}m`;
         }
 
         function getStoredEditUnlockState() {
@@ -1403,8 +1467,11 @@
         function updateEditLockButton() {
             const btn = document.getElementById('editLockBtn');
             if (!btn) return;
-            btn.textContent = isEditingUnlocked ? getUnlockCountdownLabel() : '🔒';
-            btn.className = `toolbar-chip ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
+            btn.innerHTML = `
+                <span class="edit-lock-icon" aria-hidden="true">${isEditingUnlocked ? '🔓' : '🔒'}</span>
+                <span class="edit-lock-label">${isEditingUnlocked ? getUnlockCountdownLabel() : '锁定'}</span>
+            `;
+            btn.className = `toolbar-chip edit-lock-chip ${isEditingUnlocked ? 'toolbar-chip-unlocked' : 'toolbar-chip-lock'}`;
             btn.classList.toggle('is-counting', isEditingUnlocked);
         }
 
@@ -1512,7 +1579,7 @@
 
             if (compactBtn) {
                 compactBtn.textContent = '简';
-                compactBtn.className = `compact-mode-fab${mobileCompactMode ? ' is-active' : ''}`;
+                compactBtn.className = `top-action-btn is-accent${mobileCompactMode ? ' is-active' : ''}`;
             }
 
             if (compactHeader) {
@@ -2804,6 +2871,7 @@
 
             switchTab('all');
             await refreshAllPrices(false, true);
+            sortCards();
             applyEditingLockState();
             updateSortButton();
             setupAutoRefresh();
@@ -2926,6 +2994,7 @@
                     rowId: rowId,
                     code: code,
                     name: name,
+                    type: 'add',
                     amount: amount,
                     isBefore15: isBefore15,
                     createdAt: now.toISOString()
@@ -2957,7 +3026,9 @@
                     amount: amount,
                     shares: newShares,
                     netValue: price,
-                    createdAt: now.toISOString()
+                    isBefore15: true,
+                    createdAt: now.toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
                 });
 
                 closeAddFundModal();
@@ -2968,6 +3039,7 @@
                     rowId: rowId,
                     code: code,
                     name: name,
+                    type: 'add',
                     amount: amount,
                     isBefore15: isBefore15,
                     createdAt: now.toISOString()
@@ -3002,6 +3074,8 @@
             document.getElementById('reduceModalNetValue').innerText = '¥' + price.toFixed(3);
             document.getElementById('reduceModalShares').value = '';
             document.getElementById('reduceModalPercent').value = '';
+            document.getElementById('reduceTradeTimeBefore').checked = true;
+            document.getElementById('reduceTradeTimeAfter').checked = false;
 
             // 清空预览
             document.getElementById('reduceModalRemainShares').innerText = '0.00 份';
@@ -3060,16 +3134,41 @@
             const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
             if (!currentReduceFundRow || reduceShares <= 0) return;
 
-            const { shares, cost, price } = currentReduceFundData;
+            const { shares, cost, price, code, name } = currentReduceFundData;
             if (reduceShares > shares) {
                 alert('减仓份额不能超过当前持仓');
                 return;
             }
 
+            const isBefore15 = document.getElementById('reduceTradeTimeBefore').checked;
+            const now = new Date();
+            const priceDate = currentReduceFundRow.dataset.priceDate || '';
+            const todayStr = now.getFullYear().toString() +
+                            (now.getMonth() + 1).toString().padStart(2, '0') +
+                            now.getDate().toString().padStart(2, '0');
+            const isTodayNetValue = priceDate === todayStr;
             const remainShares = shares - reduceShares;
             const redeemAmount = reduceShares * price;
 
             console.log('减仓操作:', { code: currentReduceFundData.code, shares, reduceShares, remainShares });
+
+            const rowId = currentReduceFundRow.dataset.id;
+            if (!isBefore15 || !isTodayNetValue) {
+                await addPendingTrade({
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    rowId,
+                    code,
+                    name,
+                    type: 'reduce',
+                    amount: redeemAmount,
+                    shares: parseFloat(reduceShares.toFixed(2)),
+                    isBefore15,
+                    createdAt: now.toISOString()
+                });
+                await updatePendingTradeBanner();
+                closeReduceFundModal();
+                return;
+            }
 
             // 更新该行数据（成本价保持不变）
             currentReduceFundRow.querySelector('.shares-input').value = remainShares.toFixed(2);
@@ -3082,14 +3181,15 @@
             await saveRow(currentReduceFundRow);
 
             // 记录交易历史
-            const rowId = currentReduceFundRow.dataset.id;
             await addTradeRecord(rowId, {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
                 type: 'reduce',
-                amount: redeemAmount,
-                shares: reduceShares,
-                netValue: price,
-                createdAt: new Date().toISOString()
+                amount: parseFloat(redeemAmount.toFixed(2)),
+                shares: parseFloat(reduceShares.toFixed(2)),
+                netValue: parseFloat(price.toFixed(4)),
+                isBefore15,
+                createdAt: now.toISOString(),
+                localDate: new Date().toLocaleDateString('en-CA')
             });
 
             closeReduceFundModal();
@@ -3200,15 +3300,18 @@
                 listEl.innerHTML = trades.map(trade => {
                     const date = new Date(trade.createdAt);
                     const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    const isAdd = (trade.type || 'add') === 'add';
+                    const colorClass = isAdd ? 'text-indigo-400' : 'text-rose-400';
                     return `
                         <div class="bg-[var(--bg-main)] p-4 rounded-lg border border-[var(--border-color)]">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="font-black">${trade.name}</div>
                                     <div class="text-xs text-[var(--text-muted)] mono">#${trade.code}</div>
+                                    <div class="text-xs ${colorClass} mt-1">${isAdd ? '加仓' : '减仓'}待确认</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="mono font-black ${colorClass}">${isAdd ? '+' : '-'}¥${Math.round(trade.amount).toLocaleString()}</div>
                                     <div class="text-xs text-[var(--text-muted)]">${dateStr}</div>
                                 </div>
                             </div>
@@ -3255,31 +3358,55 @@
             const shares = parseFloat(card.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(card.querySelector('.cost-input').value) || 0;
 
-            const newShares = trade.amount / price;
-            const totalShares = shares + newShares;
-            const totalCost = (shares * cost) + trade.amount;
-            const newCost = totalCost / totalShares;
+            const tradeType = trade.type || 'add';
+            if (tradeType === 'reduce') {
+                const reduceShares = parseFloat(trade.shares) || 0;
+                if (!(reduceShares > 0) || reduceShares > shares) {
+                    alert('待确认减仓份额无效或已超过当前持仓');
+                    return;
+                }
+                card.querySelector('.shares-input').value = (shares - reduceShares).toFixed(2);
 
-            card.querySelector('.shares-input').value = totalShares.toFixed(2);
-            card.querySelector('.cost-input').value = newCost.toFixed(4);
+                await saveRow(card);
+                saveAndCalculate();
 
-            // 扣除拟加仓金额
-            const planBuyInput = card.querySelector('.plan-buy-input');
-            const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
-            planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+                await addTradeRecord(trade.rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    type: 'reduce',
+                    amount: parseFloat((reduceShares * price).toFixed(2)),
+                    shares: parseFloat(reduceShares.toFixed(2)),
+                    netValue: parseFloat(price.toFixed(4)),
+                    isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                    createdAt: new Date().toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
+                });
+            } else {
+                const newShares = trade.amount / price;
+                const totalShares = shares + newShares;
+                const totalCost = (shares * cost) + trade.amount;
+                const newCost = totalCost / totalShares;
 
-            await saveRow(card);
-            saveAndCalculate();
+                card.querySelector('.shares-input').value = totalShares.toFixed(2);
+                card.querySelector('.cost-input').value = newCost.toFixed(4);
 
-            // 记录交易历史
-            await addTradeRecord(trade.rowId, {
-                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                type: 'add',
-                amount: trade.amount,
-                shares: newShares,
-                netValue: price,
-                createdAt: new Date().toISOString()
-            });
+                const planBuyInput = card.querySelector('.plan-buy-input');
+                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+
+                await saveRow(card);
+                saveAndCalculate();
+
+                await addTradeRecord(trade.rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    type: 'add',
+                    amount: trade.amount,
+                    shares: newShares,
+                    netValue: price,
+                    isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                    createdAt: new Date().toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
+                });
+            }
 
             // 删除待确认交易
             trades.splice(tradeIndex, 1);
@@ -3314,30 +3441,48 @@
                 const shares = parseFloat(card.querySelector('.shares-input').value) || 0;
                 const cost = parseFloat(card.querySelector('.cost-input').value) || 0;
 
-                const newShares = trade.amount / price;
-                const totalShares = shares + newShares;
-                const totalCost = (shares * cost) + trade.amount;
-                const newCost = totalCost / totalShares;
+                const tradeType = trade.type || 'add';
+                if (tradeType === 'reduce') {
+                    const reduceShares = parseFloat(trade.shares) || 0;
+                    if (!(reduceShares > 0) || reduceShares > shares) continue;
+                    card.querySelector('.shares-input').value = (shares - reduceShares).toFixed(2);
 
-                card.querySelector('.shares-input').value = totalShares.toFixed(2);
-                card.querySelector('.cost-input').value = newCost.toFixed(4);
+                    await saveRow(card);
+                    await addTradeRecord(trade.rowId, {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
+                        type: 'reduce',
+                        amount: parseFloat((reduceShares * price).toFixed(2)),
+                        shares: parseFloat(reduceShares.toFixed(2)),
+                        netValue: parseFloat(price.toFixed(4)),
+                        isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                        createdAt: now.toISOString(),
+                        localDate: new Date().toLocaleDateString('en-CA')
+                    });
+                } else {
+                    const newShares = trade.amount / price;
+                    const totalShares = shares + newShares;
+                    const totalCost = (shares * cost) + trade.amount;
+                    const newCost = totalCost / totalShares;
 
-                // 扣除拟加仓金额
-                const planBuyInput = card.querySelector('.plan-buy-input');
-                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
-                planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+                    card.querySelector('.shares-input').value = totalShares.toFixed(2);
+                    card.querySelector('.cost-input').value = newCost.toFixed(4);
 
-                await saveRow(card);
+                    const planBuyInput = card.querySelector('.plan-buy-input');
+                    const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                    planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
 
-                // 记录交易历史
-                await addTradeRecord(trade.rowId, {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
-                    type: 'add',
-                    amount: trade.amount,
-                    shares: newShares,
-                    netValue: price,
-                    createdAt: now.toISOString()
-                });
+                    await saveRow(card);
+                    await addTradeRecord(trade.rowId, {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
+                        type: 'add',
+                        amount: trade.amount,
+                        shares: newShares,
+                        netValue: price,
+                        isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                        createdAt: now.toISOString(),
+                        localDate: new Date().toLocaleDateString('en-CA')
+                    });
+                }
 
                 successCount++;
             }
@@ -3423,18 +3568,21 @@
                 pendingTrades.forEach(trade => {
                     const date = new Date(trade.createdAt);
                     const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    const isAdd = (trade.type || 'add') === 'add';
+                    const colorClass = isAdd ? 'text-amber-400' : 'text-rose-400';
+                    const bgClass = isAdd ? 'bg-amber-500/10 border-amber-500/30' : 'bg-rose-500/10 border-rose-500/30';
                     html += `
-                        <div class="bg-amber-500/10 p-4 rounded-lg border border-amber-500/30">
+                        <div class="${bgClass} p-4 rounded-lg border">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <span class="text-amber-400 font-black">加仓</span>
-                                        <span class="bg-amber-500/30 text-amber-400 px-2 py-0.5 rounded text-xs font-black">待确认</span>
+                                        <span class="${colorClass} font-black">${isAdd ? '加仓' : '减仓'}</span>
+                                        <span class="px-2 py-0.5 rounded text-xs font-black ${isAdd ? 'bg-amber-500/30 text-amber-400' : 'bg-rose-500/30 text-rose-400'}">待确认</span>
                                     </div>
                                     <div class="text-xs text-[var(--text-muted)] mt-1">${dateStr}</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="mono font-black text-amber-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="mono font-black ${colorClass}">${isAdd ? '+' : '-'}¥${Math.round(trade.amount).toLocaleString()}</div>
                                 </div>
                             </div>
                             <div class="mt-2 flex gap-2">

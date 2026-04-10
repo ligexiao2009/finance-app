@@ -1353,6 +1353,7 @@
     let tradeHistoryLoadingByFundCode = {};
     let expandedFundCards = {};
     const DEFAULT_EXPANDED_FUND_CARDS = 0;
+    const AUTO_EXPAND_FUND_CARDS_LIMIT = 3;
     let fundResultFilterMode = '';
     
     function getCSSVariableValue(name) {
@@ -2229,6 +2230,10 @@
         if (Object.prototype.hasOwnProperty.call(expandedFundCards, fundCode)) {
             return expandedFundCards[fundCode];
         }
+        const successCount = latestFundAnalysisResults.filter(result => result && result.success).length;
+        if (successCount > 0 && successCount <= AUTO_EXPAND_FUND_CARDS_LIMIT) {
+            return true;
+        }
         return index < DEFAULT_EXPANDED_FUND_CARDS;
     }
 
@@ -2417,6 +2422,8 @@
             : sortedResults;
         const successResults = filteredResults.filter(r => r.success);
         const shouldShowCompareChart = successResults.length > 1 && successResults.length <= MAX_COMPARE_CHART_FUNDS;
+        const shouldAutoExpandAll = successResults.length > 0 && successResults.length <= AUTO_EXPAND_FUND_CARDS_LIMIT;
+        const shouldShowTopActions = !shouldAutoExpandAll && successResults.length > 1;
         let html = '';
 
         if (shouldShowCompareChart) {
@@ -2432,8 +2439,8 @@
             const result = filteredResults[index];
 
             if (!result.success) {
-                html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}">
-                    ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+                html += `<div class="fund-result-card${index === 0 && shouldShowTopActions ? ' has-sort-control' : ''}">
+                    ${index === 0 && shouldShowTopActions ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${getFundExpandToggleHtml(sortedResults)}</div>` : ''}
                     <div class="fund-code">${result.fundCode}</div>
                     <div class="error-msg">获取失败: ${result.error}</div>
                 </div>`;
@@ -2544,8 +2551,8 @@
                     </div>`;
             }
 
-            html += `<div class="fund-result-card${index === 0 ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
-                ${index === 0 ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${successResults.length > 1 ? getFundExpandToggleHtml(sortedResults) : ''}</div>` : ''}
+            html += `<div class="fund-result-card${index === 0 && shouldShowTopActions ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
+                ${index === 0 && shouldShowTopActions ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${getFundExpandToggleHtml(sortedResults)}</div>` : ''}
                 ${ribbonHtml}
                 <div class="fund-header">
                     <div class="fund-meta">

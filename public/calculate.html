@@ -41,11 +41,9 @@
             padding: 20px 16px;
         }
 
-        /* 主资产卡片 */
         .main-card {
             background: var(--card-bg);
             backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-radius: 28px;
             padding: 20px;
             margin-bottom: 16px;
@@ -82,7 +80,6 @@
             transition: all 0.3s;
         }
 
-        /* KPI 指标卡片 */
         .kpis {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -113,7 +110,6 @@
             font-weight: 500;
         }
 
-        /* 头部价格输入（缩小版） */
         .price-input-group {
             display: flex;
             background: rgba(0, 0, 0, 0.05);
@@ -147,7 +143,6 @@
             outline: none;
         }
 
-        /* 列表记录 */
         .list-card {
             background: var(--card-bg);
             backdrop-filter: blur(20px);
@@ -168,7 +163,6 @@
             border: none;
         }
 
-        /* 列表中的输入框（缩小版） */
         .entry-fields {
             display: flex;
             gap: 6px;
@@ -255,7 +249,6 @@
             opacity: 0.9;
         }
 
-        /* 状态色 */
         .red {
             color: var(--system-red);
         }
@@ -292,16 +285,13 @@
 
         /* 走势图容器 */
         .chart-card {
-            background:
-                radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 28%),
-                linear-gradient(180deg, #12192d 0%, #0d1427 100%);
+            background: radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 28%), linear-gradient(180deg, #12192d 0%, #0d1427 100%);
             border-radius: 30px;
             padding: 18px;
             margin-top: 16px;
             border: 1px solid rgba(148, 163, 184, 0.14);
             box-shadow: 0 22px 52px rgba(2, 6, 23, 0.28);
             display: none;
-            /* 默认隐藏，选择股票后显示 */
             overflow: hidden;
         }
 
@@ -392,11 +382,6 @@
             box-shadow: 0 10px 18px rgba(0, 122, 255, 0.22);
         }
 
-        .period-btn:not(.active):hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
-        }
-
         .chart-reset-btn {
             padding: 10px 12px;
             border-radius: 14px;
@@ -409,195 +394,15 @@
             transition: all 0.2s ease;
         }
 
-        .chart-reset-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #f8fafc;
-        }
-
-        .chart-range {
-            display: flex;
-            gap: 6px;
-            padding: 4px;
-            border-radius: 18px;
-            background: rgba(15, 23, 42, 0.55);
-            border: 1px solid rgba(148, 163, 184, 0.16);
-        }
-
-        .range-btn {
-            min-width: 62px;
-            padding: 10px 12px;
-            border-radius: 14px;
-            border: 1px solid transparent;
-            background: transparent;
-            color: #94a3b8;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .range-btn.active {
-            background: rgba(96, 165, 250, 0.18);
-            border-color: rgba(96, 165, 250, 0.28);
-            color: #e0f2fe;
-        }
-
-        .range-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-            color: #e2e8f0;
-        }
-
         .chart-container {
             position: relative;
             height: 330px;
             width: 100%;
             padding: 14px 12px 8px;
             border-radius: 24px;
-            background:
-                radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 26%),
-                linear-gradient(180deg, #12192d 0%, #10182b 100%);
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 26%), linear-gradient(180deg, #12192d 0%, #10182b 100%);
             border: 1px solid rgba(148, 163, 184, 0.1);
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        }
-
-        .chart-navigator {
-            margin-top: 10px;
-            padding: 10px 12px 12px;
-            border-radius: 18px;
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid rgba(148, 163, 184, 0.12);
-        }
-
-        .chart-navigator[hidden] {
-            display: none;
-        }
-
-        .chart-nav-top {
-            position: relative;
-            height: 38px;
-            border-radius: 10px;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        #kline-overview {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        .chart-nav-selection {
-            position: absolute;
-            top: 2px;
-            bottom: 2px;
-            border-radius: 8px;
-            background: rgba(96, 165, 250, 0.18);
-            border: 1px solid rgba(147, 197, 253, 0.55);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
-            pointer-events: none;
-        }
-
-        .chart-nav-selection::before,
-        .chart-nav-selection::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            width: 4px;
-            height: 16px;
-            margin-top: -8px;
-            border-radius: 999px;
-            background: rgba(241, 245, 249, 0.9);
-        }
-
-        .chart-nav-selection::before {
-            left: 6px;
-        }
-
-        .chart-nav-selection::after {
-            right: 6px;
-        }
-
-        .chart-nav-slider {
-            margin-top: 10px;
-        }
-
-        .chart-nav-zoom {
-            margin-top: 10px;
-        }
-
-        .chart-nav-caption {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            color: #94a3b8;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .chart-nav-slider input[type="range"],
-        .chart-nav-zoom input[type="range"] {
-            width: 100%;
-            margin: 0;
-            background: transparent;
-            appearance: none;
-            -webkit-appearance: none;
-        }
-
-        .chart-nav-slider input[type="range"]::-webkit-slider-runnable-track,
-        .chart-nav-zoom input[type="range"]::-webkit-slider-runnable-track {
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(148, 163, 184, 0.22);
-        }
-
-        .chart-nav-slider input[type="range"]::-webkit-slider-thumb,
-        .chart-nav-zoom input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            margin-top: -6px;
-            border-radius: 50%;
-            border: 2px solid rgba(191, 219, 254, 0.95);
-            background: #60a5fa;
-            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.28);
-        }
-
-        .chart-nav-slider input[type="range"]::-moz-range-track,
-        .chart-nav-zoom input[type="range"]::-moz-range-track {
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(148, 163, 184, 0.22);
-        }
-
-        .chart-nav-slider input[type="range"]::-moz-range-thumb,
-        .chart-nav-zoom input[type="range"]::-moz-range-thumb {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            border: 2px solid rgba(191, 219, 254, 0.95);
-            background: #60a5fa;
-            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.28);
-        }
-
-        .chart-nav-labels {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 8px;
-            color: #64748b;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .chart-container::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            border-radius: 24px;
-            pointer-events: none;
-            background:
-                linear-gradient(180deg, transparent, rgba(148, 163, 184, 0.04));
         }
 
         #kline-chart {
@@ -616,8 +421,9 @@
             font-size: 14px;
             font-weight: 600;
             text-align: center;
-            position: relative;
-            z-index: 1;
+            position: absolute;
+            inset: 0;
+            z-index: 2;
         }
 
         .chart-loading small {
@@ -631,20 +437,14 @@
                 flex-direction: column;
             }
 
-            .chart-period {
+            .chart-period,
+            .chart-controls,
+            .chart-reset-btn {
                 width: 100%;
             }
 
             .period-btn {
                 flex: 1;
-            }
-
-            .chart-controls {
-                width: 100%;
-            }
-
-            .chart-reset-btn {
-                width: 100%;
             }
 
             .chart-container {
@@ -664,7 +464,6 @@
                 <div id="profit" class="big-num red">¥0</div>
                 <div id="rate" class="percent-badge bg-red">0.00%</div>
             </div>
-
             <div class="kpis">
                 <div class="kpi">
                     <div id="cost" class="v">¥0</div>
@@ -679,7 +478,6 @@
                     <div class="l">回本单价</div>
                 </div>
             </div>
-
             <div class="price-input-group">
                 <div class="input-wrapper" data-label="市场单价">
                     <input type="number" id="price" value="170" step="0.01" oninput="calculateOnly()"
@@ -693,19 +491,16 @@
         </div>
 
         <div class="list-card" style="margin-bottom: 12px; padding: 16px;">
-            <div style="flex: 1;">
-                <select id="stock-select"
-                    style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: white; font-size: 14px; font-weight: 600; outline: none; color: #1c1c1e;"
-                    onchange="onStockSelectChange(this)">
-                    <option value="">选择持仓股票...</option>
-                </select>
-            </div>
+            <select id="stock-select"
+                style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: white; font-size: 14px; font-weight: 600; outline: none;"
+                onchange="onStockSelectChange(this)">
+                <option value="">选择持仓股票...</option>
+            </select>
         </div>
 
         <div class="list-card">
             <div id="list"></div>
         </div>
-
         <button class="add-btn" onclick="addRecord()">+ 新增补仓记录</button>
 
         <div class="chart-card" id="chart-card">
@@ -716,48 +511,18 @@
                     <div class="chart-subtitle" id="chart-subtitle">查看最近一段时间的价格波动，可缩放时间范围</div>
                 </div>
                 <div class="chart-controls">
-                    <!-- <div class="chart-period">
+                    <div class="chart-period">
                         <button class="period-btn active" data-scale="240" onclick="changeChartPeriod(240)">日线</button>
                         <button class="period-btn" data-scale="1200" onclick="changeChartPeriod(1200)">周线</button>
                         <button class="period-btn" data-scale="7200" onclick="changeChartPeriod(7200)">月线</button>
-                    </div> -->
-                    <!-- <div class="chart-range">
-                        <button class="range-btn" type="button" data-range="2y"
-                            onclick="setChartRange('2y')">近2年</button>
-                        <button class="range-btn" type="button" data-range="5y"
-                            onclick="setChartRange('5y')">近5年</button>
                     </div>
-                    <button class="chart-reset-btn" type="button" onclick="resetChartZoom()">重置范围</button> -->
+                    <button class="chart-reset-btn" onclick="resetChartZoom()">重置缩放</button>
                 </div>
             </div>
             <div class="chart-container">
                 <canvas id="kline-chart"></canvas>
                 <div class="chart-loading" id="chart-loading">正在加载图表数据...</div>
             </div>
-            <!-- <div class="chart-navigator" id="chart-navigator" hidden>
-                <div class="chart-nav-top">
-                    <canvas id="kline-overview"></canvas>
-                    <div class="chart-nav-selection" id="chart-nav-selection"></div>
-                </div>
-                <div class="chart-nav-slider">
-                    <div class="chart-nav-caption">
-                        <span>平移窗口</span>
-                        <span id="chart-window-caption">最近区间</span>
-                    </div>
-                    <input id="chart-window-slider" type="range" min="0" max="0" step="1" value="0" oninput="handleChartWindowSlide(this.value)">
-                </div>
-                <div class="chart-nav-zoom">
-                    <div class="chart-nav-caption">
-                        <span>缩放图表</span>
-                        <span id="chart-zoom-caption">默认</span>
-                    </div>
-                    <input id="chart-window-size-slider" type="range" min="20" max="120" step="1" value="60" oninput="handleChartZoomSlide(this.value)">
-                </div>
-                <div class="chart-nav-labels">
-                    <span id="chart-nav-start-label">-</span>
-                    <span id="chart-nav-end-label">-</span>
-                </div>
-            </div> -->
         </div>
     </div>
 
@@ -765,28 +530,20 @@
         // 确保插件正常注册
         window.addEventListener('load', function () {
             if (window.ChartZoom) {
-                try {
-                    Chart.register(window.ChartZoom);
-                } catch (e) {
-                    console.warn('注册ChartZoom失败:', e);
-                }
+                try { Chart.register(window.ChartZoom); } catch (e) { }
             }
         });
 
-        // 持仓数据 (重命名为 holdingsData 避免和图表数据变量名冲突)
         let holdingsData = JSON.parse(localStorage.getItem('invest_pro_data')) || [
-            { shares: 700, price: 141 },
-            { shares: 700, price: 100 }
+            { shares: 700, price: 141 }, { shares: 700, price: 100 }
         ];
 
-        // 图表相关变量
         let klineChart = null;
         let currentStockCode = null;
-        let currentChartScale = 240; // 默认日线
+        let currentChartScale = 240;
         let currentKlineData = null;
         let currentRangePreset = null;
         let currentWindowStartIndex = null;
-        let currentVisibleCount = null;
         let currentWindowSize = null;
 
         function getChartPeriodLabel(scale) {
@@ -795,54 +552,27 @@
             return '日线';
         }
 
-        function getRangeCount(rangeKey, scale) {
-            if (rangeKey === '2y') {
-                if (scale >= 7200) return 24;
-                if (scale >= 1200) return 104;
-                return 500;
-            }
-
-            if (rangeKey === '5y') {
-                if (scale >= 7200) return 60;
-                if (scale >= 1200) return 260;
-                return 1250;
-            }
-
-            return getInitialVisibleCount(scale);
+        // 补回丢失的获取数据长度函数
+        function getKlineDataLength(scale) {
+            if (scale >= 7200) return 120;
+            if (scale >= 1200) return 250;
+            return 500;
         }
 
-        function getDefaultWindowCount(rangeKey, scale) {
-            if (scale >= 7200) {
-                return rangeKey === '5y' ? 24 : 18;
-            }
-
-            if (scale >= 1200) {
-                return rangeKey === '5y' ? 80 : 56;
-            }
-
-            return rangeKey === '5y' ? 220 : 160;
+        function getRangeCount(rangeKey, scale) {
+            return scale >= 7200 ? 60 : scale >= 1200 ? 260 : 1250;
         }
 
         function getMinimumWindowCount(scale) {
             if (scale >= 7200) return 6;
-            if (scale >= 1200) return 16;
-            return 30;
+            if (scale >= 1200) return 12;
+            return 20;
         }
 
-        function getKlineDataLength(scale) {
-            if (scale >= 7200) return 120;
-            if (scale >= 1200) return 320;
-            return 1500;
-        }
-
-        function updateRangeButtons() {
-            document.querySelectorAll('.range-btn').forEach(btn => {
-                if (btn.dataset.range === currentRangePreset) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
+        function getDefaultVisibleCount(scale) {
+            if (scale >= 7200) return 12;
+            if (scale >= 1200) return 24;
+            return 30; // 默认放大视角
         }
 
         function clampChartWindowStart(start, total, visibleCount) {
@@ -850,144 +580,98 @@
             return Math.max(0, Math.min(Number(start) || 0, maxStart));
         }
 
-        // 获取每个加仓阶段的历史成本线数组
         function getHistoricalBreakevenPrices() {
-            let prices = [];
-            let totalShares = 0;
-            let totalCost = 0;
-
+            let prices = [], totalShares = 0, totalCost = 0;
             holdingsData.forEach((item, index) => {
-                const s = Number(item.shares) || 0;
-                const p = Number(item.price) || 0;
-
-                // 只有当存在份额时才计算新的阶段成本
+                const s = Number(item.shares) || 0, p = Number(item.price) || 0;
                 if (s > 0) {
-                    totalShares += s;
-                    totalCost += s * p;
-                    prices.push({
-                        label: index === holdingsData.length - 1 ? '最新总成本' : `阶段成本 ${index + 1}`,
-                        price: totalCost / totalShares
-                    });
+                    totalShares += s; totalCost += s * p;
+                    prices.push({ label: index === holdingsData.length - 1 ? '最新总成本' : `阶段成本 ${index + 1}`, price: totalCost / totalShares });
                 }
             });
-
             return prices;
         }
 
-        function handleFocus(el) {
-            if (el.value === "0") {
-                el.value = "";
-            } else {
-                el.select();
+        function updateYAxisRange(chart) {
+            const xAxis = chart.scales.x, yAxis = chart.scales.y;
+            const minTime = xAxis.min, maxTime = xAxis.max;
+            const priceDataset = chart.data.datasets.find(ds => ds.label === '收盘价');
+            if (!priceDataset || !priceDataset.data) return;
+
+            const visibleData = priceDataset.data.filter(p => p.x >= minTime && p.x <= maxTime);
+            if (visibleData.length > 0) {
+                const prices = visibleData.map(p => p.y);
+                let vMax = Math.max(...prices), vMin = Math.min(...prices);
+
+                chart.data.datasets.forEach(ds => {
+                    if (ds.label && ds.label.includes('成本')) {
+                        const costVal = ds.data[0]?.y;
+                        if (costVal && costVal <= vMax * 1.2 && costVal >= vMin * 0.8) {
+                            vMax = Math.max(vMax, costVal); vMin = Math.min(vMin, costVal);
+                        }
+                    }
+                });
+                const padding = (vMax - vMin) * 0.1 || vMax * 0.05;
+                yAxis.options.min = vMin - padding; yAxis.options.max = vMax + padding;
+                chart.update('none');
             }
         }
 
+        function handleFocus(el) { if (el.value === "0") el.value = ""; else el.select(); }
         function animateNumber(el, to) {
-            const start = Number(el.dataset.val || 0);
-            const duration = 400;
-            const startTime = performance.now();
-
+            const start = Number(el.dataset.val || 0), duration = 400, startTime = performance.now();
             function tick(now) {
                 const progress = Math.min((now - startTime) / duration, 1);
-                const ease = 1 - Math.pow(1 - progress, 3);
-                const val = start + (to - start) * ease;
+                const val = start + (to - start) * (1 - Math.pow(1 - progress, 3));
                 el.innerText = '¥' + Math.round(val).toLocaleString();
-                if (progress < 1) requestAnimationFrame(tick);
-                else el.dataset.val = to;
+                if (progress < 1) requestAnimationFrame(tick); else el.dataset.val = to;
             }
             requestAnimationFrame(tick);
         }
 
         function calculateOnly() {
-            let totalCost = 0;
-            let totalShares = 0;
+            let totalCost = 0, totalShares = 0;
             const currentPrice = +document.getElementById('price').value || 0;
-
             holdingsData.forEach((d, i) => {
-                const cost = d.shares * d.price;
-                const profit = (d.shares * currentPrice) - cost;
+                const cost = d.shares * d.price, profit = (d.shares * currentPrice) - cost;
                 const rate = cost ? (profit / cost * 100).toFixed(2) : '0.00';
-
-                totalCost += cost;
-                totalShares += d.shares;
-
-                const itemProfitEl = document.getElementById(`p-${i}`);
-                const itemRateEl = document.getElementById(`r-${i}`);
-                if (itemProfitEl && itemRateEl) {
-                    itemProfitEl.innerText = (profit >= 0 ? '+' : '') + Math.round(profit);
-                    itemProfitEl.className = `item-profit ${profit >= 0 ? 'red' : 'green'}`;
-                    itemRateEl.innerText = rate + '%';
-                    itemRateEl.className = `item-rate ${profit >= 0 ? 'red' : 'green'}`;
+                totalCost += cost; totalShares += d.shares;
+                const pEl = document.getElementById(`p-${i}`), rEl = document.getElementById(`r-${i}`);
+                if (pEl && rEl) {
+                    pEl.innerText = (profit >= 0 ? '+' : '') + Math.round(profit); pEl.className = `item-profit ${profit >= 0 ? 'red' : 'green'}`;
+                    rEl.innerText = rate + '%'; rEl.className = `item-rate ${profit >= 0 ? 'red' : 'green'}`;
                 }
             });
-
-            const totalValue = totalShares * currentPrice;
-            const totalProfit = totalValue - totalCost;
+            const totalValue = totalShares * currentPrice, totalProfit = totalValue - totalCost;
             const totalRate = totalCost ? (totalProfit / totalCost * 100).toFixed(2) : '0.00';
-
             animateNumber(document.getElementById('profit'), totalProfit);
             document.getElementById('profit').className = `big-num ${totalProfit >= 0 ? 'red' : 'green'}`;
-
             const rateEl = document.getElementById('rate');
-            rateEl.innerText = (totalProfit >= 0 ? '+' : '') + totalRate + '%';
-            rateEl.className = `percent-badge ${totalProfit >= 0 ? 'bg-red' : 'bg-green'}`;
-
+            rateEl.innerText = (totalProfit >= 0 ? '+' : '') + totalRate + '%'; rateEl.className = `percent-badge ${totalProfit >= 0 ? 'bg-red' : 'bg-green'}`;
             document.getElementById('cost').innerText = '¥' + Math.round(totalCost).toLocaleString();
             document.getElementById('value').innerText = '¥' + Math.round(totalValue).toLocaleString();
             document.getElementById('breakeven').innerText = totalShares ? (totalCost / totalShares).toFixed(2) : '0.00';
             document.getElementById('total-display').value = totalShares;
-
             localStorage.setItem('invest_pro_data', JSON.stringify(holdingsData));
-
-            if (currentStockCode && currentKlineData) {
-                renderKlineChart(currentKlineData);
-            }
+            if (currentStockCode && currentKlineData) renderKlineChart(currentKlineData);
         }
 
         function renderList() {
-            const list = document.getElementById('list');
-            list.innerHTML = '';
-
+            const list = document.getElementById('list'); list.innerHTML = '';
             holdingsData.forEach((d, i) => {
-                const div = document.createElement('div');
-                div.className = 'item fade';
-                div.innerHTML = `
-                    <div class="entry-fields">
-                        <input type="number" value="${d.shares}" oninput="updateData(${i},'shares',this.value)" onfocus="handleFocus(this)">
-                        <span>股 @</span>
-                        <input type="number" value="${d.price}" oninput="updateData(${i},'price',this.value)" onfocus="handleFocus(this)">
-                    </div>
-                    <div class="item-right-box">
-                        <div class="item-right">
-                        <div id="p-${i}" class="item-profit">0</div>
-                        <div id="r-${i}" class="item-rate">0%</div>
-                        </div>
-                        <button class="delete-btn" onclick="removeRecord(${i})">×</button>
-                    </div>
-                    `;
+                const div = document.createElement('div'); div.className = 'item fade';
+                div.innerHTML = `<div class="entry-fields"><input type="number" value="${d.shares}" oninput="updateData(${i},'shares',this.value)" onfocus="handleFocus(this)"><span>股 @</span><input type="number" value="${d.price}" oninput="updateData(${i},'price',this.value)" onfocus="handleFocus(this)"></div><div class="item-right-box"><div class="item-right"><div id="p-${i}" class="item-profit">0</div><div id="r-${i}" class="item-rate">0%</div></div><button class="delete-btn" onclick="removeRecord(${i})">×</button></div>`;
                 list.appendChild(div);
             });
             calculateOnly();
         }
 
-        function updateData(i, key, val) {
-            holdingsData[i][key] = +val || 0;
-            calculateOnly();
-        }
-
-        function addRecord() {
-            holdingsData.push({ shares: 0, price: 0 });
-            renderList();
-        }
-
+        function updateData(i, key, val) { holdingsData[i][key] = +val || 0; calculateOnly(); }
+        function addRecord() { holdingsData.push({ shares: 0, price: 0 }); renderList(); }
         function removeRecord(i) {
             const items = document.querySelectorAll('.item');
-            items[i].style.opacity = '0';
-            items[i].style.transform = 'translateX(40px)';
-            setTimeout(() => {
-                holdingsData.splice(i, 1);
-                renderList();
-            }, 250);
+            items[i].style.opacity = '0'; items[i].style.transform = 'translateX(40px)';
+            setTimeout(() => { holdingsData.splice(i, 1); renderList(); }, 250);
         }
 
         renderList();
@@ -995,598 +679,182 @@
 
         async function loadHoldings() {
             try {
-                const apiBase = window.API_BASE_URL || '';
-                const url = apiBase + '/api/data';
-
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('获取持仓数据失败: ' + response.status);
-                }
+                const response = await fetch((window.API_BASE_URL || '') + '/api/data');
+                if (!response.ok) throw new Error('获取失败');
                 const responseData = await response.json();
-
                 const select = document.getElementById('stock-select');
-                while (select.options.length > 1) {
-                    select.remove(1);
-                }
-                const stocks = responseData.rows.filter(row => !row.isFund);
-
-                stocks.forEach(stock => {
+                while (select.options.length > 1) select.remove(1);
+                responseData.rows.filter(r => !r.isFund).forEach(s => {
                     const option = document.createElement('option');
-                    option.value = stock.id || stock.code;
-                    option.textContent = `${stock.name || stock.code} (${stock.shares}股 @ ${stock.cost})`;
-                    option.dataset.shares = stock.shares;
-                    option.dataset.cost = stock.cost;
-                    option.dataset.code = stock.code;
+                    option.value = s.id || s.code; option.textContent = `${s.name || s.code} (${s.shares}股 @ ${s.cost})`;
+                    option.dataset.shares = s.shares; option.dataset.cost = s.cost; option.dataset.code = s.code;
                     select.appendChild(option);
                 });
-            } catch (error) {
-                console.warn('加载持仓失败:', error.message);
-            }
+            } catch (e) { }
         }
 
         async function onStockSelectChange(select) {
-            const selectedOption = select.options[select.selectedIndex];
-            if (!selectedOption.value) {
-                return;
-            }
-            const shares = parseFloat(selectedOption.dataset.shares);
-            const cost = parseFloat(selectedOption.dataset.cost);
-            const stockCode = selectedOption.dataset.code;
-            if (isNaN(shares) || isNaN(cost) || shares <= 0 || cost <= 0) {
-                alert('持仓数据无效');
-                select.selectedIndex = 0;
-                return;
-            }
-            holdingsData.length = 0;
-            holdingsData.push({ shares: shares, price: cost });
-            renderList();
-
+            const opt = select.options[select.selectedIndex];
+            if (!opt.value) return;
+            const shares = parseFloat(opt.dataset.shares), cost = parseFloat(opt.dataset.cost), stockCode = opt.dataset.code;
+            if (isNaN(shares) || isNaN(cost) || shares <= 0 || cost <= 0) { select.selectedIndex = 0; return; }
+            holdingsData.length = 0; holdingsData.push({ shares, price: cost }); renderList();
             if (stockCode) {
                 try {
-                    const price = await fetchStockPrice(stockCode);
-                    if (price > 0) {
-                        const priceInput = document.getElementById('price');
-                        priceInput.value = price;
-                        calculateOnly();
-                    }
-                } catch (error) {
-                    console.error('获取股票价格失败:', error);
-                }
-
+                    const res = await fetch(`${window.API_BASE_URL || ''}/api/quotes?items=${encodeURIComponent(stockCode + ':0')}`);
+                    const data = await res.json(), price = data.quotes[`${stockCode}:0`]?.price;
+                    if (price > 0) { document.getElementById('price').value = price; calculateOnly(); }
+                } catch (e) { }
                 showKlineChart(stockCode);
             }
         }
 
-        async function fetchStockPrice(stockCode) {
-            try {
-                const apiBase = window.API_BASE_URL || '';
-                const url = `${apiBase}/api/quotes?items=${encodeURIComponent(stockCode + ':0')}`;
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('获取价格失败');
-                const responseData = await response.json();
-                const key = `${stockCode}:0`;
-                const quote = responseData.quotes[key];
-                if (quote && quote.price > 0) {
-                    return quote.price;
-                }
-                return 0;
-            } catch (error) {
-                console.error('获取股票价格失败:', error);
-                return 0;
-            }
-        }
-
-        // 显示图表并加载数据
         async function showKlineChart(stockCode) {
-            currentStockCode = stockCode;
-            currentWindowStartIndex = null;
-            currentWindowSize = null;
+            currentStockCode = stockCode; currentWindowStartIndex = null; currentWindowSize = null;
+            document.getElementById('chart-card').style.display = 'block';
+            document.getElementById('chart-title').textContent = `${stockCode} 走势图`;
 
-            const chartCard = document.getElementById('chart-card');
-            chartCard.style.display = 'block';
-
-            const chartTitle = document.getElementById('chart-title');
-            chartTitle.textContent = `${stockCode} 走势图`;
-            const chartSubtitle = document.getElementById('chart-subtitle');
-            chartSubtitle.textContent = `查看 ${getChartPeriodLabel(currentChartScale)} 趋势与价格波动`;
-            updateRangeButtons();
-
-            const loadingEl = document.getElementById('chart-loading');
-            const canvasEl = document.getElementById('kline-chart');
-            loadingEl.style.display = 'flex';
-            canvasEl.style.display = 'none';
+            const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
+            loadingEl.style.display = 'flex'; canvasEl.style.display = 'none';
             loadingEl.innerHTML = '正在加载图表数据...<small>图表数据准备中</small>';
-
             await loadKlineData(stockCode, currentChartScale);
         }
 
-        // 加载图表数据
+        // 补回丢失的 changeChartPeriod 函数
+        async function changeChartPeriod(scale) {
+            if (scale === currentChartScale || !currentStockCode) return;
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                if (btn.dataset.scale == scale) btn.classList.add('active'); else btn.classList.remove('active');
+            });
+            currentChartScale = scale; currentWindowStartIndex = null; currentWindowSize = null;
+            document.getElementById('chart-subtitle').textContent = `查看 ${getChartPeriodLabel(scale)} 趋势与价格波动`;
+            const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
+            loadingEl.style.display = 'flex'; canvasEl.style.display = 'none';
+            loadingEl.innerHTML = '正在加载K线数据...<small>切换到新的周期视图</small>';
+            await loadKlineData(currentStockCode, scale);
+        }
+
         async function loadKlineData(stockCode, scale) {
             try {
-                let symbol;
-                if (stockCode.length === 5) {
-                    symbol = 'hk' + stockCode;
-                } else if (/^[569]/.test(stockCode)) {
-                    symbol = 'sh' + stockCode;
-                } else {
-                    symbol = 'sz' + stockCode;
-                }
-
-                const apiBase = window.API_BASE_URL || '';
-                const url = `${apiBase}/api/kline/${symbol}?scale=${scale}&datalen=${getKlineDataLength(scale)}`;
-
+                let symbol = stockCode.length === 5 ? 'hk' + stockCode : /^[569]/.test(stockCode) ? 'sh' + stockCode : 'sz' + stockCode;
+                const url = `${window.API_BASE_URL || ''}/api/kline/${symbol}?scale=${scale}&datalen=${getKlineDataLength(scale)}`;
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
-                if (!result.success) {
-                    throw new Error(result.error || '获取图表数据失败');
-                }
+                if (!result.success) throw new Error(result.error || '获取图表数据失败');
 
                 const parsedData = parseKlineData(result.data);
                 currentKlineData = parsedData;
 
-                const loadingEl = document.getElementById('chart-loading');
-                const canvasEl = document.getElementById('kline-chart');
-                canvasEl.style.display = 'block';
-                loadingEl.style.display = 'none';
-
+                const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
+                canvasEl.style.display = 'block'; loadingEl.style.display = 'none';
                 renderKlineChart(parsedData);
-
             } catch (error) {
-                console.error('加载图表数据失败:', error);
-                const loadingEl = document.getElementById('chart-loading');
-                const navigator = document.getElementById('chart-navigator');
-                if (navigator) {
-                    navigator.hidden = true;
-                }
-                loadingEl.innerHTML = '加载图表数据失败<small>请稍后重试</small>';
+                document.getElementById('chart-loading').style.display = 'flex';
+                document.getElementById('kline-chart').style.display = 'none';
+                document.getElementById('chart-loading').innerHTML = '加载图表数据失败<small>请稍后重试或检查网络</small>';
             }
         }
 
-        // 解析图表数据
         function parseKlineData(klineData) {
-            if (!Array.isArray(klineData) || klineData.length === 0) {
-                return { labels: [], timestamps: [], closes: [], dates: [] };
-            }
-
-            const labels = [];
-            const timestamps = [];
-            const closes = [];
-            const dates = [];
-
-            const sortedData = [...klineData].sort((a, b) => {
-                return new Date(a.day) - new Date(b.day);
-            });
-
-            sortedData.forEach(item => {
-                const date = new Date(item.day);
-                const timestamp = date.getTime();
-                const close = parseFloat(item.close);
-
-                if (Number.isNaN(timestamp) || !Number.isFinite(close)) {
-                    return;
+            if (!Array.isArray(klineData) || klineData.length === 0) return { labels: [], timestamps: [], closes: [], dates: [] };
+            const labels = [], timestamps = [], closes = [], dates = [];
+            [...klineData].sort((a, b) => new Date(a.day) - new Date(b.day)).forEach(item => {
+                const date = new Date(item.day), timestamp = date.getTime(), close = parseFloat(item.close);
+                if (!Number.isNaN(timestamp) && Number.isFinite(close)) {
+                    labels.push(item.day); timestamps.push(timestamp); dates.push(item.day); closes.push(close);
                 }
-
-                labels.push(item.day);
-                timestamps.push(timestamp);
-                dates.push(item.day);
-                closes.push(close);
             });
-
             return { labels, timestamps, closes, dates };
         }
 
-        function getChartTimeUnit(scale) {
-            if (scale >= 7200) return 'month';
-            if (scale >= 1200) return 'week';
-            return 'day';
-        }
-
-        function getInitialVisibleCount(scale) {
-            if (scale >= 7200) return 24;
-            if (scale >= 1200) return 36;
-            return 60;
-        }
-        function getDefaultVisibleCount(scale) {
-            console.log('getDefaultVisibleCount for scale', scale); 
-            if (scale >= 7200) return 12;
-            if (scale >= 1200) return 24;
-            return 40;
-        }
+        function getChartTimeUnit(scale) { return scale >= 7200 ? 'month' : scale >= 1200 ? 'week' : 'day'; }
 
         function resetChartZoom() {
             if (!klineChart) return;
-
-            currentRangePreset = null;
-            currentWindowStartIndex = null;
-            currentWindowSize = null;
-            updateRangeButtons();
-            if (typeof klineChart.resetZoom === 'function') {
-                klineChart.resetZoom();
-            }
-
-            if (currentKlineData) {
-                renderKlineChart(currentKlineData);
-            }
+            currentRangePreset = null; currentWindowStartIndex = null; currentWindowSize = null;
+            if (currentKlineData) renderKlineChart(currentKlineData);
         }
 
-        function setChartRange(rangeKey) {
-            currentRangePreset = currentRangePreset === rangeKey ? null : rangeKey;
-            currentWindowStartIndex = null;
-            currentWindowSize = null;
-            updateRangeButtons();
-
-            if (!currentKlineData) return;
-
-            renderKlineChart(currentKlineData);
-        }
-
-        function drawOverviewChart(chartData) {
-            const canvas = document.getElementById('kline-overview');
-            if (!canvas) return;
-
-            const width = canvas.clientWidth || canvas.parentElement?.clientWidth || 0;
-            const height = canvas.clientHeight || 38;
-            if (!width || !height) return;
-
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = Math.round(width * dpr);
-            canvas.height = Math.round(height * dpr);
-
-            const ctx = canvas.getContext('2d');
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            ctx.clearRect(0, 0, width, height);
-
-            const values = chartData.closes || [];
-            if (values.length < 2) return;
-
-            const min = Math.min(...values);
-            const max = Math.max(...values);
-            const range = Math.max(max - min, 0.01);
-
-            ctx.beginPath();
-            values.forEach((value, index) => {
-                const x = (index / (values.length - 1)) * width;
-                const y = height - ((value - min) / range) * (height - 6) - 3;
-                if (index === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            });
-            ctx.strokeStyle = 'rgba(96, 165, 250, 0.9)';
-            ctx.lineWidth = 1.25;
-            ctx.stroke();
-
-            ctx.lineTo(width, height - 2);
-            ctx.lineTo(0, height - 2);
-            ctx.closePath();
-            ctx.fillStyle = 'rgba(96, 165, 250, 0.10)';
-            ctx.fill();
-        }
-
-        function updateChartNavigator(chartData, startIndex, visibleCount) {
-            const navigator = document.getElementById('chart-navigator');
-            const slider = document.getElementById('chart-window-slider');
-            const sizeSlider = document.getElementById('chart-window-size-slider');
-            const selection = document.getElementById('chart-nav-selection');
-            const startLabel = document.getElementById('chart-nav-start-label');
-            const endLabel = document.getElementById('chart-nav-end-label');
-            const windowCaption = document.getElementById('chart-window-caption');
-            const zoomCaption = document.getElementById('chart-zoom-caption');
-            if (!navigator || !slider || !sizeSlider || !selection || !startLabel || !endLabel || !windowCaption || !zoomCaption) {
-                return;
-            }
-
-            const total = chartData.timestamps.length;
-            if (!total || total <= visibleCount) {
-                navigator.hidden = true;
-                return;
-            }
-
-            navigator.hidden = false;
-            drawOverviewChart(chartData);
-
-            const maxStart = Math.max(0, total - visibleCount);
-            slider.max = String(maxStart);
-            slider.value = String(startIndex);
-            windowCaption.textContent = `${startIndex + 1} / ${Math.max(1, maxStart + 1)}`;
-
-            const rangeMax = Math.min(getRangeCount(currentRangePreset, currentChartScale), total);
-            const minWindow = Math.min(getMinimumWindowCount(currentChartScale), rangeMax);
-            sizeSlider.min = String(minWindow);
-            sizeSlider.max = String(rangeMax);
-            sizeSlider.value = String(visibleCount);
-            zoomCaption.textContent = `${visibleCount} 个点`;
-
-            const leftPercent = (startIndex / total) * 100;
-            const widthPercent = (visibleCount / total) * 100;
-            selection.style.left = `${leftPercent}%`;
-            selection.style.width = `${Math.max(widthPercent, 6)}%`;
-
-            startLabel.textContent = chartData.dates[startIndex] || '-';
-            endLabel.textContent = chartData.dates[Math.min(total - 1, startIndex + visibleCount - 1)] || '-';
-        }
-
-        function handleChartWindowSlide(value) {
-            if (!currentKlineData) return;
-            currentWindowStartIndex = Number(value) || 0;
-            renderKlineChart(currentKlineData);
-        }
-
-        function handleChartZoomSlide(value) {
-            if (!currentKlineData) return;
-            currentWindowSize = Number(value) || null;
-            currentWindowStartIndex = clampChartWindowStart(currentWindowStartIndex, currentKlineData.timestamps.length, currentWindowSize || currentVisibleCount || getInitialVisibleCount(currentChartScale));
-            renderKlineChart(currentKlineData);
-        }
-
-        // 绘制折线图
         function renderKlineChart(chartData) {
             const canvas = document.getElementById('kline-chart');
-            if (!canvas) return;
-
-            if (!chartData || !Array.isArray(chartData.labels) || !Array.isArray(chartData.closes)) {
-                console.error('无效的图表数据格式:', chartData);
-                return;
-            }
-
-            if (!Array.isArray(chartData.timestamps) || chartData.timestamps.length === 0) {
-                console.warn('图表无可用数据点');
-                const navigator = document.getElementById('chart-navigator');
-                if (navigator) {
-                    navigator.hidden = true;
-                }
-                return;
-            }
-
+            if (!canvas || !chartData.timestamps || chartData.timestamps.length === 0) return;
             const ctx = canvas.getContext('2d');
+            if (klineChart) klineChart.destroy();
 
-            if (klineChart) {
-                try {
-                    klineChart.destroy();
-                    klineChart = null;
-                } catch (error) {
-                    console.warn('销毁现有图表时出错:', error);
-                }
-            }
-
-            const existingChart = Chart.getChart(canvas);
-            if (existingChart) {
-                try {
-                    existingChart.destroy();
-                } catch (error) { }
-            }
-
-            const xValues = chartData.timestamps && chartData.timestamps.length > 0 ? chartData.timestamps : chartData.labels;
-            const len = xValues.length;
-            if (len === 0 || chartData.closes.length !== len) {
-                console.error('数据长度不一致或为空');
-                return;
-            }
-
-            // 获取各阶段的历史持仓成本
-            const costPrices = getHistoricalBreakevenPrices();
-            const costPriceValues = costPrices.map(cp => cp.price);
-
-            // 将每一次的成本线转换为 Dataset，并分配不同的颜色
+            const xValues = chartData.timestamps, costPrices = getHistoricalBreakevenPrices();
             const costDatasets = costPrices.map((cp, idx) => {
-                const isLatest = idx === costPrices.length - 1; // 最后一个就是“最新总成本”
-                // 内置几个漂亮的备选颜色
-                const lineColors = [
-                    'rgba(245, 158, 11, 0.95)',  // 橙色
-                    'rgba(16, 185, 129, 0.95)',  // 翠绿
-                    'rgba(139, 92, 246, 0.95)',  // 紫色
-                    'rgba(236, 72, 153, 0.95)',  // 粉红
-                    'rgba(6, 182, 212, 0.95)'    // 青色
-                ];
-                const color = lineColors[idx % lineColors.length];
-
+                const isLatest = idx === costPrices.length - 1;
+                const lineColors = ['rgba(245, 158, 11, 0.95)', 'rgba(16, 185, 129, 0.95)', 'rgba(139, 92, 246, 0.95)'];
                 return {
-                    type: 'line',
-                    label: cp.label,
-                    data: xValues.map(timestamp => ({ x: timestamp, y: cp.price })),
-                    borderColor: color,
-                    borderWidth: isLatest ? 2 : 1.5,
-                    borderDash: isLatest ? [] : [6, 6], // 最新成本用实线，历史成本保留用虚线
-                    pointRadius: 0,
-                    pointHitRadius: 8,
-                    fill: false,
-                    tension: 0,
-                    order: isLatest ? -1 : 0 // 最新成本展示在最上层
+                    type: 'line', label: cp.label, data: xValues.map(t => ({ x: t, y: cp.price })),
+                    borderColor: lineColors[idx % lineColors.length], borderWidth: isLatest ? 2 : 1.5,
+                    borderDash: isLatest ? [] : [6, 6], pointRadius: 0, pointHitRadius: 8, fill: false, tension: 0, order: isLatest ? -1 : 0
                 };
             });
 
             const configData = {
                 datasets: [
                     {
-                        label: '收盘价',
-                        data: xValues.map((timestamp, index) => ({
-                            x: timestamp,
-                            y: chartData.closes[index]
-                        })),
-                        borderColor: 'rgb(0, 122, 255)',
-                        backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.15,
-                        pointRadius: 0,
-                        pointHitRadius: 10,
-                        order: 1 // 走势图放在下面
-                    },
-                    ...costDatasets // 展开所有的历史和最新成本线
+                        label: '收盘价', data: xValues.map((t, i) => ({ x: t, y: chartData.closes[i] })),
+                        borderColor: 'rgb(0, 122, 255)', backgroundColor: 'rgba(0, 122, 255, 0.1)',
+                        borderWidth: 2, fill: true, tension: 0.15, pointRadius: 0, pointHitRadius: 10, order: 1
+                    }, ...costDatasets
                 ]
             };
 
-            // 计算包含图表价格和所有历史成本线在内的 Y 轴范围
-            const minPrice = Math.min(...chartData.closes, ...(costPriceValues.length ? costPriceValues : []));
-            const maxPrice = Math.max(...chartData.closes, ...(costPriceValues.length ? costPriceValues : []));
-            const pricePadding = Math.max((maxPrice - minPrice) * 0.08, maxPrice * 0.01, 0.01);
-
-            // 2. 在 renderKlineChart 内部应用
             const rangeMaxCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
+            const visibleCount = Math.max(Math.min(currentWindowSize == null ? Math.min(getDefaultVisibleCount(currentChartScale), rangeMaxCount) : currentWindowSize, rangeMaxCount, xValues.length), Math.min(getMinimumWindowCount(currentChartScale), rangeMaxCount));
+            const startIndex = currentWindowStartIndex == null ? Math.max(0, xValues.length - visibleCount) : clampChartWindowStart(currentWindowStartIndex, xValues.length, visibleCount);
 
-            // 确认这一行：使用的是 getDefaultVisibleCount 而不是原先的 getDefaultWindowCount
-            const defaultWindowCount = Math.min(getDefaultVisibleCount(currentChartScale), rangeMaxCount);
+            const initialMinX = visibleCount > 0 ? xValues[startIndex] : undefined;
+            const initialMaxX = visibleCount > 0 ? xValues[Math.min(xValues.length - 1, startIndex + visibleCount - 1)] : undefined;
 
-            const visibleCount = Math.max(
-                Math.min(currentWindowSize == null ? defaultWindowCount : currentWindowSize, rangeMaxCount, xValues.length),
-                Math.min(getMinimumWindowCount(currentChartScale), rangeMaxCount)
-            );
-            const startIndex = currentWindowStartIndex == null
-                ? Math.max(0, xValues.length - visibleCount)
-                : clampChartWindowStart(currentWindowStartIndex, xValues.length, visibleCount);
+            const visibleCloses = chartData.closes.slice(startIndex, startIndex + visibleCount);
+            let initialMaxY = Math.max(...visibleCloses), initialMinY = Math.min(...visibleCloses);
+            costPrices.forEach(cp => {
+                if (cp.price <= initialMaxY * 1.2 && cp.price >= initialMinY * 0.8) {
+                    initialMaxY = Math.max(initialMaxY, cp.price); initialMinY = Math.min(initialMinY, cp.price);
+                }
+            });
+            const pricePadding = (initialMaxY - initialMinY) * 0.1 || initialMaxY * 0.05;
 
-            currentWindowStartIndex = startIndex;
-            currentVisibleCount = visibleCount;
-            const initialMin = visibleCount > 0 ? xValues[startIndex] : undefined;
-            const initialMax = visibleCount > 0 ? xValues[Math.min(xValues.length - 1, startIndex + visibleCount - 1)] : undefined;
-            console.log('渲染图表 with visibleCount:', visibleCount, 'startIndex:', startIndex, 'initialMin:', initialMin, 'initialMax:', initialMax);
             klineChart = new Chart(ctx, {
-                type: 'line',
-                data: configData,
+                type: 'line', data: configData,
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                        axis: 'x' // 增强水平滑动的灵敏度
-                    },
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false, axis: 'x' },
                     plugins: {
-                        legend: {
-                            display: false
-                        },
+                        legend: { display: false },
                         zoom: {
-                            pan: {
-                                enabled: true,
-                                mode: 'x'
-                            },
-                            zoom: {
-                                wheel: {
-                                    enabled: true
-                                },
-                                pinch: {
-                                    enabled: true
-                                },
-                                drag: {
-                                    enabled: true,
-                                    backgroundColor: 'rgba(96, 165, 250, 0.12)',
-                                    borderColor: 'rgba(147, 197, 253, 0.5)',
-                                    borderWidth: 1
-                                },
-                                mode: 'x'
-                            },
-                            limits: {
-                                x: {
-                                    min: xValues[0],
-                                    max: xValues[xValues.length - 1],
-                                    minRange: currentChartScale >= 7200 ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24 * 7
-                                }
-                            }
+                            pan: { enabled: true, mode: 'x', onPan: ({ chart }) => updateYAxisRange(chart) },
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', onZoom: ({ chart }) => updateYAxisRange(chart) },
+                            limits: { x: { min: xValues[0], max: xValues[xValues.length - 1], minRange: 1000 * 60 * 60 * 24 * 7 } }
                         },
                         tooltip: {
-                            displayColors: false,
-                            backgroundColor: 'rgba(248, 250, 252, 0.96)',
-                            titleColor: '#0f172a',
-                            bodyColor: '#334155',
-                            borderColor: 'rgba(148, 163, 184, 0.25)',
-                            borderWidth: 1,
-                            padding: 12,
+                            displayColors: false, backgroundColor: 'rgba(248, 250, 252, 0.96)', titleColor: '#0f172a', bodyColor: '#334155', borderColor: 'rgba(148, 163, 184, 0.25)', borderWidth: 1, padding: 12,
                             callbacks: {
                                 title: (items) => items[0] ? chartData.dates[items[0].dataIndex] : '',
-                                label: (context) => {
-                                    // 格式化 Tooltip，包含“阶段成本”、“最新总成本”或“收盘价”
-                                    if (context.dataset.label.includes('成本')) {
-                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
-                                    }
-                                    return `收盘价: ${context.parsed.y.toFixed(2)}`;
-                                }
+                                label: (context) => context.dataset.label.includes('成本') ? `${context.dataset.label}: ${context.parsed.y.toFixed(2)}` : `收盘价: ${context.parsed.y.toFixed(2)}`
                             }
                         }
                     },
                     scales: {
                         x: {
-                            type: 'time',
-                            min: initialMin,
-                            max: initialMax,
-                            time: {
-                                unit: getChartTimeUnit(currentChartScale),
-                                tooltipFormat: 'yyyy-MM-dd',
-                                // 新增：优化不同周期下的显示格式
-                                displayFormats: {
-                                    day: 'MM-dd',           // 日线视图：04-11
-                                    week: 'yy年MM月',        // 周线视图：26年04月 (缩短年份)
-                                    month: 'yyyy-MM',       // 月线视图：2026-04
-                                    quarter: 'yyyy年'
-                                }
-                            },
-                            ticks: {
-                                color: '#94a3b8',
-                                maxRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 5,
-                                font: {
-                                    size: 10 // 稍微调小字体大小
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.1)',
-                                drawBorder: false
-                            }
+                            type: 'time', min: initialMinX, max: initialMaxX,
+                            // 注意这里：直接使用 displayFormats，不依赖外部语言包了，绝对不会再报错
+                            time: { unit: getChartTimeUnit(currentChartScale), tooltipFormat: 'yyyy-MM-dd', displayFormats: { day: 'MM-dd', week: 'yy年MM月', month: 'yyyy-MM', quarter: 'yyyy年' } },
+                            ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 5, font: { size: 10 } },
+                            grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false }
                         },
                         y: {
-                            position: 'right',
-                            min: Math.max(0, minPrice - pricePadding),
-                            max: maxPrice + pricePadding,
-                            ticks: {
-                                color: '#94a3b8',
-                                callback: function (value) {
-                                    return value.toFixed(2);
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.05)', // 让网格线更淡，突出K线                                drawBorder: false
-                            }
+                            position: 'right', min: Math.max(0, initialMinY - pricePadding), max: initialMaxY + pricePadding,
+                            ticks: { color: '#94a3b8', callback: value => value.toFixed(2) }, grid: { color: 'rgba(148, 163, 184, 0.05)', drawBorder: false }
                         }
                     }
                 }
             });
-
-            updateChartNavigator(chartData, startIndex, visibleCount);
-        }
-
-        // 切换周期
-        async function changeChartPeriod(scale) {
-            if (scale === currentChartScale || !currentStockCode) return;
-
-            document.querySelectorAll('.period-btn').forEach(btn => {
-                if (btn.dataset.scale == scale) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-
-            currentChartScale = scale;
-            updateRangeButtons();
-            currentWindowStartIndex = null;
-            currentWindowSize = null;
-            const chartSubtitle = document.getElementById('chart-subtitle');
-            if (chartSubtitle) {
-                chartSubtitle.textContent = `查看 ${getChartPeriodLabel(scale)} 趋势与价格波动`;
-            }
-
-            const loadingEl = document.getElementById('chart-loading');
-            const canvasEl = document.getElementById('kline-chart');
-            loadingEl.style.display = 'flex';
-            canvasEl.style.display = 'none';
-            loadingEl.innerHTML = '正在加载图表数据...<small>切换到新的周期视图</small>';
-
-            await loadKlineData(currentStockCode, scale);
         }
     </script>
-
 </body>
 
 </html>

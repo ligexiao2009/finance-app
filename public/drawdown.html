@@ -1791,12 +1791,17 @@
 
     function focusFundChart(chartId, focusType = 'drawdown') {
         const nextState = chartFocusStates[chartId] === focusType ? '' : focusType;
+        const previousState = chartFocusStates[chartId] || '';
         chartFocusStates = {};
         document.querySelectorAll('.chart-container.highlighted').forEach(el => el.classList.remove('highlighted'));
         document.querySelectorAll('.stat-item.clickable.active').forEach(el => el.classList.remove('active'));
 
+        const targetItem = chartDataList.find(item => item.id === chartId);
+
         if (!nextState) {
-            chartDataList.forEach(item => renderFundChart(item));
+            if (previousState && targetItem) {
+                renderFundChart(targetItem);
+            }
             return;
         }
 
@@ -1809,7 +1814,9 @@
             chartContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         if (activeStat) activeStat.classList.add('active');
-        chartDataList.forEach(item => renderFundChart(item));
+        if (targetItem) {
+            renderFundChart(targetItem);
+        }
     }
     
     function drawCompareChart(canvasId, results) {

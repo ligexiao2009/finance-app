@@ -2473,10 +2473,14 @@
 
             const dd = result.maxDrawdown;
             const ret = result.returnData;
+            const annualizedReturn = ret?.annualizedReturn || result.annualizedReturn;
             const isPositive = parseFloat(ret.returnPercent) >= 0;
             const chartId = 'chart-' + result.fundCode;
             const quote = quotes[`${result.fundCode}:1`];
             const isExpanded = isFundCardExpanded(result.fundCode, index);
+            const annualizedSubHtml = annualizedReturn
+                ? `${annualizedReturn.label} ${parseFloat(annualizedReturn.returnPercent) >= 0 ? '+' : ''}${annualizedReturn.returnPercent}%<br>共 ${result.dataRange.dataPoints} 交易日`
+                : `共 ${result.dataRange.dataPoints} 交易日`;
             
             let yesterdayChangeHtml = '';
             
@@ -2600,7 +2604,7 @@
                         <div class="stat-item">
                             <div class="stat-label">区间收益</div>
                             <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
-                            <div class="stat-sub">共 ${result.dataRange.dataPoints} 交易日</div>
+                            <div class="stat-sub">${annualizedSubHtml}</div>
                         </div>
                         ${recoveryHtml}
                     </div>

@@ -9,6 +9,26 @@ const fetch = require('node-fetch');
 const navCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10分钟缓存
 
+function formatFundDate(value) {
+  return new Intl.DateTimeFormat('sv-SE').format(new Date(value));
+}
+
+function subtractDaysFromDateString(dateString, days) {
+  if (!dateString) return '';
+  const anchorDate = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(anchorDate.getTime())) return '';
+  anchorDate.setDate(anchorDate.getDate() - days);
+  return anchorDate.toISOString().slice(0, 10);
+}
+
+function subtractYearsFromDateString(dateString, years) {
+  if (!dateString) return '';
+  const anchorDate = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(anchorDate.getTime())) return '';
+  anchorDate.setFullYear(anchorDate.getFullYear() - years);
+  return anchorDate.toISOString().slice(0, 10);
+}
+
 // ==================== 获取基金名称 ====================
 async function fetchFundName(fundCode) {
   try {
@@ -49,20 +69,56 @@ async function fetchFundHistoryNav(fundCode, days = 365) {
       const response = await fetch(url);
       const text = await response.text();
 
-      // 提取 Data_netWorthTrend 数据
-      const match = text.match(/Data_netWorthTrend\s*=\s*(\[.*?\]);/s);
-      if (!match) {
+      const unitMatch = text.match(/Data_netWorthTrend\s*=\s*(\[.*?\]);/s);
+      if (!unitMatch) {
         console.error(`解析基金 ${fundCode} 净值数据失败: 未找到 Data_netWorthTrend`);
         return [];
       }
 
-      const rawData = JSON.parse(match[1]);
+      const unitData = JSON.parse(unitMatch[1]);
+      const accumMatch = text.match(/Data_ACWorthTrend\s*=\s*(\[\[.*?\]\]);/s);
+      const accumData = accumMatch ? JSON.parse(accumMatch[1]) : [];
 
-      // 转换数据格式
-      const fullNavList = rawData.map(item => ({
-        date: new Intl.DateTimeFormat('sv-SE').format(new Date(item.x)),
-        nav: item.y
-      }));
+      const unitNavList = unitData
+        .map(item => ({
+          date: formatFundDate(item.x),
+          unitNav: Number(item.y),
+          equityReturn: Number(item.equityReturn)
+        }))
+        .filter(item => item.date && Number.isFinite(item.unitNav));
+
+      const accumNavMap = new Map(
+        accumData
+          .map(item => ({
+            date: formatFundDate(item[0]),
+            accumNav: Number(item[1])
+          }))
+          .filter(item => item.date && Number.isFinite(item.accumNav))
+          .map(item => [item.date, item.accumNav])
+      );
+
+      let adjustedNav = 1;
+      const fullNavList = unitNavList.map((item, index) => {
+        if (index === 0) {
+          adjustedNav = 1;
+        } else if (Number.isFinite(item.equityReturn)) {
+          adjustedNav *= (1 + item.equityReturn / 100);
+        } else if (Number.isFinite(item.unitNav) && Number.isFinite(unitNavList[index - 1]?.unitNav) && unitNavList[index - 1].unitNav > 0) {
+          adjustedNav *= (item.unitNav / unitNavList[index - 1].unitNav);
+        } else if (Number.isFinite(accumNavMap.get(item.date)) && Number.isFinite(accumNavMap.get(unitNavList[index - 1]?.date))) {
+          const prevAccumNav = accumNavMap.get(unitNavList[index - 1].date);
+          const currentAccumNav = accumNavMap.get(item.date);
+          if (prevAccumNav > 0) adjustedNav *= (currentAccumNav / prevAccumNav);
+        }
+
+        return {
+          date: item.date,
+          nav: adjustedNav,
+          unitNav: item.unitNav,
+          accumNav: accumNavMap.get(item.date) ?? null,
+          equityReturn: Number.isFinite(item.equityReturn) ? item.equityReturn : null
+        };
+      });
 
       // 存入缓存
       navCache.set(cacheKey, {
@@ -70,7 +126,7 @@ async function fetchFundHistoryNav(fundCode, days = 365) {
         expiresAt: now + CACHE_TTL_MS
       });
 
-      console.log(`[缓存更新] 基金 ${fundCode} 历史净值 (${fullNavList.length} 条)`);
+      console.log(`[缓存更新] 基金 ${fundCode} 历史净值 (${fullNavList.length} 条, ${unitNavList.some(item => Number.isFinite(item.equityReturn)) ? '日收益复权' : accumNavMap.size ? '累计净值' : '单位净值'}口径)`);
     } catch (error) {
       console.error(`获取基金 ${fundCode} 历史净值失败:`, error.message);
       return [];
@@ -81,8 +137,9 @@ async function fetchFundHistoryNav(fundCode, days = 365) {
 
   // 根据请求的天数过滤数据
   if (days > 0) {
-    const cutoffDate = new Date(now - days * 24 * 60 * 60 * 1000);
-    const cutoffDateStr = cutoffDate.toISOString().slice(0, 10);
+    const latestDateStr = fullNavList[fullNavList.length - 1]?.date;
+    const cutoffDateStr = subtractDaysFromDateString(latestDateStr, days);
+    if (!cutoffDateStr) return fullNavList;
     return fullNavList.filter(item => item.date >= cutoffDateStr);
   }
 
@@ -196,6 +253,46 @@ function calculateReturn(navList) {
   };
 }
 
+function calculateAnnualizedReturn(navList) {
+  if (!navList || navList.length < 2) return null;
+
+  const latestItem = navList[navList.length - 1];
+  const latestDate = latestItem?.date;
+  const latestNav = latestItem?.nav;
+  if (!latestDate || !Number.isFinite(latestNav) || latestNav <= 0) return null;
+
+  const periods = [5, 3, 2];
+  for (const years of periods) {
+    const cutoffDate = subtractYearsFromDateString(latestDate, years);
+    if (!cutoffDate) continue;
+    const startIndex = navList.findIndex(item => item.date >= cutoffDate);
+    if (startIndex < 0) continue;
+
+    const startItem = navList[startIndex];
+    const startNav = startItem?.nav;
+    if (!Number.isFinite(startNav) || startNav <= 0) continue;
+
+    const startDateObj = new Date(`${startItem.date}T00:00:00`);
+    const endDateObj = new Date(`${latestDate}T00:00:00`);
+    const actualDays = Math.round((endDateObj - startDateObj) / (24 * 60 * 60 * 1000));
+    const minimumDays = years * 365 - 10;
+    if (actualDays < minimumDays) continue;
+
+    const annualizedReturn = (Math.pow(latestNav / startNav, 365 / actualDays) - 1) * 100;
+    if (!Number.isFinite(annualizedReturn)) continue;
+
+    return {
+      label: `近${years}年年化`,
+      years,
+      startDate: startItem.date,
+      endDate: latestDate,
+      returnPercent: annualizedReturn.toFixed(2)
+    };
+  }
+
+  return null;
+}
+
 // ==================== 综合分析 ====================
 async function analyzeFund(fundCode, days = 365, costBasis = null) {
   console.log(`\n========== 分析基金 ${fundCode} ==========`);
@@ -216,11 +313,15 @@ async function analyzeFund(fundCode, days = 365, costBasis = null) {
 
   const maxDrawdown = calculateMaxDrawdown(navList);
   const returnData = calculateReturn(navList);
+  const annualizedReturn = calculateAnnualizedReturn(navList);
+  if (returnData) {
+    returnData.annualizedReturn = annualizedReturn;
+  }
 
   // 计算持仓成本相对于期初净值的涨跌幅
   let costChangePercent = null;
   if (costBasis && costBasis > 0 && navList.length > 0) {
-    const startNav = navList[0].nav;
+    const startNav = navList[0].unitNav || navList[0].nav;
     costChangePercent = ((costBasis - startNav) / startNav) * 100;
   }
 
@@ -237,13 +338,17 @@ async function analyzeFund(fundCode, days = 365, costBasis = null) {
     },
     maxDrawdown,
     returnData,
+    annualizedReturn,
     // 返回净值列表用于绘图
-    navList: navList.map(n => ({ date: n.date, nav: n.nav }))
+    navList: navList.map(n => ({ date: n.date, nav: n.nav, unitNav: n.unitNav, accumNav: n.accumNav, equityReturn: n.equityReturn }))
   };
 
   console.log(`\n分析结果:`);
   console.log(`  数据区间：${result.dataRange.startDate} ~ ${result.dataRange.endDate}`);
   console.log(`  区间收益：${returnData.returnPercent}%`);
+  if (annualizedReturn) {
+    console.log(`  ${annualizedReturn.label}：${annualizedReturn.returnPercent}%`);
+  }
   console.log(`  最大回撤：${maxDrawdown.maxDrawdownPercent}%`);
   console.log(`  回撤区间：${maxDrawdown.peakDate} -> ${maxDrawdown.troughDate}`);
   if (costBasis) {

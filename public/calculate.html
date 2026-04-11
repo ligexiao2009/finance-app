@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>投资管理 Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
@@ -299,7 +300,8 @@
             margin-top: 16px;
             border: 1px solid rgba(148, 163, 184, 0.14);
             box-shadow: 0 22px 52px rgba(2, 6, 23, 0.28);
-            display: none; /* 默认隐藏，选择股票后显示 */
+            display: none;
+            /* 默认隐藏，选择股票后显示 */
             overflow: hidden;
         }
 
@@ -692,7 +694,9 @@
 
         <div class="list-card" style="margin-bottom: 12px; padding: 16px;">
             <div style="flex: 1;">
-                <select id="stock-select" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: white; font-size: 14px; font-weight: 600; outline: none; color: #1c1c1e;" onchange="onStockSelectChange(this)">
+                <select id="stock-select"
+                    style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: white; font-size: 14px; font-weight: 600; outline: none; color: #1c1c1e;"
+                    onchange="onStockSelectChange(this)">
                     <option value="">选择持仓股票...</option>
                 </select>
             </div>
@@ -718,8 +722,10 @@
                         <button class="period-btn" data-scale="7200" onclick="changeChartPeriod(7200)">月线</button>
                     </div>
                     <div class="chart-range">
-                        <button class="range-btn" type="button" data-range="2y" onclick="setChartRange('2y')">近2年</button>
-                        <button class="range-btn" type="button" data-range="5y" onclick="setChartRange('5y')">近5年</button>
+                        <button class="range-btn" type="button" data-range="2y"
+                            onclick="setChartRange('2y')">近2年</button>
+                        <button class="range-btn" type="button" data-range="5y"
+                            onclick="setChartRange('5y')">近5年</button>
                     </div>
                     <button class="chart-reset-btn" type="button" onclick="resetChartZoom()">重置范围</button>
                 </div>
@@ -757,7 +763,7 @@
 
     <script>
         // 确保插件正常注册
-        window.addEventListener('load', function() {
+        window.addEventListener('load', function () {
             if (window.ChartZoom) {
                 try {
                     Chart.register(window.ChartZoom);
@@ -853,7 +859,7 @@
             holdingsData.forEach((item, index) => {
                 const s = Number(item.shares) || 0;
                 const p = Number(item.price) || 0;
-                
+
                 // 只有当存在份额时才计算新的阶段成本
                 if (s > 0) {
                     totalShares += s;
@@ -1184,6 +1190,12 @@
             if (scale >= 1200) return 36;
             return 60;
         }
+        function getDefaultVisibleCount(scale) {
+            console.log('getDefaultVisibleCount for scale', scale); 
+            if (scale >= 7200) return 12;
+            if (scale >= 1200) return 24;
+            return 40;
+        }
 
         function resetChartZoom() {
             if (!klineChart) return;
@@ -1343,7 +1355,7 @@
             if (existingChart) {
                 try {
                     existingChart.destroy();
-                } catch (error) {}
+                } catch (error) { }
             }
 
             const xValues = chartData.timestamps && chartData.timestamps.length > 0 ? chartData.timestamps : chartData.labels;
@@ -1410,9 +1422,13 @@
             const minPrice = Math.min(...chartData.closes, ...(costPriceValues.length ? costPriceValues : []));
             const maxPrice = Math.max(...chartData.closes, ...(costPriceValues.length ? costPriceValues : []));
             const pricePadding = Math.max((maxPrice - minPrice) * 0.08, maxPrice * 0.01, 0.01);
-            
+
+            // 2. 在 renderKlineChart 内部应用
             const rangeMaxCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
-            const defaultWindowCount = Math.min(getDefaultWindowCount(currentRangePreset, currentChartScale), rangeMaxCount);
+
+            // 确认这一行：使用的是 getDefaultVisibleCount 而不是原先的 getDefaultWindowCount
+            const defaultWindowCount = Math.min(getDefaultVisibleCount(currentChartScale), rangeMaxCount);
+
             const visibleCount = Math.max(
                 Math.min(currentWindowSize == null ? defaultWindowCount : currentWindowSize, rangeMaxCount, xValues.length),
                 Math.min(getMinimumWindowCount(currentChartScale), rangeMaxCount)
@@ -1420,12 +1436,12 @@
             const startIndex = currentWindowStartIndex == null
                 ? Math.max(0, xValues.length - visibleCount)
                 : clampChartWindowStart(currentWindowStartIndex, xValues.length, visibleCount);
-            
+
             currentWindowStartIndex = startIndex;
             currentVisibleCount = visibleCount;
             const initialMin = visibleCount > 0 ? xValues[startIndex] : undefined;
             const initialMax = visibleCount > 0 ? xValues[Math.min(xValues.length - 1, startIndex + visibleCount - 1)] : undefined;
-
+            console.log('渲染图表 with visibleCount:', visibleCount, 'startIndex:', startIndex, 'initialMin:', initialMin, 'initialMax:', initialMax);
             klineChart = new Chart(ctx, {
                 type: 'line',
                 data: configData,
@@ -1434,7 +1450,8 @@
                     maintainAspectRatio: false,
                     interaction: {
                         mode: 'index',
-                        intersect: false
+                        intersect: false,
+                        axis: 'x' // 增强水平滑动的灵敏度
                     },
                     plugins: {
                         legend: {
@@ -1495,13 +1512,23 @@
                             max: initialMax,
                             time: {
                                 unit: getChartTimeUnit(currentChartScale),
-                                tooltipFormat: 'yyyy-MM-dd'
+                                tooltipFormat: 'yyyy-MM-dd',
+                                // 新增：优化不同周期下的显示格式
+                                displayFormats: {
+                                    day: 'MM-dd',           // 日线视图：04-11
+                                    week: 'yy年MM月',        // 周线视图：26年04月 (缩短年份)
+                                    month: 'yyyy-MM',       // 月线视图：2026-04
+                                    quarter: 'yyyy年'
+                                }
                             },
                             ticks: {
                                 color: '#94a3b8',
                                 maxRotation: 0,
                                 autoSkip: true,
-                                maxTicksLimit: 8
+                                maxTicksLimit: 5,
+                                font: {
+                                    size: 10 // 稍微调小字体大小
+                                }
                             },
                             grid: {
                                 color: 'rgba(148, 163, 184, 0.1)',
@@ -1514,13 +1541,12 @@
                             max: maxPrice + pricePadding,
                             ticks: {
                                 color: '#94a3b8',
-                                callback: function(value) {
+                                callback: function (value) {
                                     return value.toFixed(2);
                                 }
                             },
                             grid: {
-                                color: 'rgba(148, 163, 184, 0.1)',
-                                drawBorder: false
+                                color: 'rgba(148, 163, 184, 0.05)', // 让网格线更淡，突出K线                                drawBorder: false
                             }
                         }
                     }

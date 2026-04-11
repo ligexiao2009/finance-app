@@ -285,21 +285,20 @@
 
         /* 走势图容器 */
         .chart-card {
-            background: radial-gradient(circle at top right, rgba(96, 165, 250, 0.12), transparent 28%), linear-gradient(180deg, #12192d 0%, #0d1427 100%);
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
             border-radius: 30px;
             padding: 18px;
             margin-top: 16px;
-            border: 1px solid rgba(148, 163, 184, 0.14);
-            box-shadow: 0 22px 52px rgba(2, 6, 23, 0.28);
+            border: 1px solid rgba(203, 213, 225, 0.95);
+            box-shadow: 0 16px 32px rgba(148, 163, 184, 0.12);
             display: none;
             overflow: hidden;
         }
 
         .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 14px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px 14px;
             margin-bottom: 14px;
         }
 
@@ -307,42 +306,60 @@
             min-width: 0;
         }
 
-        .chart-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 10px;
-            border-radius: 999px;
-            background: rgba(96, 165, 250, 0.14);
-            color: #93c5fd;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            margin-bottom: 10px;
-        }
-
-        .chart-eyebrow::before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-            box-shadow: 0 0 0 4px rgba(147, 197, 253, 0.12);
-        }
-
         .chart-title {
             font-size: 18px;
             font-weight: 700;
-            color: #f8fafc;
+            color: #0f172a;
             line-height: 1.2;
             letter-spacing: -0.03em;
         }
 
-        .chart-subtitle {
-            margin-top: 6px;
+        .chart-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            grid-column: 1 / -1;
+        }
+
+        .chart-summary-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(203, 213, 225, 0.82);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            color: #66758a;
             font-size: 12px;
-            color: #94a3b8;
-            font-weight: 500;
+            font-weight: 600;
+        }
+
+        .chart-summary-chip b {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .chart-summary-chip.is-up {
+            color: #9a3412;
+            border-color: rgba(251, 146, 60, 0.24);
+            background: linear-gradient(180deg, rgba(255, 237, 213, 0.92) 0%, rgba(255, 247, 237, 0.98) 100%);
+        }
+
+        .chart-summary-chip.is-up b {
+            color: #ea580c;
+        }
+
+        .chart-summary-chip.is-down {
+            color: #166534;
+            border-color: rgba(52, 211, 153, 0.24);
+            background: linear-gradient(180deg, rgba(220, 252, 231, 0.92) 0%, rgba(240, 253, 244, 0.98) 100%);
+        }
+
+        .chart-summary-chip.is-down b {
+            color: #16a34a;
         }
 
         .chart-controls {
@@ -357,9 +374,9 @@
             gap: 6px;
             padding: 4px;
             border-radius: 18px;
-            background: rgba(15, 23, 42, 0.55);
-            border: 1px solid rgba(148, 163, 184, 0.16);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.98) 100%);
+            border: 1px solid rgba(203, 213, 225, 0.92);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
         }
 
         .period-btn {
@@ -370,39 +387,28 @@
             background: transparent;
             font-size: 13px;
             font-weight: 600;
-            color: #94a3b8;
+            color: #64748b;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .period-btn.active {
-            background: linear-gradient(180deg, #1e90ff 0%, #007aff 100%);
-            color: white;
-            border-color: var(--system-blue);
-            box-shadow: 0 10px 18px rgba(0, 122, 255, 0.22);
-        }
-
-        .chart-reset-btn {
-            padding: 10px 12px;
-            border-radius: 14px;
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            background: rgba(15, 23, 42, 0.55);
-            color: #cbd5e1;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1e3a8a;
+            border-color: rgba(96, 165, 250, 0.52);
+            box-shadow: 0 8px 14px rgba(96, 165, 250, 0.14);
         }
 
         .chart-container {
             position: relative;
-            height: 330px;
+            height: 390px;
             width: 100%;
-            padding: 14px 12px 8px;
+            padding: 8px 8px 4px;
             border-radius: 24px;
-            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 26%), linear-gradient(180deg, #12192d 0%, #10182b 100%);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            background: linear-gradient(180deg, #fdfefe 0%, #f5f7fb 100%);
+            border: 1px solid rgba(203, 213, 225, 0.95);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            color: white;
         }
 
         #kline-chart {
@@ -417,7 +423,7 @@
             flex-direction: column;
             gap: 8px;
             height: 100%;
-            color: #cbd5e1;
+            color: #64748b;
             font-size: 14px;
             font-weight: 600;
             text-align: center;
@@ -434,12 +440,11 @@
 
         @media (max-width: 480px) {
             .chart-header {
-                flex-direction: column;
+                grid-template-columns: 1fr;
             }
 
             .chart-period,
-            .chart-controls,
-            .chart-reset-btn {
+            .chart-controls {
                 width: 100%;
             }
 
@@ -448,7 +453,7 @@
             }
 
             .chart-container {
-                height: 300px;
+                height: 350px;
             }
         }
     </style>
@@ -506,9 +511,7 @@
         <div class="chart-card" id="chart-card">
             <div class="chart-header">
                 <div class="chart-title-wrap">
-                    <div class="chart-eyebrow">趋势图表</div>
                     <div class="chart-title" id="chart-title">收盘价走势图</div>
-                    <div class="chart-subtitle" id="chart-subtitle">查看最近一段时间的价格波动，可缩放时间范围</div>
                 </div>
                 <div class="chart-controls">
                     <div class="chart-period">
@@ -516,7 +519,11 @@
                         <button class="period-btn" data-scale="1200" onclick="changeChartPeriod(1200)">周线</button>
                         <button class="period-btn" data-scale="7200" onclick="changeChartPeriod(7200)">月线</button>
                     </div>
-                    <button class="chart-reset-btn" onclick="resetChartZoom()">重置缩放</button>
+                </div>
+                <div class="chart-summary" id="chart-summary">
+                    <div class="chart-summary-chip"><span>现价</span><b id="chartSummaryPrice">0.00</b></div>
+                    <div class="chart-summary-chip"><span>成本</span><b id="chartSummaryBreakeven">0.00</b></div>
+                    <div class="chart-summary-chip" id="chartSummaryGapChip"><span id="chartSummaryGapLabel">距回本</span><b id="chartSummaryGap">0.00%</b></div>
                 </div>
             </div>
             <div class="chart-container">
@@ -570,9 +577,9 @@
         }
 
         function getDefaultVisibleCount(scale) {
-            if (scale >= 7200) return 12;
-            if (scale >= 1200) return 24;
-            return 30; // 默认放大视角
+            if (scale >= 7200) return 52;
+            if (scale >= 1200) return 52;
+            return 90;
         }
 
         function clampChartWindowStart(start, total, visibleCount) {
@@ -650,8 +657,25 @@
             rateEl.innerText = (totalProfit >= 0 ? '+' : '') + totalRate + '%'; rateEl.className = `percent-badge ${totalProfit >= 0 ? 'bg-red' : 'bg-green'}`;
             document.getElementById('cost').innerText = '¥' + Math.round(totalCost).toLocaleString();
             document.getElementById('value').innerText = '¥' + Math.round(totalValue).toLocaleString();
-            document.getElementById('breakeven').innerText = totalShares ? (totalCost / totalShares).toFixed(2) : '0.00';
+            const breakevenPrice = totalShares ? (totalCost / totalShares) : 0;
+            document.getElementById('breakeven').innerText = breakevenPrice.toFixed(2);
             document.getElementById('total-display').value = totalShares;
+
+            const chartSummaryPriceEl = document.getElementById('chartSummaryPrice');
+            const chartSummaryBreakevenEl = document.getElementById('chartSummaryBreakeven');
+            const chartSummaryGapEl = document.getElementById('chartSummaryGap');
+            const chartSummaryGapLabelEl = document.getElementById('chartSummaryGapLabel');
+            const chartSummaryGapChipEl = document.getElementById('chartSummaryGapChip');
+            if (chartSummaryPriceEl && chartSummaryBreakevenEl && chartSummaryGapEl && chartSummaryGapLabelEl && chartSummaryGapChipEl) {
+                const gapRate = breakevenPrice > 0 ? ((currentPrice - breakevenPrice) / breakevenPrice * 100) : 0;
+                chartSummaryPriceEl.innerText = currentPrice ? currentPrice.toFixed(2) : '0.00';
+                chartSummaryBreakevenEl.innerText = breakevenPrice.toFixed(2);
+                chartSummaryGapLabelEl.innerText = gapRate >= 0 ? '已回本' : '还差';
+                chartSummaryGapEl.innerText = `${Math.abs(gapRate).toFixed(2)}%`;
+                chartSummaryGapChipEl.classList.remove('is-up', 'is-down');
+                chartSummaryGapChipEl.classList.add(gapRate >= 0 ? 'is-up' : 'is-down');
+            }
+
             localStorage.setItem('invest_pro_data', JSON.stringify(holdingsData));
             if (currentStockCode && currentKlineData) renderKlineChart(currentKlineData);
         }
@@ -727,7 +751,6 @@
                 if (btn.dataset.scale == scale) btn.classList.add('active'); else btn.classList.remove('active');
             });
             currentChartScale = scale; currentWindowStartIndex = null; currentWindowSize = null;
-            document.getElementById('chart-subtitle').textContent = `查看 ${getChartPeriodLabel(scale)} 趋势与价格波动`;
             const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
             loadingEl.style.display = 'flex'; canvasEl.style.display = 'none';
             loadingEl.innerHTML = '正在加载K线数据...<small>切换到新的周期视图</small>';
@@ -782,10 +805,15 @@
             const ctx = canvas.getContext('2d');
             if (klineChart) klineChart.destroy();
 
+            const areaGradient = ctx.createLinearGradient(0, 0, 0, canvas.height || 360);
+            areaGradient.addColorStop(0, 'rgba(59, 201, 219, 0.18)');
+            areaGradient.addColorStop(0.6, 'rgba(59, 201, 219, 0.08)');
+            areaGradient.addColorStop(1, 'rgba(59, 201, 219, 0)');
+
             const xValues = chartData.timestamps, costPrices = getHistoricalBreakevenPrices();
             const costDatasets = costPrices.map((cp, idx) => {
                 const isLatest = idx === costPrices.length - 1;
-                const lineColors = ['rgba(245, 158, 11, 0.95)', 'rgba(16, 185, 129, 0.95)', 'rgba(139, 92, 246, 0.95)'];
+                const lineColors = ['rgba(246, 196, 83, 0.96)', 'rgba(253, 224, 71, 0.68)', 'rgba(250, 204, 21, 0.52)'];
                 return {
                     type: 'line', label: cp.label, data: xValues.map(t => ({ x: t, y: cp.price })),
                     borderColor: lineColors[idx % lineColors.length], borderWidth: isLatest ? 2 : 1.5,
@@ -797,8 +825,8 @@
                 datasets: [
                     {
                         label: '收盘价', data: xValues.map((t, i) => ({ x: t, y: chartData.closes[i] })),
-                        borderColor: 'rgb(0, 122, 255)', backgroundColor: 'rgba(0, 122, 255, 0.1)',
-                        borderWidth: 2, fill: true, tension: 0.15, pointRadius: 0, pointHitRadius: 10, order: 1
+                        borderColor: '#3BC9DB', backgroundColor: areaGradient,
+                        borderWidth: 2.25, fill: true, tension: 0.18, pointRadius: 0, pointHitRadius: 10, order: 1
                     }, ...costDatasets
                 ]
             };
@@ -823,6 +851,7 @@
                 type: 'line', data: configData,
                 options: {
                     responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false, axis: 'x' },
+                    layout: { padding: { top: 2, right: 4, bottom: 0, left: 0 } },
                     plugins: {
                         legend: { display: false },
                         zoom: {
@@ -831,7 +860,7 @@
                             limits: { x: { min: xValues[0], max: xValues[xValues.length - 1], minRange: 1000 * 60 * 60 * 24 * 7 } }
                         },
                         tooltip: {
-                            displayColors: false, backgroundColor: 'rgba(248, 250, 252, 0.96)', titleColor: '#0f172a', bodyColor: '#334155', borderColor: 'rgba(148, 163, 184, 0.25)', borderWidth: 1, padding: 12,
+                            displayColors: false, backgroundColor: 'rgba(255, 255, 255, 0.98)', titleColor: '#0f172a', bodyColor: '#334155', borderColor: 'rgba(203, 213, 225, 0.9)', borderWidth: 1, padding: 12,
                             callbacks: {
                                 title: (items) => items[0] ? chartData.dates[items[0].dataIndex] : '',
                                 label: (context) => context.dataset.label.includes('成本') ? `${context.dataset.label}: ${context.parsed.y.toFixed(2)}` : `收盘价: ${context.parsed.y.toFixed(2)}`
@@ -844,11 +873,11 @@
                             // 注意这里：直接使用 displayFormats，不依赖外部语言包了，绝对不会再报错
                             time: { unit: getChartTimeUnit(currentChartScale), tooltipFormat: 'yyyy-MM-dd', displayFormats: { day: 'MM-dd', week: 'yy年MM月', month: 'yyyy-MM', quarter: 'yyyy年' } },
                             ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 5, font: { size: 10 } },
-                            grid: { color: 'rgba(148, 163, 184, 0.1)', drawBorder: false }
+                            grid: { color: 'rgba(203, 213, 225, 0.55)', drawBorder: false }
                         },
                         y: {
-                            position: 'right', min: Math.max(0, initialMinY - pricePadding), max: initialMaxY + pricePadding,
-                            ticks: { color: '#94a3b8', callback: value => value.toFixed(2) }, grid: { color: 'rgba(148, 163, 184, 0.05)', drawBorder: false }
+                            position: 'left', min: Math.max(0, initialMinY - pricePadding), max: initialMaxY + pricePadding,
+                            ticks: { color: '#94a3b8', callback: value => value.toFixed(2) }, grid: { color: 'rgba(226, 232, 240, 0.72)', drawBorder: false }
                         }
                     }
                 }

@@ -2978,76 +2978,19 @@
 
             const isBefore15 = document.getElementById('tradeTimeBefore').checked;
             const now = new Date();
-            const priceDate = currentAddFundRow.dataset.priceDate || '';
-
-            // 获取今天的日期字符串 YYYYMMDD
-            const todayStr = now.getFullYear().toString() +
-                            (now.getMonth() + 1).toString().padStart(2, '0') +
-                            now.getDate().toString().padStart(2, '0');
-
-            const isTodayNetValue = priceDate === todayStr;
-
-            if (!isBefore15) {
-                // 选择15点后：总是保存为待确认交易
-                const newTrade = {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    rowId: rowId,
-                    code: code,
-                    name: name,
-                    type: 'add',
-                    amount: amount,
-                    isBefore15: isBefore15,
-                    createdAt: now.toISOString()
-                };
-                await addPendingTrade(newTrade);
-                await updatePendingTradeBanner();
-                closeAddFundModal();
-            } else if (isTodayNetValue) {
-                // 选择15点前 + 当日净值已更新 → 直接确认
-                const newShares = amount / price;
-                const totalShares = shares + newShares;
-                const totalCost = (shares * cost) + amount;
-                const newCost = totalCost / totalShares;
-
-                currentAddFundRow.querySelector('.shares-input').value = totalShares.toFixed(2);
-                currentAddFundRow.querySelector('.cost-input').value = newCost.toFixed(4);
-
-                // 扣除拟加仓金额
-                const planBuyInput = currentAddFundRow.querySelector('.plan-buy-input');
-                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
-                planBuyInput.value = Math.max(0, currentPlanBuy - amount);
-
-                await saveRow(currentAddFundRow);
-                saveAndCalculate();
-
-                await addTradeRecord(rowId, {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    type: 'add',
-                    amount: amount,
-                    shares: newShares,
-                    netValue: price,
-                    isBefore15: true,
-                    createdAt: now.toISOString(),
-                    localDate: new Date().toLocaleDateString('en-CA')
-                });
-
-                closeAddFundModal();
-            } else {
-                // 选择15点前 + 当日净值未更新 → 存为待确认
-                const newTrade = {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    rowId: rowId,
-                    code: code,
-                    name: name,
-                    type: 'add',
-                    amount: amount,
-                    isBefore15: isBefore15,
-                    createdAt: now.toISOString()
-                };
-                await addPendingTrade(newTrade);
-                await updatePendingTradeBanner();
-                closeAddFundModal();
-            }
+            const newTrade = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                rowId: rowId,
+                code: code,
+                name: name,
+                type: 'add',
+                amount: amount,
+                isBefore15: isBefore15,
+                createdAt: now.toISOString()
+            };
+            await addPendingTrade(newTrade);
+            await updatePendingTradeBanner();
+            closeAddFundModal();
         }
 
         // ========== 基金减仓功能 ==========
@@ -3134,7 +3077,7 @@
             const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
             if (!currentReduceFundRow || reduceShares <= 0) return;
 
-            const { shares, cost, price, code, name } = currentReduceFundData;
+            const { shares, price, code, name } = currentReduceFundData;
             if (reduceShares > shares) {
                 alert('减仓份额不能超过当前持仓');
                 return;
@@ -3142,56 +3085,21 @@
 
             const isBefore15 = document.getElementById('reduceTradeTimeBefore').checked;
             const now = new Date();
-            const priceDate = currentReduceFundRow.dataset.priceDate || '';
-            const todayStr = now.getFullYear().toString() +
-                            (now.getMonth() + 1).toString().padStart(2, '0') +
-                            now.getDate().toString().padStart(2, '0');
-            const isTodayNetValue = priceDate === todayStr;
-            const remainShares = shares - reduceShares;
             const redeemAmount = reduceShares * price;
 
-            console.log('减仓操作:', { code: currentReduceFundData.code, shares, reduceShares, remainShares });
-
             const rowId = currentReduceFundRow.dataset.id;
-            if (!isBefore15 || !isTodayNetValue) {
-                await addPendingTrade({
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    rowId,
-                    code,
-                    name,
-                    type: 'reduce',
-                    amount: redeemAmount,
-                    shares: parseFloat(reduceShares.toFixed(2)),
-                    isBefore15,
-                    createdAt: now.toISOString()
-                });
-                await updatePendingTradeBanner();
-                closeReduceFundModal();
-                return;
-            }
-
-            // 更新该行数据（成本价保持不变）
-            currentReduceFundRow.querySelector('.shares-input').value = remainShares.toFixed(2);
-
-            // 标记为脏并立即触发重新计算
-            markCardDirty(currentReduceFundRow);
-            saveAndCalculate();
-
-            // 保存到后端
-            await saveRow(currentReduceFundRow);
-
-            // 记录交易历史
-            await addTradeRecord(rowId, {
+            await addPendingTrade({
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                rowId,
+                code,
+                name,
                 type: 'reduce',
                 amount: parseFloat(redeemAmount.toFixed(2)),
                 shares: parseFloat(reduceShares.toFixed(2)),
-                netValue: parseFloat(price.toFixed(4)),
                 isBefore15,
-                createdAt: now.toISOString(),
-                localDate: new Date().toLocaleDateString('en-CA')
+                createdAt: now.toISOString()
             });
-
+            await updatePendingTradeBanner();
             closeReduceFundModal();
         }
 

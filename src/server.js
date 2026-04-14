@@ -479,10 +479,13 @@ async function checkFundsAndAlert() {
     console.log(`检查基金: ${fund.name || fund.code}`);
     const fundData = await fetchFundNetValue(fund.code);
 
-    if (fundData && fundData.netValue > 0 && fund.cost > 0) {
+    if (fundData && fundData.netValue > 0 && fund.cost > 0 && fund.shares > 0) {
       const changePercent = ((fundData.netValue - fund.cost) / fund.cost) * 100;
+      const positionValue = fund.shares * fundData.netValue;
+      const profitLoss = fund.shares * (fundData.netValue - fund.cost);
 
       console.log(`  成本: ${fund.cost}, 最新净值: ${fundData.netValue}, 涨跌幅: ${changePercent.toFixed(2)}%, 提醒阈值: ${fund.alert}%`);
+      console.log(`  持仓金额: ${positionValue.toFixed(2)}, 持仓盈亏: ${profitLoss.toFixed(2)}`);
 
       if (Math.abs(changePercent) >= fund.alert) {
         alerts.push({
@@ -491,7 +494,10 @@ async function checkFundsAndAlert() {
           cost: fund.cost,
           netValue: fundData.netValue,
           changePercent: changePercent,
-          alert: fund.alert
+          alert: fund.alert,
+          shares: fund.shares,
+          positionValue: positionValue,
+          profitLoss: profitLoss
         });
       }
     }
@@ -503,15 +509,18 @@ async function checkFundsAndAlert() {
     let title = '【基金提醒】';
     let content = '## 基金涨跌提醒\n\n';
 
+    // 按涨跌幅倒序排序（从大到小）
+    alerts.sort((a, b) => b.changePercent - a.changePercent);
+
     alerts.forEach((a) => {
       const isUp = a.changePercent >= 0;
       const emoji = isUp ? '涨' : '跌';
       title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
       content += `### ${emoji} ${a.name} (${a.code})\n\n`;
-      content += `- 成本价: ${a.cost.toFixed(3)}\n`;
-      content += `- 最新净值: ${a.netValue.toFixed(3)}\n`;
       content += `- 涨跌幅: ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%\n`;
-      content += `- 提醒阈值: ${a.alert}%\n\n`;
+      content += `- 持仓金额: ¥${a.positionValue.toFixed(2)}\n`;
+      content += `- 持仓盈亏: ¥${a.profitLoss.toFixed(2)}\n`;
+      // content += `- 提醒阈值: ${a.alert}%\n\n`;
     });
 
     await sendWechatMessage(title.slice(0, 100), content);

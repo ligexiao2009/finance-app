@@ -31,6 +31,13 @@ function invalidateCacheByPrefix(prefix) {
   }
 }
 
+// 格式化金额，添加千位分隔符
+function formatMoney(amount) {
+  if (typeof amount !== 'number') return '0.00';
+  // 保留两位小数，添加千位分隔符
+  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 async function getCachedJsonResponse(cacheKey, producer, options = {}) {
   const { ttlMs = DATA_CACHE_TTL_MS, bypassCache = false } = options;
   const now = Date.now();
@@ -462,70 +469,140 @@ async function sendWechatMessage(title, content) {
   }
 }
 
+// 计算基金提醒指标
+function calculateFundAlertMetrics(fund, quoteData) {
+  const netValue = quoteData.price;
+  const todayChange = quoteData.change;
+  const fundName = quoteData.name || fund.name || fund.code;
+
+  if (!(netValue > 0 && fund.cost > 0 && fund.shares > 0)) {
+    return null;
+  }
+
+  const changePercent = ((netValue - fund.cost) / fund.cost) * 100;
+  const positionValue = fund.shares * netValue;
+  const profitLoss = fund.shares * (netValue - fund.cost);
+  const todayProfit = fund.shares * netValue * (todayChange / 100);
+
+  return {
+    name: fundName,
+    code: fund.code,
+    cost: fund.cost,
+    netValue: netValue,
+    changePercent: changePercent,
+    alert: fund.alert,
+    shares: fund.shares,
+    positionValue: positionValue,
+    profitLoss: profitLoss,
+    todayChange: todayChange,
+    todayProfit: todayProfit
+  };
+}
+
 // ==================== 检查基金并发送提醒 ====================
 async function checkFundsAndAlert() {
   console.log('\n========== 开始检查基金涨跌提醒 ==========');
-  const rows = await db.getPositions();
-  const funds = rows.filter(r => r.isFund && r.alert && r.alert > 0 && r.code);
 
-  if (funds.length === 0) {
-    console.log('没有需要检查的基金');
-    return;
-  }
+  try {
+    const rows = await db.getPositions();
+    const funds = rows.filter(r => r.isFund && r.alert && r.alert > 0 && r.code);
+    console.log(`找到 ${funds.length} 只设置了提醒的基金`);
 
-  const alerts = [];
+    if (funds.length === 0) {
+      console.log('没有需要检查的基金');
+      console.log('========== 检查完成 ==========\n');
+      return;
+    }
 
-  for (const fund of funds) {
-    console.log(`检查基金: ${fund.name || fund.code}`);
-    const fundData = await fetchFundNetValue(fund.code);
+    const alerts = [];
 
-    if (fundData && fundData.netValue > 0 && fund.cost > 0 && fund.shares > 0) {
-      const changePercent = ((fundData.netValue - fund.cost) / fund.cost) * 100;
-      const positionValue = fund.shares * fundData.netValue;
-      const profitLoss = fund.shares * (fundData.netValue - fund.cost);
+    // 批量获取基金数据
+    const items = funds.map(fund => ({ code: fund.code, isFund: true }));
+    const quotes = await fetchQuotesBatch(items);
+    console.log(`批量获取 ${funds.length} 只基金数据完成`);
 
-      console.log(`  成本: ${fund.cost}, 最新净值: ${fundData.netValue}, 涨跌幅: ${changePercent.toFixed(2)}%, 提醒阈值: ${fund.alert}%`);
-      console.log(`  持仓金额: ${positionValue.toFixed(2)}, 持仓盈亏: ${profitLoss.toFixed(2)}`);
+    for (const fund of funds) {
+      console.log(`检查基金: ${fund.name || fund.code}`);
+      const quoteKey = `${fund.code}:1`;
+      const quoteData = quotes[quoteKey];
 
-      if (Math.abs(changePercent) >= fund.alert) {
-        alerts.push({
-          name: fund.name || fundData.name || fund.code,
-          code: fund.code,
-          cost: fund.cost,
-          netValue: fundData.netValue,
-          changePercent: changePercent,
-          alert: fund.alert,
-          shares: fund.shares,
-          positionValue: positionValue,
-          profitLoss: profitLoss
-        });
+      if (!quoteData) {
+        console.log(`  数据获取失败，跳过`);
+        continue;
+      }
+
+      const metrics = calculateFundAlertMetrics(fund, quoteData);
+      if (!metrics) {
+        console.log(`  数据无效，跳过`);
+        continue;
+      }
+
+      console.log(`  成本: ${metrics.cost}, 最新净值: ${metrics.netValue}, 涨跌幅: ${metrics.changePercent.toFixed(2)}%, 提醒阈值: ${metrics.alert}%`);
+      console.log(`  持仓金额: ${metrics.positionValue.toFixed(2)}, 持仓盈亏: ${metrics.profitLoss.toFixed(2)}`);
+      console.log(`  今日涨幅: ${metrics.todayChange.toFixed(2)}%, 今日收益: ${metrics.todayProfit.toFixed(2)}`);
+
+      if (Math.abs(metrics.changePercent) >= metrics.alert) {
+        alerts.push(metrics);
       }
     }
-  }
 
-  if (alerts.length > 0) {
-    console.log(`\n有 ${alerts.length} 只基金达到提醒阈值`);
+    if (alerts.length > 0) {
+      console.log(`\n有 ${alerts.length} 只基金达到提醒阈值`);
 
-    let title = '【基金提醒】';
-    let content = '## 基金涨跌提醒\n\n';
+      // 计算今日总收益、总持仓金额和总持仓盈亏
+      const totalTodayProfit = alerts.reduce((sum, a) => sum + a.todayProfit, 0);
+      const totalPositionValue = alerts.reduce((sum, a) => sum + a.positionValue, 0);
+      const totalProfitLoss = alerts.reduce((sum, a) => sum + a.profitLoss, 0);
+      const todayReturnRate = totalPositionValue > 0 ? (totalTodayProfit / totalPositionValue) * 100 : 0;
 
-    // 按涨跌幅倒序排序（从大到小）
-    alerts.sort((a, b) => b.changePercent - a.changePercent);
+      console.log(`今日总收益: ¥${totalTodayProfit.toFixed(2)}`);
+      console.log(`总持仓金额: ¥${totalPositionValue.toFixed(2)}`);
+      console.log(`总持仓盈亏: ¥${totalProfitLoss.toFixed(2)}`);
+      console.log(`今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`);
 
-    alerts.forEach((a) => {
-      const isUp = a.changePercent >= 0;
-      const emoji = isUp ? '涨' : '跌';
-      title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
-      content += `### ${emoji} ${a.name} (${a.code})\n\n`;
-      content += `- 涨跌幅: ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%\n`;
-      content += `- 持仓金额: ¥${a.positionValue.toFixed(2)}\n`;
-      content += `- 持仓盈亏: ¥${a.profitLoss.toFixed(2)}\n`;
-      // content += `- 提醒阈值: ${a.alert}%\n\n`;
-    });
+      let title = `【基金提醒】持仓¥${formatMoney(totalPositionValue)} 收益${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`;
 
-    await sendWechatMessage(title.slice(0, 100), content);
-  } else {
-    console.log('没有基金达到提醒阈值');
+      let content = `## 基金涨跌提醒\n\n`;
+      content += `**汇总统计:**\n`;
+      content += `- 总持仓金额: ¥${formatMoney(totalPositionValue)}\n`;
+      content += `- 总持仓盈亏: ¥${formatMoney(totalProfitLoss)}\n`;
+      content += `- 今日总收益: ¥${formatMoney(totalTodayProfit)}\n`;
+      content += `- 今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%\n\n`;
+
+      // 按涨跌幅倒序排序（从大到小）
+      alerts.sort((a, b) => b.changePercent - a.changePercent);
+
+      alerts.forEach((a) => {
+        const isUp = a.changePercent >= 0;
+        const emoji = isUp ? '涨' : '跌';
+        title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
+        content += `### ${emoji} ${a.name} (${a.code})\n\n`;
+        content += `- 涨跌幅: ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%\n`;
+        content += `- 持仓金额: ¥${formatMoney(a.positionValue)}\n`;
+        content += `- 持仓盈亏: ¥${formatMoney(a.profitLoss)}\n`;
+        content += `- 今日涨幅: ${a.todayChange >= 0 ? '+' : ''}${a.todayChange.toFixed(2)}%\n`;
+        content += `- 今日收益: ¥${formatMoney(a.todayProfit)}\n`;
+        // content += `- 提醒阈值: ${a.alert}%\n\n`;
+      });
+
+      await sendWechatMessage(title.slice(0, 100), content);
+    } else {
+      console.log('没有基金达到提醒阈值');
+    }
+  } catch (error) {
+    console.error('基金检查过程中发生错误:', error.message);
+    console.error('错误堆栈:', error.stack);
+
+    // 可以在这里发送错误通知
+    if (SERVERCHAN_KEY) {
+      const errorTitle = '【基金检查错误】';
+      const errorContent = `## 基金检查发生错误\n\n错误信息: ${error.message}\n\n请检查服务器日志。`;
+      try {
+        await sendWechatMessage(errorTitle, errorContent);
+      } catch (sendError) {
+        console.error('发送错误通知失败:', sendError.message);
+      }
+    }
   }
 
   console.log('========== 检查完成 ==========\n');

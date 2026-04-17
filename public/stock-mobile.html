@@ -965,6 +965,7 @@
                     <span id="netValueUpdateStatus" class="status-badge status-badge-success">--</span>
                 </div>
             </div>
+            <button id="ocrUploadBtn" onclick="document.getElementById('ocrImageFile').click()" class="toolbar-chip toolbar-chip-soft" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">OCR识别</button>
             <button id="sortByMktBtn" onclick="toggleSort()" class="toolbar-chip toolbar-chip-soft ml-auto whitespace-nowrap">市值↓</button>
         </div>
 
@@ -993,6 +994,7 @@
             <button id="importDataBtn" onclick="document.getElementById('importFile').click()" class="toolbar-chip toolbar-chip-soft flex-1">导入</button>
             <button onclick="exportCSV()" class="toolbar-chip toolbar-chip-soft flex-1">导出</button>
             <input type="file" id="importFile" class="hidden" accept=".csv" onchange="importCSV(event)">
+            <input type="file" id="ocrImageFile" class="hidden" accept="image/*" onchange="uploadFundScreenshot(event)">
         </div>
 
         <!-- 分页控件 -->
@@ -1263,6 +1265,94 @@
                     <button onclick="runSheetAction('delete')" class="mobile-sheet-btn text-rose-500">✕ <span>删除</span></button>
                 </div>
                 <button onclick="closeMobileActionSheet()" class="mobile-sheet-btn text-[var(--text-muted)]">关闭</button>
+            </div>
+        </div>
+
+        <!-- OCR识别结果弹窗 -->
+        <div id="ocrResultModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-4 max-w-[90vw] w-full mx-4 border border-[var(--border-color)] max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="modal-title">基金截图识别结果</h3>
+                    <button onclick="closeOcrResultModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- 识别状态 -->
+                    <div id="ocrLoading" class="hidden text-center py-8">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mb-3"></div>
+                        <div class="text-[var(--text-muted)] font-black">正在识别截图...</div>
+                    </div>
+
+                    <div id="ocrError" class="hidden p-4 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                        <div class="font-black text-rose-400 mb-1">识别失败</div>
+                        <div id="ocrErrorMessage" class="text-sm text-[var(--text-muted)]"></div>
+                    </div>
+
+                    <!-- 识别结果预览 -->
+                    <div id="ocrResultPreview" class="hidden space-y-3">
+                        <div id="ocrMeta" class="hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)] px-3 py-2 text-xs text-[var(--text-muted)]"></div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="modal-label">基金代码</div>
+                                <div id="ocrCode" class="modal-number font-mono">--</div>
+                            </div>
+                            <div>
+                                <div class="modal-label">基金名称</div>
+                                <div id="ocrName" class="modal-number">--</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="modal-label">持有份额</div>
+                                <div id="ocrShares" class="modal-number font-mono">-- 份</div>
+                            </div>
+                            <div>
+                                <div class="modal-label">持仓成本</div>
+                                <div id="ocrCost" class="modal-number font-mono">¥ --</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="modal-label">最新净值</div>
+                                <div id="ocrNetValue" class="modal-number font-mono">¥ --</div>
+                            </div>
+                            <div>
+                                <div class="modal-label">持仓盈亏</div>
+                                <div id="ocrProfitLoss" class="modal-number font-mono">¥ --</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="modal-label">持仓金额</div>
+                            <div id="ocrPositionValue" class="modal-number font-mono">¥ --</div>
+                        </div>
+
+                        <!-- 原始识别文本（可折叠） -->
+                        <div class="mt-4">
+                            <button onclick="toggleOcrRawText()" class="text-xs text-[var(--text-muted)] font-black flex items-center gap-1">
+                                <span>原始识别文本</span>
+                                <span id="ocrRawTextToggle">▼</span>
+                            </button>
+                            <div id="ocrRawText" class="hidden mt-2 p-3 bg-[var(--bg-main)] rounded-lg border border-[var(--border-color)] text-xs font-mono whitespace-pre-wrap max-h-32 overflow-y-auto"></div>
+                        </div>
+
+                        <!-- 多只基金列表 -->
+                        <div id="ocrFundsList" class="hidden mt-4">
+                            <div class="modal-label mb-2">识别到多只基金</div>
+                            <div id="ocrFundsListContainer" class="space-y-3 max-h-64 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="mt-6 flex gap-3">
+                    <button onclick="closeOcrResultModal()" class="flex-1 py-3 rounded-xl font-black text-sm border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button id="ocrConfirmBtn" onclick="confirmOcrResult()" class="flex-1 py-3 rounded-xl font-black text-sm bg-indigo-600 hover:bg-indigo-500 text-white hidden">确认保存</button>
+                    <button id="ocrRetryBtn" onclick="retryOcrUpload()" class="flex-1 py-3 rounded-xl font-black text-sm bg-amber-600 hover:bg-amber-500 text-white hidden">重新上传</button>
+                </div>
             </div>
         </div>
 
@@ -3556,6 +3646,391 @@
                 const card = document.querySelector(`[data-id="${currentTradeHistoryRowId}"]`);
                 if (card) await openTradeHistoryModal(card);
             }
+        }
+
+        // ========== OCR基金截图识别功能 ==========
+        let currentOcrResult = null;
+
+        function getCurrentOcrFunds() {
+            if (!currentOcrResult) return [];
+            return currentOcrResult.funds && currentOcrResult.funds.length > 0 ? currentOcrResult.funds : [currentOcrResult];
+        }
+
+        function removeOcrFund(index) {
+            if (!currentOcrResult) return;
+
+            const funds = getCurrentOcrFunds().slice();
+            if (index < 0 || index >= funds.length) return;
+
+            funds.splice(index, 1);
+
+            if (funds.length === 0) {
+                document.getElementById('ocrLoading').classList.add('hidden');
+                document.getElementById('ocrResultPreview').classList.add('hidden');
+                showOcrError('已删除全部识别结果，请重新上传');
+                currentOcrResult = null;
+                document.getElementById('ocrConfirmBtn').classList.add('hidden');
+                return;
+            }
+
+            if (funds.length === 1) {
+                currentOcrResult = { ...funds[0] };
+                if (currentOcrResult.funds) delete currentOcrResult.funds;
+                currentOcrResult.isMultiple = false;
+                currentOcrResult.fundCount = 1;
+            } else {
+                currentOcrResult = {
+                    ...currentOcrResult,
+                    funds,
+                    isMultiple: true,
+                    fundCount: funds.length,
+                };
+            }
+
+            showOcrResultModal(currentOcrResult, document.getElementById('ocrRawText').textContent || '', currentOcrResult.ocrSource);
+        }
+
+        // 上传基金截图
+        async function uploadFundScreenshot(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件');
+                return;
+            }
+
+            // 重置文件输入，允许重复选择同一文件
+            event.target.value = '';
+
+            // 显示加载状态
+            document.getElementById('ocrResultModal').classList.remove('hidden');
+            document.getElementById('ocrLoading').classList.remove('hidden');
+            document.getElementById('ocrError').classList.add('hidden');
+            document.getElementById('ocrResultPreview').classList.add('hidden');
+            document.getElementById('ocrConfirmBtn').classList.add('hidden');
+            document.getElementById('ocrRetryBtn').classList.add('hidden');
+
+            // 锁定页面滚动
+            lockBodyScroll();
+
+            try {
+                // 读取文件为DataURL
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const imageBase64 = e.target.result;
+
+                        // 发送到后端进行OCR识别
+                        const response = await fetch(`${API_BASE_URL}/api/upload-fund-screenshot`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ imageBase64 })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            // 显示识别结果
+                            showOcrResultModal(data.fundInfo, data.text, data.ocrSource);
+                        } else {
+                            // 显示错误
+                            showOcrError(data.error || '识别失败');
+                        }
+                    } catch (error) {
+                        console.error('OCR处理错误:', error);
+                        showOcrError('网络错误或服务器异常');
+                    }
+                };
+                reader.onerror = () => {
+                    showOcrError('文件读取失败');
+                };
+                reader.readAsDataURL(file);
+            } catch (error) {
+                console.error('上传错误:', error);
+                showOcrError('上传失败');
+            }
+        }
+
+        // 显示OCR识别结果
+        function showOcrResultModal(fundInfo, rawText, ocrSource) {
+            currentOcrResult = fundInfo;
+            currentOcrResult.ocrSource = ocrSource || fundInfo.ocrSource || '';
+
+            const isMultiple = fundInfo.isMultiple && fundInfo.funds && fundInfo.funds.length > 1;
+            const funds = fundInfo.funds || [fundInfo];
+
+            if (funds.length === 0) {
+                showOcrError('没有可展示的识别结果');
+                return;
+            }
+
+            // 如果有多个基金但只剩一个，更新fundInfo
+            if (isMultiple && funds.length === 1) {
+                fundInfo = funds[0];
+                fundInfo.funds = funds;
+                fundInfo.fundCount = 1;
+                fundInfo.isMultiple = false;
+            } else if (isMultiple) {
+                fundInfo.funds = funds;
+                fundInfo.fundCount = funds.length;
+            }
+
+            // 隐藏加载状态
+            document.getElementById('ocrLoading').classList.add('hidden');
+
+            // 重新计算多基金标志（基于过滤后的基金）
+            const finalIsMultiple = fundInfo.isMultiple && fundInfo.funds && fundInfo.funds.length > 1;
+            const finalFunds = fundInfo.funds || [fundInfo];
+
+            const metaParts = [];
+            if (currentOcrResult.ocrSource) {
+                metaParts.push(`识别引擎：${currentOcrResult.ocrSource === 'paddle' ? 'Paddle OCR' : 'Tesseract OCR'}`);
+            }
+            const estimatedFundsCount = finalFunds.filter(fund => fund.estimated || fund.dailyProfitEstimated).length;
+            if (estimatedFundsCount > 0) {
+                metaParts.push(`包含 ${estimatedFundsCount} 条估算修正结果，请保存前重点核对`);
+            }
+            const metaEl = document.getElementById('ocrMeta');
+            if (metaParts.length > 0) {
+                metaEl.textContent = metaParts.join(' | ');
+                metaEl.classList.remove('hidden');
+            } else {
+                metaEl.textContent = '';
+                metaEl.classList.add('hidden');
+            }
+
+            if (finalIsMultiple) {
+                // 显示多只基金列表，隐藏单个基金显示
+                document.getElementById('ocrFundsList').classList.remove('hidden');
+                document.getElementById('ocrCode').parentElement.parentElement.classList.add('hidden'); // 隐藏代码行
+                document.getElementById('ocrName').parentElement.parentElement.classList.add('hidden'); // 隐藏名称行
+                document.getElementById('ocrShares').parentElement.parentElement.classList.add('hidden'); // 隐藏份额行
+                document.getElementById('ocrCost').parentElement.parentElement.classList.add('hidden'); // 隐藏成本行
+                document.getElementById('ocrNetValue').parentElement.parentElement.classList.add('hidden'); // 隐藏净值行
+                document.getElementById('ocrProfitLoss').parentElement.parentElement.classList.add('hidden'); // 隐藏盈亏行
+                document.getElementById('ocrPositionValue').parentElement.parentElement.classList.add('hidden'); // 隐藏持仓金额行
+
+                // 填充基金列表
+                const container = document.getElementById('ocrFundsListContainer');
+                container.innerHTML = '';
+                finalFunds.forEach((fund, index) => {
+                    const fundEl = document.createElement('div');
+                    fundEl.className = 'p-3 bg-[var(--bg-main)] rounded-lg border border-[var(--border-color)]';
+                    fundEl.innerHTML = `
+                        <div class="flex items-start justify-between gap-3 mb-1">
+                            <div class="font-black text-sm">${fund.name || `基金${fund.code || index}`}</div>
+                            <button type="button" data-ocr-remove-index="${index}" class="shrink-0 rounded-lg border border-rose-500/30 px-2 py-1 text-[11px] font-black text-rose-300 hover:bg-rose-500/10">删除</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="text-[var(--text-muted)]">代码: <span class="font-mono">${fund.code || '--'}</span></div>
+                            <div class="text-[var(--text-muted)]">持仓金额: <span class="font-mono">¥ ${fund.positionValue ? fund.positionValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'}</span></div>
+                            <div class="text-[var(--text-muted)]">份额: <span class="font-mono">${fund.shares ? fund.shares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '--'} 份</span></div>
+                            <div class="text-[var(--text-muted)]">成本: <span class="font-mono">¥ ${fund.cost ? fund.cost.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4}) : '--'}</span></div>
+                        </div>
+                        ${fund.dailyProfitEstimated ? '<div class="mt-2 text-[11px] text-amber-300">日收益由涨跌幅估算，建议核对</div>' : ''}
+                    `;
+                    container.appendChild(fundEl);
+                });
+                container.querySelectorAll('[data-ocr-remove-index]').forEach(btn => {
+                    btn.addEventListener('click', () => removeOcrFund(Number(btn.dataset.ocrRemoveIndex)));
+                });
+            } else {
+                // 单只基金：显示原有UI
+                document.getElementById('ocrFundsList').classList.add('hidden');
+                document.getElementById('ocrCode').textContent = fundInfo.code || '--';
+                document.getElementById('ocrName').textContent = fundInfo.name || '--';
+                document.getElementById('ocrShares').textContent = fundInfo.shares ? `${fundInfo.shares.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} 份` : '-- 份';
+                document.getElementById('ocrCost').textContent = fundInfo.cost ? `¥ ${fundInfo.cost.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}` : '¥ --';
+                document.getElementById('ocrNetValue').textContent = fundInfo.netValue ? `¥ ${fundInfo.netValue.toLocaleString(undefined, {minimumFractionDigits: 4, maximumFractionDigits: 4})}` : '¥ --';
+                document.getElementById('ocrProfitLoss').textContent = fundInfo.profitLoss ? `¥ ${fundInfo.profitLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '¥ --';
+                document.getElementById('ocrPositionValue').textContent = fundInfo.positionValue ? `¥ ${fundInfo.positionValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '¥ --';
+            }
+
+            document.getElementById('ocrRawText').textContent = rawText || '';
+
+            // 显示结果区域
+            document.getElementById('ocrResultPreview').classList.remove('hidden');
+
+            // 显示操作按钮
+            // 检查是否有有效数据：对于支付宝表格格式，允许缺少shares和cost
+            let hasValidData = false;
+
+            if (fundInfo.source === 'alipay' || fundInfo.estimated) {
+                // 支付宝表格格式：需要 code、name、positionValue，以及可用的份额/成本口径
+                if (fundInfo.funds && fundInfo.funds.length > 0) {
+                    const validFunds = fundInfo.funds.filter(fund =>
+                        fund.code && fund.name &&
+                        fund.shares && fund.shares > 0 &&
+                        fund.cost && fund.cost > 0
+                    );
+                    hasValidData = validFunds.length > 0;
+                } else {
+                    hasValidData = fundInfo.code && fundInfo.name &&
+                        fundInfo.shares && fundInfo.shares > 0 &&
+                        fundInfo.cost && fundInfo.cost > 0;
+                }
+            } else {
+                // 原有单基金格式：需要完整的shares和cost
+                hasValidData = fundInfo.code && fundInfo.name && fundInfo.shares && fundInfo.cost;
+            }
+
+            if (hasValidData) {
+                document.getElementById('ocrConfirmBtn').classList.remove('hidden');
+            }
+            document.getElementById('ocrRetryBtn').classList.remove('hidden');
+        }
+
+        // 显示OCR错误
+        function showOcrError(message) {
+            document.getElementById('ocrLoading').classList.add('hidden');
+            document.getElementById('ocrError').classList.remove('hidden');
+            document.getElementById('ocrErrorMessage').textContent = message;
+            document.getElementById('ocrRetryBtn').classList.remove('hidden');
+        }
+
+        // 关闭OCR结果弹窗
+        function closeOcrResultModal() {
+            document.getElementById('ocrResultModal').classList.add('hidden');
+            resetOcrModal();
+            unlockBodyScroll();
+        }
+
+        // 重置OCR弹窗状态
+        function resetOcrModal() {
+            document.getElementById('ocrLoading').classList.add('hidden');
+            document.getElementById('ocrError').classList.add('hidden');
+            document.getElementById('ocrResultPreview').classList.add('hidden');
+            document.getElementById('ocrConfirmBtn').classList.add('hidden');
+            document.getElementById('ocrRetryBtn').classList.add('hidden');
+            document.getElementById('ocrRawText').classList.add('hidden');
+            document.getElementById('ocrRawTextToggle').textContent = '▼';
+            document.getElementById('ocrFundsList').classList.add('hidden');
+            document.getElementById('ocrMeta').classList.add('hidden');
+            document.getElementById('ocrMeta').textContent = '';
+
+            // 显示单个基金显示行（可能之前被隐藏了）
+            document.getElementById('ocrCode').parentElement.parentElement.classList.remove('hidden');
+            document.getElementById('ocrName').parentElement.parentElement.classList.remove('hidden');
+            document.getElementById('ocrShares').parentElement.parentElement.classList.remove('hidden');
+            document.getElementById('ocrCost').parentElement.parentElement.classList.remove('hidden');
+            document.getElementById('ocrNetValue').parentElement.parentElement.classList.remove('hidden');
+            document.getElementById('ocrProfitLoss').parentElement.parentElement.classList.remove('hidden');
+            document.getElementById('ocrPositionValue').parentElement.parentElement.classList.remove('hidden');
+
+            // 清空基金列表容器
+            document.getElementById('ocrFundsListContainer').innerHTML = '';
+
+            currentOcrResult = null;
+        }
+
+        // 切换原始文本显示
+        function toggleOcrRawText() {
+            const rawTextEl = document.getElementById('ocrRawText');
+            const toggleIcon = document.getElementById('ocrRawTextToggle');
+
+            if (rawTextEl.classList.contains('hidden')) {
+                rawTextEl.classList.remove('hidden');
+                toggleIcon.textContent = '▲';
+            } else {
+                rawTextEl.classList.add('hidden');
+                toggleIcon.textContent = '▼';
+            }
+        }
+
+        // 确认保存OCR识别结果
+        async function confirmOcrResult() {
+            if (!currentOcrResult) {
+                alert('无效的识别结果');
+                return;
+            }
+
+            // 检查编辑解锁状态
+            if (!isEditingUnlocked) {
+                alert('请先解锁编辑功能');
+                return;
+            }
+
+            // 确定要保存的基金列表
+            const fundsToSave = currentOcrResult.funds && currentOcrResult.funds.length > 0 ? currentOcrResult.funds : [currentOcrResult];
+
+            // 对于支付宝表格格式，允许缺少shares和cost（会使用估算值）
+            const isAlipayFormat = currentOcrResult.source === 'alipay' || currentOcrResult.estimated;
+
+            const validFunds = fundsToSave.filter(fund => {
+                // 基本要求：code、name
+                if (!fund.code || !fund.name) {
+                    return false;
+                }
+
+                // 对于支付宝格式，放宽shares和cost要求
+                if (isAlipayFormat) {
+                    return !!(fund.shares && fund.shares > 0 && fund.cost && fund.cost > 0);
+                }
+
+                // 原有格式：需要完整的shares和cost
+                return fund.shares && fund.cost;
+            });
+
+            if (validFunds.length === 0) {
+                alert('没有有效的基金数据可保存');
+                return;
+            }
+
+            let savedCount = 0;
+            let errorCount = 0;
+
+            // 保存每只基金
+            for (const fund of validFunds) {
+                const fundData = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    code: fund.code,
+                    name: fund.name || `基金${fund.code}`,
+                    shares: fund.shares || 0,
+                    cost: fund.cost || 0,
+                    isFund: true,
+                    isOverseas: false,
+                    planBuy: 0,
+                    alert: null,
+                    targetPrice: null
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/save-row`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fundData)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        savedCount++;
+                    } else {
+                        errorCount++;
+                        console.error(`保存基金 ${fund.code} 失败:`, result.message);
+                    }
+                } catch (error) {
+                    errorCount++;
+                    console.error(`保存基金 ${fund.code} 失败:`, error);
+                }
+            }
+
+            if (savedCount > 0) {
+                alert(`成功保存 ${savedCount} 只基金${errorCount > 0 ? `，${errorCount} 只失败` : ''}`);
+                closeOcrResultModal();
+                // 刷新数据
+                refreshAllPrices(true, false);
+            } else {
+                alert(`保存失败，${errorCount} 只基金均未保存成功`);
+            }
+        }
+
+        // 重新上传
+        function retryOcrUpload() {
+            resetOcrModal();
+            document.getElementById('ocrImageFile').click();
         }
     </script>
 </body>

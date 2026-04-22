@@ -519,6 +519,7 @@ async function checkFundsAndAlert() {
     }
 
     const alerts = [];
+    const lastBuyAlerts = [];
 
     // 批量获取基金数据
     const items = funds.map(fund => ({ code: fund.code, isFund: true }));
@@ -545,49 +546,134 @@ async function checkFundsAndAlert() {
       console.log(`  持仓金额: ${metrics.positionValue.toFixed(2)}, 持仓盈亏: ${metrics.profitLoss.toFixed(2)}`);
       console.log(`  今日涨幅: ${metrics.todayChange.toFixed(2)}%, 今日收益: ${metrics.todayProfit.toFixed(2)}`);
 
+      // 检查是否达到普通涨跌提醒阈值
       if (Math.abs(metrics.changePercent) >= metrics.alert) {
         alerts.push(metrics);
       }
+
+      // 检查最近一次加仓变动提醒
+      try {
+        // 获取该持仓的交易历史
+        const tradeHistory = await db.getTradeHistoryByRowId(fund.id);
+        if (tradeHistory && tradeHistory.length > 0) {
+          // 筛选出加仓记录，按时间倒序排序
+          const addRecords = tradeHistory
+            .filter(record => record.type === 'add')
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+          if (addRecords.length > 0) {
+            const lastAddRecord = addRecords[0];
+            const lastAddNetValue = lastAddRecord.netValue || 0;
+
+            if (lastAddNetValue > 0 && quoteData.price > 0) {
+              // 计算距离最近一次加仓的变动幅度
+              const changeFromLastBuy = ((quoteData.price - lastAddNetValue) / lastAddNetValue) * 100;
+
+              // 无论涨跌都提醒（任何变动）
+              const CHANGE_THRESHOLD = 1e-6; // 极小阈值，几乎任何变动都提醒
+
+              if (Math.abs(changeFromLastBuy) >= CHANGE_THRESHOLD) {
+                lastBuyAlerts.push({
+                  name: metrics.name,
+                  code: metrics.code,
+                  lastAddNetValue: lastAddNetValue,
+                  currentNetValue: quoteData.price,
+                  changePercent: changeFromLastBuy,
+                  lastAddDate: lastAddRecord.createdAt ? new Date(lastAddRecord.createdAt).toLocaleDateString() : '未知'
+                });
+
+                const direction = changeFromLastBuy >= 0 ? '上涨' : '下跌';
+                console.log(`  距离最近一次加仓${direction}: ${Math.abs(changeFromLastBuy).toFixed(2)}% (加仓净值: ${lastAddNetValue}, 当前净值: ${quoteData.price})`);
+              } else {
+                console.log(`  距离最近一次加仓变动: ${changeFromLastBuy.toFixed(2)}%, 未达到 ${CHANGE_THRESHOLD}% 提醒阈值`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`  获取交易历史失败: ${error.message}`);
+      }
     }
 
-    if (alerts.length > 0) {
-      console.log(`\n有 ${alerts.length} 只基金达到提醒阈值`);
+    // 检查是否有任何提醒需要发送
+    if (alerts.length > 0 || lastBuyAlerts.length > 0) {
+      console.log(`\n有 ${alerts.length} 只基金达到涨跌提醒阈值`);
+      console.log(`有 ${lastBuyAlerts.length} 只基金达到最近一次加仓跌幅提醒阈值`);
 
-      // 计算今日总收益、总持仓金额和总持仓盈亏
-      const totalTodayProfit = alerts.reduce((sum, a) => sum + a.todayProfit, 0);
-      const totalPositionValue = alerts.reduce((sum, a) => sum + a.positionValue, 0);
-      const totalProfitLoss = alerts.reduce((sum, a) => sum + a.profitLoss, 0);
-      const todayReturnRate = totalPositionValue > 0 ? (totalTodayProfit / totalPositionValue) * 100 : 0;
+      let title = '';
+      let content = '';
 
-      console.log(`今日总收益: ¥${totalTodayProfit.toFixed(2)}`);
-      console.log(`总持仓金额: ¥${totalPositionValue.toFixed(2)}`);
-      console.log(`总持仓盈亏: ¥${totalProfitLoss.toFixed(2)}`);
-      console.log(`今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`);
+      if (alerts.length > 0) {
+        // 计算今日总收益、总持仓金额和总持仓盈亏
+        const totalTodayProfit = alerts.reduce((sum, a) => sum + a.todayProfit, 0);
+        const totalPositionValue = alerts.reduce((sum, a) => sum + a.positionValue, 0);
+        const totalProfitLoss = alerts.reduce((sum, a) => sum + a.profitLoss, 0);
+        const todayReturnRate = totalPositionValue > 0 ? (totalTodayProfit / totalPositionValue) * 100 : 0;
 
-      let title = `【基金提醒】持仓¥${formatMoney(totalPositionValue)} 收益${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`;
+        console.log(`今日总收益: ¥${totalTodayProfit.toFixed(2)}`);
+        console.log(`总持仓金额: ¥${totalPositionValue.toFixed(2)}`);
+        console.log(`总持仓盈亏: ¥${totalProfitLoss.toFixed(2)}`);
+        console.log(`今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`);
 
-      let content = `## 基金涨跌提醒\n\n`;
-      content += `**汇总统计:**\n`;
-      content += `- 总持仓金额: ¥${formatMoney(totalPositionValue)}\n`;
-      content += `- 总持仓盈亏: ¥${formatMoney(totalProfitLoss)}\n`;
-      content += `- 今日总收益: ¥${formatMoney(totalTodayProfit)}\n`;
-      content += `- 今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%\n\n`;
+        title = `【基金涨跌提醒】持仓¥${formatMoney(totalPositionValue)} 收益${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`;
+        content = `## 基金涨跌提醒\n\n`;
+        content += `**汇总统计:**\n`;
+        content += `- 总持仓金额: ¥${formatMoney(totalPositionValue)}\n`;
+        content += `- 总持仓盈亏: ¥${formatMoney(totalProfitLoss)}\n`;
+        content += `- 今日总收益: ¥${formatMoney(totalTodayProfit)}\n`;
+        content += `- 今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%\n\n`;
 
-      // 按涨跌幅倒序排序（从大到小）
-      alerts.sort((a, b) => b.changePercent - a.changePercent);
+        // 按涨跌幅倒序排序（从大到小）
+        alerts.sort((a, b) => b.changePercent - a.changePercent);
 
-      alerts.forEach((a) => {
-        const isUp = a.changePercent >= 0;
-        const emoji = isUp ? '涨' : '跌';
-        title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
-        content += `### ${emoji} ${a.name} (${a.code})\n\n`;
-        content += `- 涨跌幅: ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%\n`;
-        content += `- 持仓金额: ¥${formatMoney(a.positionValue)}\n`;
-        content += `- 持仓盈亏: ¥${formatMoney(a.profitLoss)}\n`;
-        content += `- 今日涨幅: ${a.todayChange >= 0 ? '+' : ''}${a.todayChange.toFixed(2)}%\n`;
-        content += `- 今日收益: ¥${formatMoney(a.todayProfit)}\n`;
-        // content += `- 提醒阈值: ${a.alert}%\n\n`;
-      });
+        alerts.forEach((a) => {
+          const isUp = a.changePercent >= 0;
+          const emoji = isUp ? '：🔴涨' : '🟢跌';
+          title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
+          content += `### ${emoji} ${a.name} (${a.code})\n\n`;
+          // 涨跌幅大于10%使用红色字体
+          const changePercentText = `${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%`;
+          const changePercentFormatted = Math.abs(a.changePercent) > 10 ? `：${changePercentText}` : changePercentText;
+          content += `- 涨跌幅: ${changePercentFormatted}\n`;
+          content += `- 持仓金额: ¥${formatMoney(a.positionValue)}\n`;
+          content += `- 持仓盈亏: ¥${formatMoney(a.profitLoss)}\n`;
+          content += `- 今日涨幅: ${a.todayChange >= 0 ? '+' : ''}${a.todayChange.toFixed(2)}%\n`;
+          content += `- 今日收益: ¥${formatMoney(a.todayProfit)}\n`;
+          // content += `- 提醒阈值: ${a.alert}%\n\n`;
+        });
+      }
+
+      // 如果有最近一次加仓变动提醒，添加到通知中
+      if (lastBuyAlerts.length > 0) {
+        if (alerts.length === 0) {
+          // 只有加仓变动提醒，没有普通涨跌提醒
+          title = `【基金加仓变动提醒】${lastBuyAlerts.length}只基金`;
+          content = `## 基金加仓变动提醒\n\n`;
+        } else {
+          // 两种提醒都有，添加分隔线
+          content += `\n---\n\n`;
+          content += `## 基金加仓变动提醒\n\n`;
+        }
+
+        // 按变动幅度倒序排序（从大到小）
+        lastBuyAlerts.sort((a, b) => b.changePercent - a.changePercent);
+
+        lastBuyAlerts.forEach((alert) => {
+          const isUp = alert.changePercent >= 0;
+          const icon = isUp ? '📈' : '📉';
+          const directionText = isUp ? '上涨' : '下跌';
+
+          title += `${alert.name}${isUp ? '+' : ''}${alert.changePercent.toFixed(1)}% `;
+          content += `### ${icon} ${alert.name} (${alert.code})\n\n`;
+          content += `- 最近加仓净值: ${alert.lastAddNetValue.toFixed(4)}\n`;
+          content += `- 当前净值: ${alert.currentNetValue.toFixed(4)}\n`;
+          // 涨跌幅大于10%使用红色字体
+          const changePercentText = `${isUp ? '+' : ''}${Math.abs(alert.changePercent).toFixed(2)}%`;
+          const changePercentFormatted = Math.abs(alert.changePercent) > 10 ? `<font color="red">${changePercentText}</font>` : changePercentText;
+          content += `- ${directionText}幅度: ${changePercentFormatted}\n`;
+          content += `- 加仓日期: ${alert.lastAddDate}\n\n`;
+        });
+      }
 
       await sendWechatMessage(title.slice(0, 100), content);
     } else {
@@ -1008,7 +1094,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/app-settings') {
     try {
       await sendCachedJson(req, res, 'app-settings', async () => ({
-        requiresEditUnlock: true
+        requiresEditUnlock: process.env.REQUIRES_EDIT_UNLOCK
       }));
     } catch (error) {
       console.error('Error getting app settings:', error);

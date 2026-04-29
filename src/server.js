@@ -12,7 +12,7 @@ const { handleFundScreenshotRoutes, loadCodeFixMap } = require('./routes/fund-sc
 const { servePublicFile } = require('./utils/static-files');
 const { analyzeFund, analyzeMultipleFunds } = require('./utils/fund-drawdown');
 
-const PORT = 3000;
+const PORT = 4000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
 const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
 const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);

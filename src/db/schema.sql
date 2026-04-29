@@ -38,11 +38,16 @@ CREATE TABLE IF NOT EXISTS pending_trades (
     row_id VARCHAR(50) NOT NULL,
     code VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
+    type VARCHAR(10) NOT NULL DEFAULT 'add' CHECK (type IN ('add', 'reduce')),
     amount DECIMAL(15, 2) NOT NULL,
+    shares DECIMAL(15, 4),
     is_before_15 BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY (row_id) REFERENCES positions(id) ON DELETE CASCADE
 );
+
+ALTER TABLE pending_trades ADD COLUMN IF NOT EXISTS type VARCHAR(10) NOT NULL DEFAULT 'add';
+ALTER TABLE pending_trades ADD COLUMN IF NOT EXISTS shares DECIMAL(15, 4);
 
 -- 索引优化查询
 CREATE INDEX IF NOT EXISTS idx_pending_trades_row_id ON pending_trades(row_id);
@@ -104,3 +109,21 @@ SELECT
     (p.shares * p.cost) as estimated_value
 FROM positions p
 ORDER BY p.code;
+
+-- ==================== 股票涨跌幅提醒规则表 ====================
+CREATE TABLE IF NOT EXISTS alert_rules (
+    id VARCHAR(50) PRIMARY KEY,
+    position_id VARCHAR(50) NOT NULL,
+    direction VARCHAR(5) NOT NULL CHECK (direction IN ('up', 'down', 'both')),
+    threshold DECIMAL(5, 2) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    triggered_today BOOLEAN NOT NULL DEFAULT false,
+    trigger_time TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE CASCADE
+);
+
+-- 索引优化查询
+CREATE INDEX IF NOT EXISTS idx_alert_rules_position_id ON alert_rules(position_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);

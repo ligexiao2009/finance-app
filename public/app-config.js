@@ -1,6 +1,6 @@
 window.APP_CONFIG = {
     localApiBaseUrl: 'http://localhost:3000',
-    productionApiBaseUrl: 'https://finance-app-production-3a22.up.railway.app',
+    productionApiBaseUrl: 'https://finance-app-kanh.onrender.com',
     githubPagesHosts: ['ligexiao2009.github.io'],
 };
 

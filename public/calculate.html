@@ -1,329 +1,889 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="UTF-8">
-    <link rel="manifest" href="manifest.json">
-	<meta name="apple-mobile-web-app-capable" content="yes">
-	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<meta name="apple-mobile-web-app-title" content="基金加仓分析">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>基金加仓分析</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>投资管理 Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         :root {
-            --ios-blue: #007AFF;
-            --ios-red: #FF3B30;
-            --ios-green: #34C759;
-            --ios-bg: #F2F2F7;
-            --ios-card: #FFFFFF;
-            --ios-input: #E9E9EB;
-            --ios-label: #8E8E93;
-            --ios-orange: #FF9500;
+            --system-red: #ff3b30;
+            --system-green: #34c759;
+            --system-blue: #007aff;
+            --bg-color: #f2f2f7;
+            --card-bg: rgba(255, 255, 255, 0.8);
         }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            background-color: var(--ios-bg);
-            -webkit-font-smoothing: antialiased;
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
-
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: env(safe-area-inset-top) 20px 40px;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            background-color: var(--bg-color);
+            background: radial-gradient(at 0% 0%, rgba(0, 122, 255, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(255, 59, 48, 0.05) 0px, transparent 50%),
+                var(--bg-color);
+            min-height: 100vh;
+            color: #1c1c1e;
         }
 
         .container {
-            width: 100%;
-            max-width: 400px;
-            background: var(--ios-card);
+            max-width: 440px;
+            margin: auto;
+            padding: 20px 16px;
+        }
+
+        .main-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
             border-radius: 28px;
-            padding: 24px 20px;
-            margin-top: 10px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
         }
 
-        h1 { font-size: 24px; font-weight: 800; margin: 4px 0 20px; letter-spacing: -0.5px; }
+        .header-label {
+            font-size: 13px;
+            color: #8e8e93;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
 
-        .input-grid {
+        .profit-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .big-num {
+            font-size: 38px;
+            font-weight: 700;
+            letter-spacing: -1.2px;
+            transition: color 0.3s;
+        }
+
+        .percent-badge {
+            font-size: 14px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .kpis {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
         }
 
-        .label-text { font-size: 13px; font-weight: 600; color: var(--ios-label); margin-bottom: 6px; display: block; }
-
-        .input-field {
-            background: var(--ios-input);
-            border: none;
-            border-radius: 12px;
-            padding: 12px 14px;
-            font-size: 16px;
-            font-weight: 600;
-            color: #1C1C1E;
-            outline: none;
-            width: 100%;
-            -webkit-appearance: none;
+        .kpi {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 12px 6px;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 4px 10px rgba(0, 0, 0, 0.02);
         }
 
-        .record-section {
-            background: #FFF9F2;
-            border-radius: 18px;
-            padding: 14px;
-            margin-bottom: 15px;
+        .kpi .v {
+            font-size: 14px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
 
-        .orange-label { color: var(--ios-orange); font-size: 12px; font-weight: 700; margin-bottom: 8px; display: block; }
+        .kpi .l {
+            font-size: 10px;
+            color: #8e8e93;
+            margin-top: 4px;
+            font-weight: 500;
+        }
 
-        .record-card {
-            background: white;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
+        .price-input-group {
+            display: flex;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 5px;
+            border-radius: 14px;
+        }
+
+        .input-wrapper {
+            flex: 1;
             position: relative;
-            box-shadow: 0 1px 3px rgba(255,149,0,0.05);
         }
 
-        .card-del-btn {
+        .input-wrapper::before {
+            content: attr(data-label);
             position: absolute;
-            top: -6px;
-            right: -6px;
-            width: 20px;
-            height: 20px;
-            background: #D1D1D6;
-            color: white;
+            left: 12px;
+            top: 8px;
+            font-size: 10px;
+            color: #8e8e93;
+            font-weight: 600;
+        }
+
+        .price-input-group input {
+            width: 100%;
+            padding: 22px 12px 8px;
+            border: none;
+            background: transparent;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--system-blue);
+            outline: none;
+        }
+
+        .list-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 4px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+        }
+
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .item:last-child {
+            border: none;
+        }
+
+        .entry-fields {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .entry-fields input {
+            width: 90px;
+            padding: 8px 6px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            background: white;
+            font-size: 15px;
+            text-align: center;
+            font-weight: 700;
+            outline: none;
+        }
+
+        .entry-fields span {
+            font-size: 12px;
+            color: #c7c7cc;
+            font-weight: 600;
+        }
+
+        .item-right-box {
+            display: flex;
+            align-items: center;
+        }
+
+        .item-right {
+            text-align: right;
+            min-width: 80px;
+        }
+
+        .item-profit {
+            font-size: 16px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .item-rate {
+            font-size: 11px;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
+        .delete-btn {
+            width: 26px;
+            height: 26px;
             border-radius: 50%;
+            border: none;
+            background: rgba(255, 59, 48, 0.1);
+            color: var(--system-red);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            font-weight: bold;
+            font-size: 16px;
+            margin-left: 10px;
             cursor: pointer;
+            transition: 0.2s;
         }
 
-        .btn-add-outline {
+        .delete-btn:active {
+            background: var(--system-red);
+            color: white;
+            transform: scale(0.9);
+        }
+
+        .add-btn {
             width: 100%;
+            padding: 16px;
+            border-radius: 20px;
+            border: none;
+            background: var(--system-blue);
+            color: white;
+            margin-top: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.25);
+        }
+
+        .add-btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        .red {
+            color: var(--system-red);
+        }
+
+        .green {
+            color: var(--system-green);
+        }
+
+        .bg-red {
+            background: rgba(255, 59, 48, 0.1);
+            color: var(--system-red);
+        }
+
+        .bg-green {
+            background: rgba(52, 199, 89, 0.1);
+            color: var(--system-green);
+        }
+
+        .fade {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 走势图容器 */
+        .chart-card {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 30px;
+            padding: 18px;
+            margin-top: 16px;
+            border: 1px solid rgba(203, 213, 225, 0.95);
+            box-shadow: 0 16px 32px rgba(148, 163, 184, 0.12);
+            display: none;
+            overflow: hidden;
+        }
+
+        .chart-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px 14px;
+            margin-bottom: 14px;
+        }
+
+        .chart-title-wrap {
+            min-width: 0;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            line-height: 1.2;
+            letter-spacing: -0.03em;
+        }
+
+        .chart-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            grid-column: 1 / -1;
+        }
+
+        .chart-summary-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 30px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(203, 213, 225, 0.82);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            color: #66758a;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .chart-summary-chip b {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .chart-summary-chip.is-up {
+            color: #9a3412;
+            border-color: rgba(251, 146, 60, 0.24);
+            background: linear-gradient(180deg, rgba(255, 237, 213, 0.92) 0%, rgba(255, 247, 237, 0.98) 100%);
+        }
+
+        .chart-summary-chip.is-up b {
+            color: #ea580c;
+        }
+
+        .chart-summary-chip.is-down {
+            color: #166534;
+            border-color: rgba(52, 211, 153, 0.24);
+            background: linear-gradient(180deg, rgba(220, 252, 231, 0.92) 0%, rgba(240, 253, 244, 0.98) 100%);
+        }
+
+        .chart-summary-chip.is-down b {
+            color: #16a34a;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .chart-period {
+            display: flex;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 250, 252, 0.98) 100%);
+            border: 1px solid rgba(203, 213, 225, 0.92);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+        }
+
+        .period-btn {
+            min-width: 58px;
+            padding: 10px 14px;
+            border-radius: 14px;
+            border: 1px solid transparent;
             background: transparent;
-            color: var(--ios-orange);
-            border: 1.5px dashed #FFD6A5;
-            border-radius: 10px;
-            padding: 10px;
             font-size: 13px;
             font-weight: 600;
-            margin-top: 2px;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .res-panel { margin-top: 10px; border-top: 0.5px solid #F2F2F7; padding-top: 15px; }
-        .res-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; }
-        .res-row b { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16px; }
+        .period-btn.active {
+            background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1e3a8a;
+            border-color: rgba(96, 165, 250, 0.52);
+            box-shadow: 0 8px 14px rgba(96, 165, 250, 0.14);
+        }
 
-        .reset-link {
+        .chart-container {
+            position: relative;
+            height: 390px;
+            width: 100%;
+            padding: 8px 8px 4px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, #fdfefe 0%, #f5f7fb 100%);
+            border: 1px solid rgba(203, 213, 225, 0.95);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            color: white;
+        }
+
+        #kline-chart {
+            position: relative;
+            z-index: 1;
+        }
+
+        .chart-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 8px;
+            height: 100%;
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 600;
             text-align: center;
-            display: block;
-            margin-top: 20px;
-            color: var(--ios-label);
-            font-size: 13px;
-            text-decoration: none;
-            opacity: 0.8;
+            position: absolute;
+            inset: 0;
+            z-index: 2;
         }
-        .single-gain, .single-loss { font-size: 11px; font-weight: 700; margin-left: 4px; }
+
+        .chart-loading small {
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        @media (max-width: 480px) {
+            .chart-header {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-period,
+            .chart-controls {
+                width: 100%;
+            }
+
+            .period-btn {
+                flex: 1;
+            }
+
+            .chart-container {
+                height: 350px;
+            }
+        }
     </style>
+    <script src="app-config.js"></script>
 </head>
+
 <body>
 
     <div class="container">
-        <h1>基金加仓分析</h1>
-
-        <div class="input-grid">
-            <div class="input-box">
-                <span class="label-text">1. 当前市场价格</span>
-                <input type="number" id="currentPrice" class="input-field" value="1.0000" step="0.0001" oninput="calculate(true)">
+        <div class="main-card">
+            <div class="header-label">预计总盈亏</div>
+            <div class="profit-row">
+                <div id="profit" class="big-num red">¥0</div>
+                <div id="rate" class="percent-badge bg-red">0.00%</div>
             </div>
-            <div class="input-box">
-                <span class="label-text">2. 持有总股数</span>
-                <input type="number" id="display_total_shares" class="input-field" value="0" readonly style="color:#8E8E93">
+            <div class="kpis">
+                <div class="kpi">
+                    <div id="cost" class="v">¥0</div>
+                    <div class="l">总成本</div>
+                </div>
+                <div class="kpi">
+                    <div id="value" class="v">¥0</div>
+                    <div class="l">当前市值</div>
+                </div>
+                <div class="kpi">
+                    <div id="breakeven" class="v">0.00</div>
+                    <div class="l">回本单价</div>
+                </div>
+            </div>
+            <div class="price-input-group">
+                <div class="input-wrapper" data-label="市场单价">
+                    <input type="number" id="price" value="170" step="0.01" oninput="calculateOnly()"
+                        onfocus="handleFocus(this)">
+                </div>
+                <div style="width:1px; background:rgba(0,0,0,0.08); margin:10px 0;"></div>
+                <div class="input-wrapper" data-label="累计持仓">
+                    <input type="number" id="total-display" value="0" readonly>
+                </div>
             </div>
         </div>
 
-        <div class="record-section">
-            <span class="orange-label">3. 历史买入记录</span>
-            <div id="buy-list"></div>
-            <button class="btn-add-outline" onclick="addRecord()">+ 添加成交记录</button>
+        <div class="list-card" style="margin-bottom: 12px; padding: 16px;">
+            <select id="stock-select"
+                style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.1); background: white; font-size: 14px; font-weight: 600; outline: none;"
+                onchange="onStockSelectChange(this)">
+                <option value="">选择持仓股票...</option>
+            </select>
         </div>
 
-        <div class="res-panel">
-            <div class="res-row"><span>总投入成本</span><b id="res-totalA">¥0.00</b></div>
-            <div class="res-row"><span>平均持仓成本</span><b id="res-avgP" style="color:var(--ios-blue)">0.0000</b></div>
-            <div class="res-row"><span>当前盈亏金额</span><b id="res-loss">0.00</b></div>
-            <div class="res-row"><span>当前总收益率</span><b id="res-percent">0.00%</b></div>
-            <div class="res-row"><span>回本需涨幅</span><b id="res-need">0.00%</b></div>
+        <div class="list-card">
+            <div id="list"></div>
         </div>
+        <button class="add-btn" onclick="addRecord()">+ 新增补仓记录</button>
 
-        <a href="#" class="reset-link" onclick="clearAll()">↺ 重置并清空本地缓存数据</a>
+        <div class="chart-card" id="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-wrap">
+                    <div class="chart-title" id="chart-title">收盘价走势图</div>
+                </div>
+                <div class="chart-controls">
+                    <div class="chart-period">
+                        <button class="period-btn active" data-scale="240" onclick="changeChartPeriod(240)">日线</button>
+                        <button class="period-btn" data-scale="1200" onclick="changeChartPeriod(1200)">周线</button>
+                        <button class="period-btn" data-scale="7200" onclick="changeChartPeriod(7200)">月线</button>
+                    </div>
+                </div>
+                <div class="chart-summary" id="chart-summary">
+                    <div class="chart-summary-chip"><span>现价</span><b id="chartSummaryPrice">0.00</b></div>
+                    <div class="chart-summary-chip"><span>成本</span><b id="chartSummaryBreakeven">0.00</b></div>
+                    <div class="chart-summary-chip" id="chartSummaryGapChip"><span id="chartSummaryGapLabel">距回本</span><b id="chartSummaryGap">0.00%</b></div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="kline-chart"></canvas>
+                <div class="chart-loading" id="chart-loading">正在加载图表数据...</div>
+            </div>
+        </div>
     </div>
 
     <script>
-        let isManualPrice = false;
-        const STORAGE_KEY = 'fund_calc_data_v2'; // 更新Key版本避免冲突
-
-        function calculate(fromManual = false) {
-            if (fromManual) isManualPrice = true;
-            const records = document.querySelectorAll('.record-group');
-            let totalAmount = 0, totalShares = 0, lastPrice = null;
-
-            records.forEach(group => {
-                const shares = parseFloat(group.querySelector('.shares').value) || 0;
-                const pri = parseFloat(group.querySelector('.pri').value) || 0;
-                if (shares > 0 && pri > 0) { lastPrice = pri; }
-            });
-
-            if (!isManualPrice && lastPrice !== null) {
-                document.getElementById('currentPrice').value = lastPrice.toFixed(4);
+        // 确保插件正常注册
+        window.addEventListener('load', function () {
+            if (window.ChartZoom) {
+                try { Chart.register(window.ChartZoom); } catch (e) { }
             }
+        });
 
-            const currP = parseFloat(document.getElementById('currentPrice').value) || 0;
+        let holdingsData = JSON.parse(localStorage.getItem('invest_pro_data')) || [
+            { shares: 700, price: 141 }, { shares: 700, price: 100 }
+        ];
 
-            records.forEach(group => {
-                const shares = parseFloat(group.querySelector('.shares').value) || 0;
-                const pri = parseFloat(group.querySelector('.pri').value) || 0;
-                const gainEl = group.querySelector('.single-gain');
-                const lossEl = group.querySelector('.single-loss');
-                
-                if (shares > 0 && pri > 0) {
-                    const cost = shares * pri;
-                    totalAmount += cost;
-                    totalShares += shares;
-                    
-                    // 计算单笔收益率
-                    const gainPercent = ((currP - pri) / pri * 100).toFixed(2);
-                    gainEl.innerText = (gainPercent >= 0 ? '+' : '') + gainPercent + '%';
-                    gainEl.style.color = gainPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+        let klineChart = null;
+        let currentStockCode = null;
+        let currentChartScale = 240;
+        let currentKlineData = null;
+        let currentRangePreset = null;
+        let currentWindowStartIndex = null;
+        let currentWindowSize = null;
 
-                    // 计算单笔盈亏金额
-                    const singleLossAmt = (shares * currP) - cost;
-                    lossEl.innerText = (singleLossAmt >= 0 ? '盈:' : '亏:') + singleLossAmt.toFixed(2);
-                    lossEl.style.color = singleLossAmt >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-                } else {
-                    gainEl.innerText = '0%';
-                    lossEl.innerText = '盈:0.00';
+        function getChartPeriodLabel(scale) {
+            if (scale >= 7200) return '月线';
+            if (scale >= 1200) return '周线';
+            return '日线';
+        }
+
+        // 补回丢失的获取数据长度函数
+        function getKlineDataLength(scale) {
+            if (scale >= 7200) return 120;
+            if (scale >= 1200) return 250;
+            return 500;
+        }
+
+        function getRangeCount(rangeKey, scale) {
+            return scale >= 7200 ? 60 : scale >= 1200 ? 260 : 1250;
+        }
+
+        function getMinimumWindowCount(scale) {
+            if (scale >= 7200) return 6;
+            if (scale >= 1200) return 12;
+            return 20;
+        }
+
+        function getDefaultVisibleCount(scale) {
+            if (scale >= 7200) return 52;
+            if (scale >= 1200) return 52;
+            return 90;
+        }
+
+        function clampChartWindowStart(start, total, visibleCount) {
+            const maxStart = Math.max(0, total - visibleCount);
+            return Math.max(0, Math.min(Number(start) || 0, maxStart));
+        }
+
+        function getHistoricalBreakevenPrices() {
+            let prices = [], totalShares = 0, totalCost = 0;
+            holdingsData.forEach((item, index) => {
+                const s = Number(item.shares) || 0, p = Number(item.price) || 0;
+                if (s > 0) {
+                    totalShares += s; totalCost += s * p;
+                    prices.push({ label: index === holdingsData.length - 1 ? '最新总成本' : `阶段成本 ${index + 1}`, price: totalCost / totalShares });
                 }
             });
-
-            if (totalShares <= 0) {
-                resetResults();
-                saveToLocal();
-                return;
-            }
-
-            const avgCost = totalAmount / totalShares;
-            const totalLoss = (totalShares * currP) - totalAmount;
-            const totalLossP = (totalLoss / totalAmount * 100).toFixed(2);
-            const need = currP > 0 ? ((avgCost - currP) / currP * 100).toFixed(2) : 0;
-
-            document.getElementById('res-totalA').innerText = '¥' + totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('res-avgP').innerText = avgCost.toFixed(4);
-            document.getElementById('res-loss').innerText = (totalLoss >= 0 ? '+' : '') + totalLoss.toFixed(2);
-            document.getElementById('res-loss').style.color = totalLoss >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-            document.getElementById('res-percent').innerText = (totalLoss >= 0 ? '+' : '') + totalLossP + '%';
-            document.getElementById('res-percent').style.color = totalLoss >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
-            document.getElementById('res-need').innerText = need + '%';
-            document.getElementById('res-need').style.color = need > 0 ? 'var(--ios-green)' : 'var(--ios-red)';
-            document.getElementById('display_total_shares').value = totalShares;
-
-            saveToLocal();
+            return prices;
         }
 
-        function resetResults() {
-            document.getElementById('res-totalA').innerText = '¥0.00';
-            document.getElementById('res-avgP').innerText = '0.0000';
-            document.getElementById('res-loss').innerText = '0.00';
-            document.getElementById('res-percent').innerText = '0.00%';
-            document.getElementById('res-need').innerText = '0.00%';
-            document.getElementById('display_total_shares').value = 0;
-        }
+        function updateYAxisRange(chart) {
+            const xAxis = chart.scales.x, yAxis = chart.scales.y;
+            const minTime = xAxis.min, maxTime = xAxis.max;
+            const priceDataset = chart.data.datasets.find(ds => ds.label === '收盘价');
+            if (!priceDataset || !priceDataset.data) return;
 
-        function addRecord(defaultShares = "", defaultPri = "", skipCalc = false) {
-            const list = document.getElementById('buy-list');
-            const div = document.createElement('div');
-            div.className = 'record-card record-group';
-            div.innerHTML = `
-                <div class="card-del-btn" onclick="this.parentElement.remove();calculate()">×</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div class="input-box">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="label-text" style="font-size:11px;">买入股数</span>
-                            <span class="single-loss" style="color:var(--ios-label)">盈:0.00</span>
-                        </div>
-                        <input type="number" class="input-field shares" style="padding:10px;" value="${defaultShares}" oninput="calculate()">
-                    </div>
-                    <div class="input-box">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="label-text" style="font-size:11px;">成交单价</span>
-                            <span class="single-gain">0%</span>
-                        </div>
-                        <input type="number" class="input-field pri" style="padding:10px;" value="${defaultPri}" oninput="calculate()">
-                    </div>
-                </div>
-            `;
-            list.appendChild(div);
-            if(!skipCalc) calculate();
-        }
+            const visibleData = priceDataset.data.filter(p => p.x >= minTime && p.x <= maxTime);
+            if (visibleData.length > 0) {
+                const prices = visibleData.map(p => p.y);
+                let vMax = Math.max(...prices), vMin = Math.min(...prices);
 
-        function saveToLocal() {
-            const records = [];
-            document.querySelectorAll('.record-group').forEach(group => {
-                records.push({
-                    shares: group.querySelector('.shares').value,
-                    pri: group.querySelector('.pri').value
+                chart.data.datasets.forEach(ds => {
+                    if (ds.label && ds.label.includes('成本')) {
+                        const costVal = ds.data[0]?.y;
+                        if (costVal && costVal <= vMax * 1.2 && costVal >= vMin * 0.8) {
+                            vMax = Math.max(vMax, costVal); vMin = Math.min(vMin, costVal);
+                        }
+                    }
                 });
+                const padding = (vMax - vMin) * 0.1 || vMax * 0.05;
+                yAxis.options.min = vMin - padding; yAxis.options.max = vMax + padding;
+                chart.update('none');
+            }
+        }
+
+        function handleFocus(el) { if (el.value === "0") el.value = ""; else el.select(); }
+        function animateNumber(el, to) {
+            const start = Number(el.dataset.val || 0), duration = 400, startTime = performance.now();
+            function tick(now) {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const val = start + (to - start) * (1 - Math.pow(1 - progress, 3));
+                el.innerText = '¥' + Math.round(val).toLocaleString();
+                if (progress < 1) requestAnimationFrame(tick); else el.dataset.val = to;
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function calculateOnly() {
+            let totalCost = 0, totalShares = 0;
+            const currentPrice = +document.getElementById('price').value || 0;
+            holdingsData.forEach((d, i) => {
+                const cost = d.shares * d.price, profit = (d.shares * currentPrice) - cost;
+                const rate = cost ? (profit / cost * 100).toFixed(2) : '0.00';
+                totalCost += cost; totalShares += d.shares;
+                const pEl = document.getElementById(`p-${i}`), rEl = document.getElementById(`r-${i}`);
+                if (pEl && rEl) {
+                    pEl.innerText = (profit >= 0 ? '+' : '') + Math.round(profit); pEl.className = `item-profit ${profit >= 0 ? 'red' : 'green'}`;
+                    rEl.innerText = rate + '%'; rEl.className = `item-rate ${profit >= 0 ? 'red' : 'green'}`;
+                }
+            });
+            const totalValue = totalShares * currentPrice, totalProfit = totalValue - totalCost;
+            const totalRate = totalCost ? (totalProfit / totalCost * 100).toFixed(2) : '0.00';
+            animateNumber(document.getElementById('profit'), totalProfit);
+            document.getElementById('profit').className = `big-num ${totalProfit >= 0 ? 'red' : 'green'}`;
+            const rateEl = document.getElementById('rate');
+            rateEl.innerText = (totalProfit >= 0 ? '+' : '') + totalRate + '%'; rateEl.className = `percent-badge ${totalProfit >= 0 ? 'bg-red' : 'bg-green'}`;
+            document.getElementById('cost').innerText = '¥' + Math.round(totalCost).toLocaleString();
+            document.getElementById('value').innerText = '¥' + Math.round(totalValue).toLocaleString();
+            const breakevenPrice = totalShares ? (totalCost / totalShares) : 0;
+            document.getElementById('breakeven').innerText = breakevenPrice.toFixed(2);
+            document.getElementById('total-display').value = totalShares;
+
+            const chartSummaryPriceEl = document.getElementById('chartSummaryPrice');
+            const chartSummaryBreakevenEl = document.getElementById('chartSummaryBreakeven');
+            const chartSummaryGapEl = document.getElementById('chartSummaryGap');
+            const chartSummaryGapLabelEl = document.getElementById('chartSummaryGapLabel');
+            const chartSummaryGapChipEl = document.getElementById('chartSummaryGapChip');
+            if (chartSummaryPriceEl && chartSummaryBreakevenEl && chartSummaryGapEl && chartSummaryGapLabelEl && chartSummaryGapChipEl) {
+                const gapRate = breakevenPrice > 0 ? ((currentPrice - breakevenPrice) / breakevenPrice * 100) : 0;
+                chartSummaryPriceEl.innerText = currentPrice ? currentPrice.toFixed(2) : '0.00';
+                chartSummaryBreakevenEl.innerText = breakevenPrice.toFixed(2);
+                chartSummaryGapLabelEl.innerText = gapRate >= 0 ? '已回本' : '还差';
+                chartSummaryGapEl.innerText = `${Math.abs(gapRate).toFixed(2)}%`;
+                chartSummaryGapChipEl.classList.remove('is-up', 'is-down');
+                chartSummaryGapChipEl.classList.add(gapRate >= 0 ? 'is-up' : 'is-down');
+            }
+
+            localStorage.setItem('invest_pro_data', JSON.stringify(holdingsData));
+            if (currentStockCode && currentKlineData) renderKlineChart(currentKlineData);
+        }
+
+        function renderList() {
+            const list = document.getElementById('list'); list.innerHTML = '';
+            holdingsData.forEach((d, i) => {
+                const div = document.createElement('div'); div.className = 'item fade';
+                div.innerHTML = `<div class="entry-fields"><input type="number" value="${d.shares}" oninput="updateData(${i},'shares',this.value)" onfocus="handleFocus(this)"><span>股 @</span><input type="number" value="${d.price}" oninput="updateData(${i},'price',this.value)" onfocus="handleFocus(this)"></div><div class="item-right-box"><div class="item-right"><div id="p-${i}" class="item-profit">0</div><div id="r-${i}" class="item-rate">0%</div></div><button class="delete-btn" onclick="removeRecord(${i})">×</button></div>`;
+                list.appendChild(div);
+            });
+            calculateOnly();
+        }
+
+        function updateData(i, key, val) { holdingsData[i][key] = +val || 0; calculateOnly(); }
+        function addRecord() { holdingsData.push({ shares: 0, price: 0 }); renderList(); }
+        function removeRecord(i) {
+            const items = document.querySelectorAll('.item');
+            items[i].style.opacity = '0'; items[i].style.transform = 'translateX(40px)';
+            setTimeout(() => { holdingsData.splice(i, 1); renderList(); }, 250);
+        }
+
+        renderList();
+        loadHoldings();
+
+        async function loadHoldings() {
+            try {
+                const response = await fetch((window.API_BASE_URL || '') + '/api/data');
+                if (!response.ok) throw new Error('获取失败');
+                const responseData = await response.json();
+                const select = document.getElementById('stock-select');
+                while (select.options.length > 1) select.remove(1);
+                responseData.rows.filter(r => !r.isFund).forEach(s => {
+                    const option = document.createElement('option');
+                    option.value = s.id || s.code; option.textContent = `${s.name || s.code} (${s.shares}股 @ ${s.cost})`;
+                    option.dataset.shares = s.shares; option.dataset.cost = s.cost; option.dataset.code = s.code;
+                    select.appendChild(option);
+                });
+            } catch (e) { }
+        }
+
+        async function onStockSelectChange(select) {
+            const opt = select.options[select.selectedIndex];
+            if (!opt.value) return;
+            const shares = parseFloat(opt.dataset.shares), cost = parseFloat(opt.dataset.cost), stockCode = opt.dataset.code;
+            if (isNaN(shares) || isNaN(cost) || shares <= 0 || cost <= 0) { select.selectedIndex = 0; return; }
+            holdingsData.length = 0; holdingsData.push({ shares, price: cost }); renderList();
+            if (stockCode) {
+                try {
+                    const res = await fetch(`${window.API_BASE_URL || ''}/api/quotes?items=${encodeURIComponent(stockCode + ':0')}`);
+                    const data = await res.json(), price = data.quotes[`${stockCode}:0`]?.price;
+                    if (price > 0) { document.getElementById('price').value = price; calculateOnly(); }
+                } catch (e) { }
+                showKlineChart(stockCode);
+            }
+        }
+
+        async function showKlineChart(stockCode) {
+            currentStockCode = stockCode; currentWindowStartIndex = null; currentWindowSize = null;
+            document.getElementById('chart-card').style.display = 'block';
+            document.getElementById('chart-title').textContent = `${stockCode} 走势图`;
+
+            const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
+            loadingEl.style.display = 'flex'; canvasEl.style.display = 'none';
+            loadingEl.innerHTML = '正在加载图表数据...<small>图表数据准备中</small>';
+            await loadKlineData(stockCode, currentChartScale);
+        }
+
+        // 补回丢失的 changeChartPeriod 函数
+        async function changeChartPeriod(scale) {
+            if (scale === currentChartScale || !currentStockCode) return;
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                if (btn.dataset.scale == scale) btn.classList.add('active'); else btn.classList.remove('active');
+            });
+            currentChartScale = scale; currentWindowStartIndex = null; currentWindowSize = null;
+            const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
+            loadingEl.style.display = 'flex'; canvasEl.style.display = 'none';
+            loadingEl.innerHTML = '正在加载K线数据...<small>切换到新的周期视图</small>';
+            await loadKlineData(currentStockCode, scale);
+        }
+
+        async function loadKlineData(stockCode, scale) {
+            try {
+                let symbol = stockCode.length === 5 ? 'hk' + stockCode : /^[569]/.test(stockCode) ? 'sh' + stockCode : 'sz' + stockCode;
+                const url = `${window.API_BASE_URL || ''}/api/kline/${symbol}?scale=${scale}&datalen=${getKlineDataLength(scale)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (!result.success) throw new Error(result.error || '获取图表数据失败');
+
+                const parsedData = parseKlineData(result.data);
+                currentKlineData = parsedData;
+
+                const loadingEl = document.getElementById('chart-loading'), canvasEl = document.getElementById('kline-chart');
+                canvasEl.style.display = 'block'; loadingEl.style.display = 'none';
+                renderKlineChart(parsedData);
+            } catch (error) {
+                document.getElementById('chart-loading').style.display = 'flex';
+                document.getElementById('kline-chart').style.display = 'none';
+                document.getElementById('chart-loading').innerHTML = '加载图表数据失败<small>请稍后重试或检查网络</small>';
+            }
+        }
+
+        function parseKlineData(klineData) {
+            if (!Array.isArray(klineData) || klineData.length === 0) return { labels: [], timestamps: [], closes: [], dates: [] };
+            const labels = [], timestamps = [], closes = [], dates = [];
+            [...klineData].sort((a, b) => new Date(a.day) - new Date(b.day)).forEach(item => {
+                const date = new Date(item.day), timestamp = date.getTime(), close = parseFloat(item.close);
+                if (!Number.isNaN(timestamp) && Number.isFinite(close)) {
+                    labels.push(item.day); timestamps.push(timestamp); dates.push(item.day); closes.push(close);
+                }
+            });
+            return { labels, timestamps, closes, dates };
+        }
+
+        function getChartTimeUnit(scale) { return scale >= 7200 ? 'month' : scale >= 1200 ? 'week' : 'day'; }
+
+        function resetChartZoom() {
+            if (!klineChart) return;
+            currentRangePreset = null; currentWindowStartIndex = null; currentWindowSize = null;
+            if (currentKlineData) renderKlineChart(currentKlineData);
+        }
+
+        function renderKlineChart(chartData) {
+            const canvas = document.getElementById('kline-chart');
+            if (!canvas || !chartData.timestamps || chartData.timestamps.length === 0) return;
+            const ctx = canvas.getContext('2d');
+            if (klineChart) klineChart.destroy();
+
+            const areaGradient = ctx.createLinearGradient(0, 0, 0, canvas.height || 360);
+            areaGradient.addColorStop(0, 'rgba(59, 201, 219, 0.18)');
+            areaGradient.addColorStop(0.6, 'rgba(59, 201, 219, 0.08)');
+            areaGradient.addColorStop(1, 'rgba(59, 201, 219, 0)');
+
+            const xValues = chartData.timestamps, costPrices = getHistoricalBreakevenPrices();
+            const costDatasets = costPrices.map((cp, idx) => {
+                const isLatest = idx === costPrices.length - 1;
+                const lineColors = ['rgba(246, 196, 83, 0.96)', 'rgba(253, 224, 71, 0.68)', 'rgba(250, 204, 21, 0.52)'];
+                return {
+                    type: 'line', label: cp.label, data: xValues.map(t => ({ x: t, y: cp.price })),
+                    borderColor: lineColors[idx % lineColors.length], borderWidth: isLatest ? 2 : 1.5,
+                    borderDash: isLatest ? [] : [6, 6], pointRadius: 0, pointHitRadius: 8, fill: false, tension: 0, order: isLatest ? -1 : 0
+                };
             });
 
-            const data = {
-                currentPrice: document.getElementById('currentPrice').value,
-                isManualPrice: isManualPrice,
-                records: records
+            const configData = {
+                datasets: [
+                    {
+                        label: '收盘价', data: xValues.map((t, i) => ({ x: t, y: chartData.closes[i] })),
+                        borderColor: '#3BC9DB', backgroundColor: areaGradient,
+                        borderWidth: 2.25, fill: true, tension: 0.18, pointRadius: 0, pointHitRadius: 10, order: 1
+                    }, ...costDatasets
+                ]
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        }
 
-        function loadFromLocal() {
-            const rawData = localStorage.getItem(STORAGE_KEY);
-            if (!rawData) {
-                addRecord(1000, 1.000);
-                return;
-            }
-            try {
-                const data = JSON.parse(rawData);
-                document.getElementById('currentPrice').value = data.currentPrice || "1.0000";
-                isManualPrice = data.isManualPrice || false;
-                document.getElementById('buy-list').innerHTML = '';
-                if (data.records && data.records.length > 0) {
-                    data.records.forEach(item => addRecord(item.shares, item.pri, true));
-                } else {
-                    addRecord(1000, 1.000, true);
+            const rangeMaxCount = Math.min(getRangeCount(currentRangePreset, currentChartScale), xValues.length);
+            const visibleCount = Math.max(Math.min(currentWindowSize == null ? Math.min(getDefaultVisibleCount(currentChartScale), rangeMaxCount) : currentWindowSize, rangeMaxCount, xValues.length), Math.min(getMinimumWindowCount(currentChartScale), rangeMaxCount));
+            const startIndex = currentWindowStartIndex == null ? Math.max(0, xValues.length - visibleCount) : clampChartWindowStart(currentWindowStartIndex, xValues.length, visibleCount);
+
+            const initialMinX = visibleCount > 0 ? xValues[startIndex] : undefined;
+            const initialMaxX = visibleCount > 0 ? xValues[Math.min(xValues.length - 1, startIndex + visibleCount - 1)] : undefined;
+
+            const visibleCloses = chartData.closes.slice(startIndex, startIndex + visibleCount);
+            let initialMaxY = Math.max(...visibleCloses), initialMinY = Math.min(...visibleCloses);
+            costPrices.forEach(cp => {
+                if (cp.price <= initialMaxY * 1.2 && cp.price >= initialMinY * 0.8) {
+                    initialMaxY = Math.max(initialMaxY, cp.price); initialMinY = Math.min(initialMinY, cp.price);
                 }
-                calculate();
-            } catch (e) {
-                addRecord(1000, 1.000);
-            }
-        }
+            });
+            const pricePadding = (initialMaxY - initialMinY) * 0.1 || initialMaxY * 0.05;
 
-        function clearAll() {
-            if(confirm("确定清除所有数据并清空本地缓存吗？")) {
-                localStorage.removeItem(STORAGE_KEY);
-                isManualPrice = false;
-                document.getElementById('buy-list').innerHTML = '';
-                document.getElementById('currentPrice').value = "1.0000";
-                addRecord(1000, 1.000);
-            }
+            klineChart = new Chart(ctx, {
+                type: 'line', data: configData,
+                options: {
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false, axis: 'x' },
+                    layout: { padding: { top: 2, right: 4, bottom: 0, left: 0 } },
+                    plugins: {
+                        legend: { display: false },
+                        zoom: {
+                            pan: { enabled: true, mode: 'x', onPan: ({ chart }) => updateYAxisRange(chart) },
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x', onZoom: ({ chart }) => updateYAxisRange(chart) },
+                            limits: { x: { min: xValues[0], max: xValues[xValues.length - 1], minRange: 1000 * 60 * 60 * 24 * 7 } }
+                        },
+                        tooltip: {
+                            displayColors: false, backgroundColor: 'rgba(255, 255, 255, 0.98)', titleColor: '#0f172a', bodyColor: '#334155', borderColor: 'rgba(203, 213, 225, 0.9)', borderWidth: 1, padding: 12,
+                            callbacks: {
+                                title: (items) => items[0] ? chartData.dates[items[0].dataIndex] : '',
+                                label: (context) => context.dataset.label.includes('成本') ? `${context.dataset.label}: ${context.parsed.y.toFixed(2)}` : `收盘价: ${context.parsed.y.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time', min: initialMinX, max: initialMaxX,
+                            // 注意这里：直接使用 displayFormats，不依赖外部语言包了，绝对不会再报错
+                            time: { unit: getChartTimeUnit(currentChartScale), tooltipFormat: 'yyyy-MM-dd', displayFormats: { day: 'MM-dd', week: 'yy年MM月', month: 'yyyy-MM', quarter: 'yyyy年' } },
+                            ticks: { color: '#94a3b8', maxRotation: 0, autoSkip: true, maxTicksLimit: 5, font: { size: 10 } },
+                            grid: { color: 'rgba(203, 213, 225, 0.55)', drawBorder: false }
+                        },
+                        y: {
+                            position: 'left', min: Math.max(0, initialMinY - pricePadding), max: initialMaxY + pricePadding,
+                            ticks: { color: '#94a3b8', callback: value => value.toFixed(2) }, grid: { color: 'rgba(226, 232, 240, 0.72)', drawBorder: false }
+                        }
+                    }
+                }
+            });
         }
-
-        window.onload = loadFromLocal;
     </script>
 </body>
+
 </html>

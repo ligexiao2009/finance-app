@@ -7,13 +7,18 @@ const cron = require('node-cron');
 const fetch = require('node-fetch');
 const db = require('./db/db');
 const { handleDailyProfitRoutes } = require('./routes/daily-profit');
+const { handleAlertRulesRoutes, checkPriceAlerts, invalidateAlertCache } = require('./routes/alert-rules');
+const { handleFundScreenshotRoutes, loadCodeFixMap } = require('./routes/fund-screenshot');
 const { servePublicFile } = require('./utils/static-files');
+const { analyzeFund, analyzeMultipleFunds } = require('./utils/fund-drawdown');
 
-const PORT = 3000;
+const PORT = 4000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
 const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
 const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);
+const KLINE_CACHE_TTL_MS = Number(process.env.KLINE_CACHE_TTL_MS || 5 * 60 * 1000);
 const responseCache = new Map();
+let EDIT_UNLOCK_PASSWORD_CACHE = undefined;
 
 function invalidateCache(...keys) {
   keys.forEach(key => responseCache.delete(key));
@@ -25,6 +30,13 @@ function invalidateCacheByPrefix(prefix) {
       responseCache.delete(key);
     }
   }
+}
+
+// 格式化金额，添加千位分隔符
+function formatMoney(amount) {
+  if (typeof amount !== 'number') return '0.00';
+  // 保留两位小数，添加千位分隔符
+  return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 async function getCachedJsonResponse(cacheKey, producer, options = {}) {
@@ -156,6 +168,98 @@ async function fetchQuotesBatch(items) {
   return quotes;
 }
 
+function mapKlineScaleToPeriod(scale) {
+  if (scale >= 7200) return 'month';
+  if (scale >= 1200) return 'week';
+  return 'day';
+}
+
+function normalizeTencentKlineItem(item) {
+  if (!Array.isArray(item) || item.length < 5) {
+    return null;
+  }
+
+  return {
+    day: item[0],
+    open: item[1],
+    close: item[2],
+    high: item[3],
+    low: item[4],
+    volume: item[5] || '0',
+  };
+}
+
+async function fetchTencentHkKlineData(symbol, scale = 240, datalen = 1023) {
+  const period = mapKlineScaleToPeriod(scale);
+  const variableName = `kline_${period}`;
+  const url = `https://web.ifzq.gtimg.cn/appstock/app/hkfqkline/get?_var=${variableName}&param=${symbol},${period},,,${datalen},qfq`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const text = await response.text();
+  const jsonText = (text.includes('=') ? text.slice(text.indexOf('=') + 1) : text)
+    .trim()
+    .replace(/;$/, '');
+  const payload = JSON.parse(jsonText);
+  const stockData = payload?.data?.[symbol];
+  if (!stockData) {
+    throw new Error('腾讯港股K线返回为空');
+  }
+
+  const list = stockData[`qfq${period}`] || stockData[period] || [];
+  return list.map(normalizeTencentKlineItem).filter(Boolean);
+}
+
+// ==================== 获取K线数据 ====================
+async function fetchKlineData(symbol, scale = 240, datalen = 1023) {
+  try {
+    if (String(symbol || '').startsWith('hk')) {
+      return await fetchTencentHkKlineData(symbol, scale, datalen);
+    }
+
+    const url = `http://money.finance.sina.com.cn/quotes_service/api/json_v2.php/CN_MarketData.getKLineData?symbol=${symbol}&scale=${scale}&ma=no&datalen=${datalen}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const text = await decodeQtResponse(response);
+    // 新浪返回的是JSON格式字符串，直接解析
+    const data = JSON.parse(text);
+    return data;
+  } catch (error) {
+    console.error('获取K线数据失败:', error.message);
+    throw error;
+  }
+}
+
+// ==================== 获取基金实时估算 ====================
+async function fetchFundEstimate(fundCode) {
+  try {
+    const url = `http://fundgz.1234567.com.cn/js/${fundCode}.js`;
+    const response = await fetch(url);
+    const text = await response.text();
+    // 解析JSONP: jsonpgz({"name":"xxx",...});
+    const jsonMatch = text.match(/jsonpgz\((\{.*?\})\s*\);?/s);
+    if (jsonMatch) {
+      const data = JSON.parse(jsonMatch[1]);
+      return {
+        success: true,
+        fundCode: data.fundcode,
+        fundName: data.name,
+        estimateValue: parseFloat(data.gsz) || 0,     // 估算净值
+        estimateChange: parseFloat(data.gszzl) || 0,   // 估算涨跌(%)
+        estimateTime: data.gztime || '',                 // 估算时间
+      };
+    }
+    return { success: false, error: '解析失败' };
+  } catch (error) {
+    console.error(`获取基金 ${fundCode} 实时估算失败:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // ==================== 配置部分 ====================
 // Server酱配置 - 优先从环境变量或数据库配置读取
 let SERVERCHAN_KEY = '';
@@ -182,25 +286,42 @@ async function initConfig() {
       const defaultValue = alertTimeFromEnv || '0 22 * * *';
       await db.setConfig('alertTime', defaultValue);
     }
+    // 处理编辑解锁密码
+    let unlockPasswordValue;
     if (!configs.editUnlockPassword) {
-      const defaultValue = process.env.EDIT_UNLOCK_PASSWORD || '8957';
-      await db.setConfig('editUnlockPassword', defaultValue);
+      unlockPasswordValue = process.env.EDIT_UNLOCK_PASSWORD || '8957';
+      await db.setConfig('editUnlockPassword', unlockPasswordValue);
+    } else {
+      unlockPasswordValue = process.env.EDIT_UNLOCK_PASSWORD || configs.editUnlockPassword || '8957';
     }
 
     // 更新内存中的配置（优先使用环境变量，其次使用数据库配置）
     SERVERCHAN_KEY = serverchanKeyFromEnv || configs.serverchanKey || '';
+    // 设置解锁密码缓存
+    EDIT_UNLOCK_PASSWORD_CACHE = unlockPasswordValue;
     if (!SERVERCHAN_KEY) {
       console.log('Server酱 Key 未设置，无法发送微信通知');
     }
+
+    // 加载基金代码映射
+    await loadCodeFixMap();
   } catch (error) {
     console.error('初始化配置失败:', error);
     // 设置默认值
     SERVERCHAN_KEY = '';
+    EDIT_UNLOCK_PASSWORD_CACHE = process.env.EDIT_UNLOCK_PASSWORD || '8957';
   }
 }
 
 async function getEditUnlockPassword() {
-  return process.env.EDIT_UNLOCK_PASSWORD || await db.getConfig('editUnlockPassword') || '8957';
+  // 先从缓存获取
+  if (EDIT_UNLOCK_PASSWORD_CACHE !== undefined) {
+    return EDIT_UNLOCK_PASSWORD_CACHE;
+  }
+  // 缓存为空则从数据库获取并设置缓存
+  const password = process.env.EDIT_UNLOCK_PASSWORD || await db.getConfig('editUnlockPassword') || '8957';
+  EDIT_UNLOCK_PASSWORD_CACHE = password;
+  return password;
 }
 
 
@@ -352,61 +473,226 @@ async function sendWechatMessage(title, content) {
   }
 }
 
+// 计算基金提醒指标
+function calculateFundAlertMetrics(fund, quoteData) {
+  const netValue = quoteData.price;
+  const todayChange = quoteData.change;
+  const fundName = quoteData.name || fund.name || fund.code;
+
+  if (!(netValue > 0 && fund.cost > 0 && fund.shares > 0)) {
+    return null;
+  }
+
+  const changePercent = ((netValue - fund.cost) / fund.cost) * 100;
+  const positionValue = fund.shares * netValue;
+  const profitLoss = fund.shares * (netValue - fund.cost);
+  const todayProfit = fund.shares * netValue * (todayChange / 100);
+
+  return {
+    name: fundName,
+    code: fund.code,
+    cost: fund.cost,
+    netValue: netValue,
+    changePercent: changePercent,
+    alert: fund.alert,
+    shares: fund.shares,
+    positionValue: positionValue,
+    profitLoss: profitLoss,
+    todayChange: todayChange,
+    todayProfit: todayProfit
+  };
+}
+
 // ==================== 检查基金并发送提醒 ====================
 async function checkFundsAndAlert() {
   console.log('\n========== 开始检查基金涨跌提醒 ==========');
-  const rows = await db.getPositions();
-  const funds = rows.filter(r => r.isFund && r.alert && r.alert > 0 && r.code);
 
-  if (funds.length === 0) {
-    console.log('没有需要检查的基金');
-    return;
-  }
+  try {
+    const rows = await db.getPositions();
+    const funds = rows.filter(r => r.isFund  && r.code);
+    console.log(`找到 ${funds.length} 只设置了提醒的基金`);
 
-  const alerts = [];
+    if (funds.length === 0) {
+      console.log('没有需要检查的基金');
+      console.log('========== 检查完成 ==========\n');
+      return;
+    }
 
-  for (const fund of funds) {
-    console.log(`检查基金: ${fund.name || fund.code}`);
-    const fundData = await fetchFundNetValue(fund.code);
+    const alerts = [];
+    const lastBuyAlerts = [];
 
-    if (fundData && fundData.netValue > 0 && fund.cost > 0) {
-      const changePercent = ((fundData.netValue - fund.cost) / fund.cost) * 100;
+    // 批量获取基金数据
+    const items = funds.map(fund => ({ code: fund.code, isFund: true }));
+    const quotes = await fetchQuotesBatch(items);
+    console.log(`批量获取 ${funds.length} 只基金数据完成`);
 
-      console.log(`  成本: ${fund.cost}, 最新净值: ${fundData.netValue}, 涨跌幅: ${changePercent.toFixed(2)}%, 提醒阈值: ${fund.alert}%`);
+    for (const fund of funds) {
+      console.log(`检查基金: ${fund.name || fund.code}`);
+      const quoteKey = `${fund.code}:1`;
+      const quoteData = quotes[quoteKey];
 
-      if (Math.abs(changePercent) >= fund.alert) {
-        alerts.push({
-          name: fund.name || fundData.name || fund.code,
-          code: fund.code,
-          cost: fund.cost,
-          netValue: fundData.netValue,
-          changePercent: changePercent,
-          alert: fund.alert
-        });
+      if (!quoteData) {
+        console.log(`  数据获取失败，跳过`);
+        continue;
+      }
+
+      const metrics = calculateFundAlertMetrics(fund, quoteData);
+      if (!metrics) {
+        console.log(`  数据无效，跳过`);
+        continue;
+      }
+
+      console.log(`  成本: ${metrics.cost}, 最新净值: ${metrics.netValue}, 涨跌幅: ${metrics.changePercent.toFixed(2)}%, 提醒阈值: ${metrics.alert}%`);
+      console.log(`  持仓金额: ${metrics.positionValue.toFixed(2)}, 持仓盈亏: ${metrics.profitLoss.toFixed(2)}`);
+      console.log(`  今日涨幅: ${metrics.todayChange.toFixed(2)}%, 今日收益: ${metrics.todayProfit.toFixed(2)}`);
+
+      // 检查是否达到普通涨跌提醒阈值
+      if (Math.abs(metrics.changePercent) >= metrics.alert) {
+        alerts.push(metrics);
+      }
+
+      // 检查最近一次加仓变动提醒
+      try {
+        // 获取该持仓的交易历史
+        const tradeHistory = await db.getTradeHistoryByRowId(fund.id);
+        if (tradeHistory && tradeHistory.length > 0) {
+          // 筛选出加仓记录，按时间倒序排序
+          const addRecords = tradeHistory
+            .filter(record => record.type === 'add')
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+          if (addRecords.length > 0) {
+            const lastAddRecord = addRecords[0];
+            const lastAddNetValue = lastAddRecord.netValue || 0;
+
+            if (lastAddNetValue > 0 && quoteData.price > 0) {
+              // 计算距离最近一次加仓的变动幅度
+              const changeFromLastBuy = ((quoteData.price - lastAddNetValue) / lastAddNetValue) * 100;
+
+              // 无论涨跌都提醒（任何变动）
+              const CHANGE_THRESHOLD = 1e-6; // 极小阈值，几乎任何变动都提醒
+
+              if (Math.abs(changeFromLastBuy) >= CHANGE_THRESHOLD) {
+                lastBuyAlerts.push({
+                  name: metrics.name,
+                  code: metrics.code,
+                  lastAddNetValue: lastAddNetValue,
+                  currentNetValue: quoteData.price,
+                  changePercent: changeFromLastBuy,
+                  lastAddDate: lastAddRecord.createdAt ? new Date(lastAddRecord.createdAt).toLocaleDateString() : '未知'
+                });
+
+                const direction = changeFromLastBuy >= 0 ? '上涨' : '下跌';
+                console.log(`  距离最近一次加仓${direction}: ${Math.abs(changeFromLastBuy).toFixed(2)}% (加仓净值: ${lastAddNetValue}, 当前净值: ${quoteData.price})`);
+              } else {
+                console.log(`  距离最近一次加仓变动: ${changeFromLastBuy.toFixed(2)}%, 未达到 ${CHANGE_THRESHOLD}% 提醒阈值`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log(`  获取交易历史失败: ${error.message}`);
       }
     }
-  }
 
-  if (alerts.length > 0) {
-    console.log(`\n有 ${alerts.length} 只基金达到提醒阈值`);
+    // 检查是否有任何提醒需要发送
+    if (alerts.length > 0 || lastBuyAlerts.length > 0) {
+      console.log(`\n有 ${alerts.length} 只基金达到涨跌提醒阈值`);
+      console.log(`有 ${lastBuyAlerts.length} 只基金达到最近一次加仓跌幅提醒阈值`);
 
-    let title = '【基金提醒】';
-    let content = '## 基金涨跌提醒\n\n';
+      let title = '';
+      let content = '';
 
-    alerts.forEach((a) => {
-      const isUp = a.changePercent >= 0;
-      const emoji = isUp ? '涨' : '跌';
-      title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
-      content += `### ${emoji} ${a.name} (${a.code})\n\n`;
-      content += `- 成本价: ${a.cost.toFixed(3)}\n`;
-      content += `- 最新净值: ${a.netValue.toFixed(3)}\n`;
-      content += `- 涨跌幅: ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%\n`;
-      content += `- 提醒阈值: ${a.alert}%\n\n`;
-    });
+      if (alerts.length > 0) {
+        // 计算今日总收益、总持仓金额和总持仓盈亏
+        const totalTodayProfit = alerts.reduce((sum, a) => sum + a.todayProfit, 0);
+        const totalPositionValue = alerts.reduce((sum, a) => sum + a.positionValue, 0);
+        const totalProfitLoss = alerts.reduce((sum, a) => sum + a.profitLoss, 0);
+        const todayReturnRate = totalPositionValue > 0 ? (totalTodayProfit / totalPositionValue) * 100 : 0;
 
-    await sendWechatMessage(title.slice(0, 100), content);
-  } else {
-    console.log('没有基金达到提醒阈值');
+        console.log(`今日总收益: ¥${totalTodayProfit.toFixed(2)}`);
+        console.log(`总持仓金额: ¥${totalPositionValue.toFixed(2)}`);
+        console.log(`总持仓盈亏: ¥${totalProfitLoss.toFixed(2)}`);
+        console.log(`今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`);
+
+        title = `【基金涨跌提醒】持仓¥${formatMoney(totalPositionValue)} 收益${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%`;
+        content = `## 基金涨跌提醒\n\n`;
+        content += `**汇总统计:**\n`;
+        content += `- 总持仓金额: ¥${formatMoney(totalPositionValue)}\n`;
+        content += `- 总持仓盈亏: ¥${formatMoney(totalProfitLoss)}\n`;
+        content += `- 今日总收益: ¥${formatMoney(totalTodayProfit)}\n`;
+        content += `- 今日收益率: ${todayReturnRate >= 0 ? '+' : ''}${todayReturnRate.toFixed(2)}%\n\n`;
+
+        // 按涨跌幅倒序排序（从大到小）
+        alerts.sort((a, b) => b.changePercent - a.changePercent);
+
+        alerts.forEach((a) => {
+          const isUp = a.changePercent >= 0;
+          const emoji = isUp ? '：🔴涨' : '🟢跌';
+          title += `${a.name} ${isUp ? '+' : ''}${a.changePercent.toFixed(2)}% `;
+          content += `### ${emoji} ${a.name} (${a.code})\n\n`;
+          // 涨跌幅大于10%使用红色字体
+          const changePercentText = `${isUp ? '+' : ''}${a.changePercent.toFixed(2)}%`;
+          const changePercentFormatted = Math.abs(a.changePercent) > 10 ? `：${changePercentText}` : changePercentText;
+          content += `- 涨跌幅: ${changePercentFormatted}\n`;
+          content += `- 持仓金额: ¥${formatMoney(a.positionValue)}\n`;
+          content += `- 持仓盈亏: ¥${formatMoney(a.profitLoss)}\n`;
+          content += `- 今日涨幅: ${a.todayChange >= 0 ? '+' : ''}${a.todayChange.toFixed(2)}%\n`;
+          content += `- 今日收益: ¥${formatMoney(a.todayProfit)}\n`;
+          // content += `- 提醒阈值: ${a.alert}%\n\n`;
+        });
+      }
+
+      // 如果有最近一次加仓变动提醒，添加到通知中
+      if (lastBuyAlerts.length > 0) {
+        if (alerts.length === 0) {
+          // 只有加仓变动提醒，没有普通涨跌提醒
+          title = `【基金加仓变动提醒】${lastBuyAlerts.length}只基金`;
+          content = `## 基金加仓变动提醒\n\n`;
+        } else {
+          // 两种提醒都有，添加分隔线
+          content += `\n---\n\n`;
+          content += `## 基金加仓变动提醒\n\n`;
+        }
+
+        // 按变动幅度倒序排序（从大到小）
+        lastBuyAlerts.sort((a, b) => b.changePercent - a.changePercent);
+
+        lastBuyAlerts.forEach((alert) => {
+          const isUp = alert.changePercent >= 0;
+          const icon = isUp ? '📈' : '📉';
+          const directionText = isUp ? '上涨' : '下跌';
+
+          title += `${alert.name}${isUp ? '+' : ''}${alert.changePercent.toFixed(1)}% `;
+          content += `### ${icon} ${alert.name} (${alert.code})\n\n`;
+          content += `- 最近加仓净值: ${alert.lastAddNetValue.toFixed(4)}\n`;
+          content += `- 当前净值: ${alert.currentNetValue.toFixed(4)}\n`;
+          // 涨跌幅大于10%使用红色字体
+          const changePercentText = `${isUp ? '+' : ''}${Math.abs(alert.changePercent).toFixed(2)}%`;
+          const changePercentFormatted = Math.abs(alert.changePercent) > 10 ? `<font color="red">${changePercentText}</font>` : changePercentText;
+          content += `- ${directionText}幅度: ${changePercentFormatted}\n`;
+          content += `- 加仓日期: ${alert.lastAddDate}\n\n`;
+        });
+      }
+
+      await sendWechatMessage(title.slice(0, 100), content);
+    } else {
+      console.log('没有基金达到提醒阈值');
+    }
+  } catch (error) {
+    console.error('基金检查过程中发生错误:', error.message);
+    console.error('错误堆栈:', error.stack);
+
+    // 可以在这里发送错误通知
+    if (SERVERCHAN_KEY) {
+      const errorTitle = '【基金检查错误】';
+      const errorContent = `## 基金检查发生错误\n\n错误信息: ${error.message}\n\n请检查服务器日志。`;
+      try {
+        await sendWechatMessage(errorTitle, errorContent);
+      } catch (sendError) {
+        console.error('发送错误通知失败:', sendError.message);
+      }
+    }
   }
 
   console.log('========== 检查完成 ==========\n');
@@ -418,8 +704,8 @@ async function calculateAndSaveDailyProfit() {
   const rows = await db.getPositions();
   const now = new Date();
   const dateStr = now.getFullYear().toString() + '-' +
-                 (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
-                 now.getDate().toString().padStart(2, '0');
+    (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
+    now.getDate().toString().padStart(2, '0');
 
   // 检查今天是否已经有数据
   const existingRecord = await db.getDailyProfitByDate(dateStr);
@@ -449,13 +735,13 @@ async function calculateAndSaveDailyProfit() {
 
   // 计算基金收益
   const todayStr = now.getFullYear().toString() +
-                   (now.getMonth() + 1).toString().padStart(2, '0') +
-                   now.getDate().toString().padStart(2, '0');
+    (now.getMonth() + 1).toString().padStart(2, '0') +
+    now.getDate().toString().padStart(2, '0');
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.getFullYear().toString() +
-                       (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                       yesterday.getDate().toString().padStart(2, '0');
+    (yesterday.getMonth() + 1).toString().padStart(2, '0') +
+    yesterday.getDate().toString().padStart(2, '0');
   const hour = now.getHours();
   const minute = now.getMinutes();
   const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
@@ -557,17 +843,17 @@ async function autoConfirmPendingTrades() {
 
     console.log(`\n处理交易: ${trade.name} (${trade.code})`);
     console.log(`  交易时间(北京): ${tradeDateStr} ${tradeHour.toString().padStart(2, '0')}:${tradeDateBeijing.getUTCMinutes().toString().padStart(2, '0')}`);
-    console.log(`  15点前: ${trade.isBefore15 ? '是' : '否'}`);
+    console.log(`  15点前: ${trade.isBefore_15 ? '是' : '否'}`);
 
     // 判断是否应该自动确认：
     // 1. 如果是昨天15点前的交易，今天确认
     // 2. 如果是昨天15点后的交易，明天确认（暂时不处理）
     let shouldConfirm = false;
 
-    if (tradeDateStr === yesterdayStr && trade.isBefore15) {
+    if (tradeDateStr === yesterdayStr && trade.isBefore_15) {
       shouldConfirm = true;
       console.log('  → 符合条件：昨天15点前的交易，今天确认');
-    } else if (tradeDateStr === yesterdayStr && !trade.isBefore15) {
+    } else if (tradeDateStr === yesterdayStr && !trade.isBefore_15) {
       console.log('  → 跳过：昨天15点后的交易，明天确认');
     } else if (tradeDateStr < yesterdayStr) {
       shouldConfirm = true;
@@ -595,39 +881,76 @@ async function autoConfirmPendingTrades() {
 
       console.log(`  当前净值: ${fundData.netValue}`);
 
-      // 计算新的份额和成本
-      const newShares = trade.amount / fundData.netValue;
-      const totalShares = (row.shares || 0) + newShares;
-      const totalCost = ((row.shares || 0) * (row.cost || 0)) + trade.amount;
-      const newCost = totalCost / totalShares;
+      const tradeType = trade.type || 'add';
+      if (tradeType === 'reduce') {
+        const reduceShares = parseFloat(Number(trade.shares || 0).toFixed(2));
+        if (!(reduceShares > 0)) {
+          console.log('  → 减仓份额无效，跳过');
+          remainingTrades.push(trade);
+          continue;
+        }
+        if (reduceShares > (row.shares || 0)) {
+          console.log('  → 减仓份额超过当前持仓，跳过');
+          remainingTrades.push(trade);
+          continue;
+        }
 
-      console.log(`  新增份额: ${newShares.toFixed(4)}, 总份额: ${totalShares.toFixed(4)}, 新成本: ${newCost.toFixed(4)}`);
+        const remainShares = (row.shares || 0) - reduceShares;
+        const redeemAmount = reduceShares * fundData.netValue;
+        const updatedShares = parseFloat(remainShares.toFixed(2));
 
-      // 更新持仓（shares保留2位小数，cost保留4位小数）
-      const updatedShares = parseFloat(totalShares.toFixed(2));
-      const updatedCost = parseFloat(newCost.toFixed(4));
-      const updatedPlanBuy = row.planBuy && row.planBuy > 0 ? Math.max(0, row.planBuy - trade.amount) : row.planBuy;
+        console.log(`  减仓份额: ${reduceShares.toFixed(2)}, 剩余份额: ${updatedShares.toFixed(2)}, 赎回金额: ${redeemAmount.toFixed(2)}`);
 
-      // 更新数据库中的持仓
-      await db.updatePosition(row.id, {
-        shares: updatedShares,
-        cost: updatedCost,
-        planBuy: updatedPlanBuy
-      });
+        await db.updatePosition(row.id, {
+          shares: updatedShares,
+          cost: row.cost
+        });
 
+        await db.createTradeRecord({
+          id: trade.id,
+          rowId: trade.rowId,
+          type: 'reduce',
+          amount: parseFloat(redeemAmount.toFixed(2)),
+          shares: reduceShares,
+          netValue: parseFloat(fundData.netValue.toFixed(4)),
+          isBefore15: trade.isBefore15,
+          createdAt: trade.createdAt,
+          localDate: tradeDateStr
+        });
+      } else {
+        // 计算新的份额和成本
+        const newShares = trade.amount / fundData.netValue;
+        const totalShares = (row.shares || 0) + newShares;
+        const totalCost = ((row.shares || 0) * (row.cost || 0)) + trade.amount;
+        const newCost = totalCost / totalShares;
 
-      // 添加交易历史记录到数据库
-      await db.createTradeRecord({
-        id: trade.id,
-        rowId: trade.rowId,
-        type: 'add',
-        amount: trade.amount,
-        shares: parseFloat(newShares.toFixed(2)),
-        netValue: parseFloat(fundData.netValue.toFixed(4)),
-        isBefore15: trade.isBefore15,
-        createdAt: trade.createdAt,
-        localDate: tradeDateStr
-      });
+        console.log(`  新增份额: ${newShares.toFixed(4)}, 总份额: ${totalShares.toFixed(4)}, 新成本: ${newCost.toFixed(4)}`);
+
+        // 更新持仓（shares保留2位小数，cost保留4位小数）
+        const updatedShares = parseFloat(totalShares.toFixed(2));
+        const updatedCost = parseFloat(newCost.toFixed(4));
+        const updatedPlanBuy = row.planBuy && row.planBuy > 0 ? Math.max(0, row.planBuy - trade.amount) : row.planBuy;
+
+        // 更新数据库中的持仓
+        await db.updatePosition(row.id, {
+          shares: updatedShares,
+          cost: updatedCost,
+          planBuy: updatedPlanBuy
+        });
+
+        // 添加交易历史记录到数据库
+        await db.createTradeRecord({
+          id: trade.id,
+          rowId: trade.rowId,
+          type: 'add',
+          amount: trade.amount,
+          shares: parseFloat(newShares.toFixed(2)),
+          netValue: parseFloat(fundData.netValue.toFixed(4)),
+          isBefore15: trade.isBefore15,
+          createdAt: trade.createdAt,
+          localDate: tradeDateStr
+        });
+      }
 
       // 从数据库中删除已确认的待确认交易
       await db.deletePendingTrade(trade.id);
@@ -669,6 +992,12 @@ async function setupCronJob() {
   if (global.confirmCronJob) {
     global.confirmCronJob.stop();
   }
+  if (global.alertCheckCronJob) {
+    global.alertCheckCronJob.stop();
+  }
+  if (global.alertResetCronJob) {
+    global.alertResetCronJob.stop();
+  }
 
   // 基金提醒定时任务
   global.cronJob = cron.schedule(cronTime, () => {
@@ -691,16 +1020,43 @@ async function setupCronJob() {
     timezone: 'Asia/Shanghai'
   });
 
+  // 股票涨跌幅提醒检查定时任务 - 交易时间每分钟执行
+  // 上午 9:30-11:30, 下午 13:00-15:00
+  global.alertCheckCronJob = cron.schedule('* 9-11,13-14 * * 1-5', () => {
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    // 精确控制时间段
+    const isMorningSession = (hour === 9 && minute >= 30) || (hour === 10) || (hour === 11 && minute <= 30);
+    const isAfternoonSession = hour === 13 || hour === 14 || (hour === 15 && minute === 0);
+
+    if (isMorningSession || isAfternoonSession) {
+      checkPriceAlerts(fetchQuotesBatch, sendWechatMessage);
+    }
+  }, {
+    timezone: 'Asia/Shanghai'
+  });
+
+  // 每天开盘前重置提醒状态 - 9:25执行
+  global.alertResetCronJob = cron.schedule('25 9 * * 1-5', () => {
+    console.log('重置股票涨跌幅提醒状态...');
+    db.resetAlertRulesDaily();
+  }, {
+    timezone: 'Asia/Shanghai'
+  });
+
   console.log(`基金提醒定时任务已设置: 每天 ${cronTime} 执行`);
   console.log(`每日收益计算定时任务已设置: 周一到周五 23:00 执行`);
   console.log(`自动确认交易定时任务已设置: 每天 09:00 执行`);
+  console.log(`股票涨跌幅提醒检查已设置: 交易时间每分钟执行`);
+  console.log(`提醒状态重置已设置: 周一到周五 09:25 执行`);
   console.log('提示: 可以在 .env 文件中修改 ALERT_TIME 环境变量');
 }
 
 // ==================== HTTP 服务器 ====================
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -738,7 +1094,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && req.url === '/api/app-settings') {
     try {
       await sendCachedJson(req, res, 'app-settings', async () => ({
-        requiresEditUnlock: true
+        requiresEditUnlock: process.env.REQUIRES_EDIT_UNLOCK
       }));
     } catch (error) {
       console.error('Error getting app settings:', error);
@@ -1031,7 +1387,7 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ success: true, message: '批量保存成功' }));
       } catch (e) {
         // 回滚事务
-        await db.query('ROLLBACK').catch(() => {});
+        await db.query('ROLLBACK').catch(() => { });
         console.error('Error saving trade history:', e);
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: false, message: e.message }));
@@ -1096,6 +1452,12 @@ const server = http.createServer(async (req, res) => {
 
         invalidateCache('data');
         invalidateCacheByPrefix('quotes:');
+
+        // 如果是基金，刷新代码映射
+        if (rowData.isFund) {
+          await loadCodeFixMap();
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ success: true, message: '保存成功' }));
       } catch (e) {
@@ -1138,6 +1500,11 @@ const server = http.createServer(async (req, res) => {
         if (deleted) {
           invalidateCache('data');
           invalidateCacheByPrefix('quotes:');
+
+          // 如果是基金，刷新代码映射
+          if (isFund) {
+            await loadCodeFixMap();
+          }
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1167,6 +1534,156 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (await handleDailyProfitRoutes(req, res)) {
+    return;
+  }
+
+  // 股票涨跌幅提醒规则 API
+  if (await handleAlertRulesRoutes(req, res, {
+    sendCachedJson,
+    invalidateCache,
+    fetchQuotesBatch,
+    sendWechatMessage
+  })) {
+    return;
+  }
+
+  // ========== 基金实时估算 API ==========
+  if (req.method === 'GET' && req.url.startsWith('/api/fund-estimate/')) {
+    try {
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      const fundCode = parsedUrl.pathname.split('/api/fund-estimate/')[1].replace(/\/$/, '');
+      const result = await fetchFundEstimate(fundCode);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      console.error('Error fetching fund estimate:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: e.message }));
+    }
+    return;
+  }
+
+  // 批量获取基金实时估算
+  if (req.method === 'POST' && req.url === '/api/fund-estimate/batch') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { fundCodes } = JSON.parse(body);
+        if (!fundCodes || !Array.isArray(fundCodes)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'fundCodes 必须是数组' }));
+          return;
+        }
+        const results = [];
+        for (const code of fundCodes) {
+          const result = await fetchFundEstimate(code);
+          results.push(result);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, results }));
+      } catch (e) {
+        console.error('Error batch fetching fund estimates:', e);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // ========== 基金回撤分析 API ==========
+  // 分析单只基金
+  if (req.method === 'GET' && req.url.startsWith('/api/fund-drawdown/')) {
+    try {
+      // 1. 使用 URL 构造函数解析完整路径
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+
+      // 2. 从 pathname 提取 fundCode (去掉末尾可能存在的斜杠)
+      const fundCode = parsedUrl.pathname.split('/api/fund-drawdown/')[1].replace(/\/$/, '');
+
+      // 3. 获取 days 参数，如果没有则默认 365
+      const days = parseInt(parsedUrl.searchParams.get('days')) || 365;
+
+      // 4. 获取持仓成本参数（可选）
+      const costBasis = parseFloat(parsedUrl.searchParams.get('costBasis')) || null;
+
+      // 执行分析
+      const result = await analyzeFund(fundCode, days, costBasis);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (e) {
+      console.error('Error analyzing fund:', e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: e.message }));
+    }
+    return;
+  }
+
+
+  // 批量分析多只基金
+  if (req.method === 'POST' && req.url === '/api/fund-drawdown/batch') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { fundCodes, days = 365, costBasisMap = {} } = JSON.parse(body);
+        if (!fundCodes || !Array.isArray(fundCodes)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: 'fundCodes 必须是数组' }));
+          return;
+        }
+        const results = await analyzeMultipleFunds(fundCodes, days, costBasisMap);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, results }));
+      } catch (e) {
+        console.error('Error batch analyzing funds:', e);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
+  // ========== K线数据代理API ==========
+  if (req.method === 'GET' && req.url.startsWith('/api/kline/')) {
+    try {
+      // 解析参数: /api/kline/sz159321?scale=240&datalen=1023
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      const pathParts = parsedUrl.pathname.split('/');
+      const symbol = pathParts[pathParts.length - 1];
+      const scale = parseInt(parsedUrl.searchParams.get('scale')) || 240;
+      const datalen = parseInt(parsedUrl.searchParams.get('datalen')) || 1023;
+
+      // 验证参数
+      if (!symbol || !['sh', 'sz', 'hk'].some(prefix => symbol.startsWith(prefix))) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: '无效的股票代码格式' }));
+        return;
+      }
+
+      // 使用缓存
+      const cacheKey = `kline:${symbol}:${scale}:${datalen}`;
+      await sendCachedJson(req, res, cacheKey, async () => {
+        const klineData = await fetchKlineData(symbol, scale, datalen);
+        return {
+          success: true,
+          data: klineData,
+          updatedAt: Date.now()
+        };
+      }, {
+        ttlMs: KLINE_CACHE_TTL_MS
+      });
+    } catch (error) {
+      console.error('获取K线数据失败:', error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  if (await handleFundScreenshotRoutes(req, res, { fetchQuotesBatch })) {
     return;
   }
 

@@ -904,6 +904,19 @@
                             </select>
                         </div>
                     </div>
+                    <div>
+                        <label class="modal-label mb-2 block">交易时间</label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="reduceTradeTime" id="reduceTradeTimeBefore" value="before" checked class="accent-rose-500">
+                                <span class="text-sm font-bold">15:00前</span>
+                            </label>
+                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border border-[var(--border-color)] cursor-pointer hover:bg-[var(--bg-table-hover)]">
+                                <input type="radio" name="reduceTradeTime" id="reduceTradeTimeAfter" value="after" class="accent-rose-500">
+                                <span class="text-sm font-bold">15:00后</span>
+                            </label>
+                        </div>
+                    </div>
                     <div class="bg-rose-500/10 p-4 rounded-lg border border-rose-500/20">
                         <div class="modal-label text-rose-400 mb-2">减仓预览</div>
                         <div class="grid grid-cols-2 gap-4 text-sm">
@@ -960,6 +973,28 @@
                 <div id="tradeHistoryList" class="space-y-2 max-h-[450px] overflow-y-auto"></div>
                 <div class="mt-4 flex gap-3">
                     <button onclick="closeTradeHistoryModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 股票涨跌幅提醒配置弹窗 -->
+        <div id="alertRulesModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden">
+            <div class="bg-[var(--bg-card)] rounded-2xl p-8 w-[500px] border border-[var(--border-color)]">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="modal-title">涨跌幅提醒设置</h3>
+                        <div class="modal-muted" id="alertRulesStockName"></div>
+                    </div>
+                    <button onclick="closeAlertRulesModal()" class="text-[var(--text-muted)] hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="text-[10px] text-[var(--text-muted)] mb-4">每只股票最多配置3条提醒规则，当日涨跌幅达到阈值时通过微信通知。</div>
+                <div id="alertRulesList" class="space-y-3">
+                    <!-- 动态生成规则列表 -->
+                </div>
+                <button id="addAlertRuleBtn" onclick="addAlertRuleRow()" class="mt-4 w-full py-2 rounded-xl font-black text-[10px] border border-dashed border-indigo-500/50 text-indigo-400 hover:bg-indigo-500/10 transition">+ 添加提醒规则</button>
+                <div class="mt-6 flex gap-3">
+                    <button onclick="closeAlertRulesModal()" class="flex-1 py-3 rounded-xl font-black text-[10px] border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-[var(--bg-table-hover)]">取消</button>
+                    <button onclick="saveAlertRules()" class="flex-1 py-3 rounded-xl font-black text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white">保存</button>
                 </div>
             </div>
         </div>
@@ -1081,7 +1116,7 @@
         }
 
         let currentTab = 'all';
-        let sortDir = -1;
+        let sortDir = 1;
         let refreshTimer = null;
         let progressInterval = null;
         let remainingSeconds = 0;
@@ -1467,14 +1502,19 @@
                     <div class="overall-profit-cell mono text-sm italic">¥0</div>
                     <div class="ratio-cell text-[10px] font-black opacity-80">0.00%</div>
                 </td>
-                <td class="px-4 text-center"><div class="mkt-val-cell mono text-sm italic">¥0</div></td>
+                <td class="px-4 text-center"><div class="mkt-val-cell mono text-sm italic up">¥0</div></td>
                 <td class="px-4 text-center"><input type="number" class="target-price-input editable-field editable-field-soft text-center mono text-sm w-24 outline-none" value="${item.targetPrice || ''}" step="0.001" placeholder="目标价" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
                 <td class="px-4 text-center">
                     <div class="target-profit-cell mono text-sm italic">--</div>
                     <div class="target-ratio-cell text-[10px] font-black opacity-80">--</div>
                 </td>
                 <td class="px-4 py-5 bg-indigo-500/5 border-l border-indigo-500/10"><input type="number" class="plan-buy-input editable-field editable-field-plan text-center mono text-sm text-indigo-500 w-full outline-none" value="${item.planBuy || 0}" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
-                <td class="px-4 text-center"><input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()"></td>
+                <td class="px-4 text-center">
+                    ${item.isFund 
+                        ? `<input type="number" class="alert-input editable-field editable-field-soft text-center mono text-sm w-20 outline-none" value="${item.alert || ''}" placeholder="%" oninput="markRowDirty(this.closest('tr')); saveAndCalculate()">`
+                        : `<button onclick="openAlertRulesModal(this.closest('tr'))" class="alert-rules-btn text-[10px] px-2 py-1 rounded-lg border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition">设置提醒</button>`
+                    }
+                </td>
                 <td class="px-2 text-center">
                     <div class="row-action-cluster flex items-center justify-center gap-2">
                         ${visibleActions}
@@ -1818,6 +1858,10 @@
 
                 const mkt = effectiveShares * price * rate;
                 const profit = (price - cost) * shares * rate; // 总盈亏仍按全部份额计算
+                // 调试日志：纳斯达克基金
+                if (code === '017437') {
+                    console.log('纳斯达克基金:', { code, price, cost, shares, rate, profit });
+                }
 
                 // 判断今日净值是否已更新
                 let today = 0;
@@ -1828,36 +1872,8 @@
                     today = mkt * (change / 100);
                     displayChange = change;
                 } else {
-                    // 基金：判断净值日期
-                    const priceDate = row.dataset.priceDate || '';
-                    const now = new Date();
-                    const todayStr = now.getFullYear().toString() +
-                                     (now.getMonth() + 1).toString().padStart(2, '0') +
-                                     now.getDate().toString().padStart(2, '0');
-                    const yesterday = new Date(now);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.getFullYear().toString() +
-                                         (yesterday.getMonth() + 1).toString().padStart(2, '0') +
-                                         yesterday.getDate().toString().padStart(2, '0');
-                    const hour = now.getHours();
-                    const minute = now.getMinutes();
-
-                    // 判断是否是交易日的上午（9:30-15:00）
-                    const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
-
-                    let isTodayUpdated = false;
-                    if (priceDate === todayStr) {
-                        isTodayUpdated = true;
-                    } else if (priceDate === yesterdayStr) {
-                        if (isTradingMorning) {
-                            // 交易日上午（9:30-15:00）：昨天的数据算未更新
-                            isTodayUpdated = false;
-                        } else {
-                            // 其他时间：15点前算已更新
-                            isTodayUpdated = hour < 15;
-                        }
-                    }
-
+                    // 基金：使用预先计算好的更新状态
+                    const isTodayUpdated = row.dataset.isTodayUpdated === '1';
                     if (isTodayUpdated) {
                         today = mkt * (change / 100);
                         displayChange = change;
@@ -1908,7 +1924,8 @@
                     targetRatioEl.className = 'target-ratio-cell text-[10px] font-black opacity-80';
                 }
 
-                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const alertInput = row.querySelector('.alert-input');
+                const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
                 const isOverseas = row.dataset.isOverseas === '1';
                 return { id: row.dataset.id, code, name: row.querySelector('.stock-name').innerText, shares, cost, isFund: isF, planBuy, alert, isOverseas, targetPrice };
             });
@@ -1941,7 +1958,8 @@
             const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
             const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
-            const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+            const alertInput = row.querySelector('.alert-input');
+            const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
             const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
             const isFund = row.dataset.isFund === 'true';
             const isOverseas = row.dataset.isOverseas === '1';
@@ -2023,7 +2041,8 @@
                 const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
                 const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
                 const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
-                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const alertInput = row.querySelector('.alert-input');
+                const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
                 const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
                 const name = row.querySelector('.stock-name').innerText;
                 const id = row.dataset.id;
@@ -2141,7 +2160,8 @@
                 const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
                 const isFund = row.dataset.isFund === 'true';
                 const planBuy = parseFloat(row.querySelector('.plan-buy-input').value) || 0;
-                const alert = parseFloat(row.querySelector('.alert-input').value) || '';
+                const alertInput = row.querySelector('.alert-input');
+                const alert = alertInput ? (parseFloat(alertInput.value) || '') : '';
                 const targetPrice = parseFloat(row.querySelector('.target-price-input').value) || '';
                 csv += `${code},${name},${shares},${cost},${isFund?1:0},${planBuy},${alert || ''},${targetPrice || ''}\n`;
             });
@@ -2180,13 +2200,17 @@
             reader.readAsText(file);
         }
 
-        function toggleSort() {
-            sortDir *= -1;
+        function sortRowsByMarketValue() {
             const body = document.getElementById('stockBody');
             const rows = Array.from(body.querySelectorAll('tr'));
             rows.sort((a, b) => sortDir * (parseFloat(b.dataset.mktVal) - parseFloat(a.dataset.mktVal)));
             rows.forEach(r => body.appendChild(r));
             updatePagination();
+        }
+
+        function toggleSort() {
+            sortDir *= -1;
+            sortRowsByMarketValue();
         }
 
         async function saveDailyProfit() {
@@ -2505,11 +2529,15 @@
             }
             switchTab('all');
             await refreshAllPrices(false, true);
+            sortRowsByMarketValue();
             applyEditingLockState();
             setupAutoRefresh();
             updatePendingTradeBanner();
             // 等净值获取完成后更新状态
             setTimeout(updateNetValueStatus, 2000);
+
+            // 初始化股票涨跌幅提醒按钮状态
+            setTimeout(initAlertRulesButtonStates, 1000);
 
             // 设置每日自动保存收益
             setupDailyAutoSave();
@@ -2738,74 +2766,19 @@
 
             const isBefore15 = document.getElementById('tradeTimeBefore').checked;
             const now = new Date();
-            const priceDate = currentAddFundRow.dataset.priceDate || '';
-
-            // 获取今天的日期字符串 YYYYMMDD
-            const todayStr = now.getFullYear().toString() +
-                            (now.getMonth() + 1).toString().padStart(2, '0') +
-                            now.getDate().toString().padStart(2, '0');
-
-            const isTodayNetValue = priceDate === todayStr;
-
-            if (!isBefore15) {
-                // 选择15点后：总是保存为待确认交易
-                const newTrade = {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    rowId: rowId,
-                    code: code,
-                    name: name,
-                    amount: amount,
-                    isBefore15: isBefore15,
-                    createdAt: now.toISOString()
-                };
-                await addPendingTrade(newTrade);
-                await updatePendingTradeBanner();
-                closeAddFundModal();
-            } else if (isTodayNetValue) {
-                // 选择15点前 + 当日净值已更新 → 直接确认
-                const newShares = amount / price;
-                const totalShares = shares + newShares;
-                const totalCost = (shares * cost) + amount;
-                const newCost = totalCost / totalShares;
-
-                currentAddFundRow.querySelector('.shares-input').value = totalShares.toFixed(2);
-                currentAddFundRow.querySelector('.cost-input').value = newCost.toFixed(4);
-
-                // 扣除拟加仓金额
-                const planBuyInput = currentAddFundRow.querySelector('.plan-buy-input');
-                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
-                planBuyInput.value = Math.max(0, currentPlanBuy - amount);
-
-                await addTradeRecord(rowId, {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    type: 'add',
-                    amount: amount,
-                    shares: parseFloat(newShares.toFixed(2)),
-                    netValue: parseFloat(price.toFixed(4)),
-                    isBefore15: true,
-                    createdAt: now.toISOString(),
-                    localDate: new Date().toLocaleDateString('en-CA')
-                });
-
-                await saveRow(currentAddFundRow);
-                saveAndCalculate();
-
-                closeAddFundModal();
-            } else {
-                // 选择15点前 + 当日净值未更新 → 存为待确认
-                const newTrade = {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    rowId: rowId,
-                    code: code,
-                    name: name,
-                    amount: amount,
-                    isBefore15: isBefore15,
-                    createdAt: now.toISOString()
-                };
-                await addPendingTrade(newTrade);
-                await updatePendingTradeBanner();
-                closeAddFundModal();
-            }
+            const newTrade = {
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                rowId: rowId,
+                code: code,
+                name: name,
+                type: 'add',
+                amount: amount,
+                isBefore15: isBefore15,
+                createdAt: now.toISOString()
+            };
+            await addPendingTrade(newTrade);
+            await updatePendingTradeBanner();
+            closeAddFundModal();
         }
 
         // ========== 基金减仓功能 ==========
@@ -2832,6 +2805,8 @@
             document.getElementById('reduceModalNetValue').innerText = '¥' + price.toFixed(3);
             document.getElementById('reduceModalShares').value = '';
             document.getElementById('reduceModalPercent').value = '';
+            document.getElementById('reduceTradeTimeBefore').checked = true;
+            document.getElementById('reduceTradeTimeAfter').checked = false;
 
             // 清空预览
             document.getElementById('reduceModalRemainShares').innerText = '0.00 份';
@@ -2888,34 +2863,30 @@
             const reduceShares = parseFloat(document.getElementById('reduceModalShares').value) || 0;
             if (!currentReduceFundRow || reduceShares <= 0) return;
 
-            const { shares, cost, price } = currentReduceFundData;
+            const { shares, code, name, price } = currentReduceFundData;
             if (reduceShares > shares) {
                 alert('减仓份额不能超过当前持仓');
                 return;
             }
 
-            const remainShares = shares - reduceShares;
+            const isBefore15 = document.getElementById('reduceTradeTimeBefore').checked;
+            const now = new Date();
             const redeemAmount = reduceShares * price;
 
-            // 更新该行数据（成本价保持不变）
-            currentReduceFundRow.querySelector('.shares-input').value = remainShares.toFixed(2);
-
-            // 保存到后端
-            await saveRow(currentReduceFundRow);
-            saveAndCalculate();
-
-            // 记录交易历史
             const rowId = currentReduceFundRow.dataset.id;
-            await addTradeRecord(rowId, {
+            const pendingTrade = {
                 id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                rowId,
+                code,
+                name,
                 type: 'reduce',
-                amount: redeemAmount,
+                amount: parseFloat(redeemAmount.toFixed(2)),
                 shares: parseFloat(reduceShares.toFixed(2)),
-                netValue: parseFloat(price.toFixed(4)),
-                createdAt: new Date().toISOString(),
-                localDate: new Date().toLocaleDateString('en-CA')
-            });
-
+                isBefore15,
+                createdAt: now.toISOString()
+            };
+            await addPendingTrade(pendingTrade);
+            await updatePendingTradeBanner();
             closeReduceFundModal();
         }
 
@@ -3004,6 +2975,10 @@
                 listEl.innerHTML = trades.map(trade => {
                     const date = new Date(trade.createdAt);
                     const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    const isAdd = (trade.type || 'add') === 'add';
+                    const label = isAdd ? '加仓' : '减仓';
+                    const amountText = `${isAdd ? '+' : '-'}¥${Math.round(trade.amount).toLocaleString()}`;
+                    const colorClass = isAdd ? 'text-indigo-400' : 'text-rose-400';
 
                     // 查找对应的行，检查净值更新状态
                     const row = document.querySelector(`tr[data-id="${trade.rowId}"]`);
@@ -3017,10 +2992,11 @@
                                 <div>
                                     <div class="font-black">${trade.name}</div>
                                     <div class="text-[10px] text-[var(--text-muted)] mono">#${trade.code}</div>
-                                    <div class="text-[10px] font-black text-indigo-400 mt-1">系统将自动确认</div>
+                                    <div class="text-[10px] font-black ${colorClass} mt-1">${label}待确认</div>
+                                    <div class="text-[10px] ${netValueStatusClass} mt-1">${netValueStatusText}</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="mono font-black ${colorClass}">${amountText}</div>
                                     <div class="text-[10px] text-[var(--text-muted)]">${dateStr}</div>
                                 </div>
                             </div>
@@ -3064,30 +3040,49 @@
             const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
             const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
 
-            const newShares = trade.amount / price;
-            const totalShares = shares + newShares;
-            const totalCost = (shares * cost) + trade.amount;
-            const newCost = totalCost / totalShares;
+            const tradeType = trade.type || 'add';
+            if (tradeType === 'reduce') {
+                const reduceShares = parseFloat(trade.shares) || 0;
+                if (!(reduceShares > 0) || reduceShares > shares) {
+                    alert('待确认减仓份额无效或已超过当前持仓');
+                    return;
+                }
+                row.querySelector('.shares-input').value = (shares - reduceShares).toFixed(2);
 
-            row.querySelector('.shares-input').value = totalShares.toFixed(2);
-            row.querySelector('.cost-input').value = newCost.toFixed(4);
+                await addTradeRecord(trade.rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    type: 'reduce',
+                    amount: parseFloat((reduceShares * price).toFixed(2)),
+                    shares: parseFloat(reduceShares.toFixed(2)),
+                    netValue: parseFloat(price.toFixed(4)),
+                    isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                    createdAt: new Date().toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
+                });
+            } else {
+                const newShares = trade.amount / price;
+                const totalShares = shares + newShares;
+                const totalCost = (shares * cost) + trade.amount;
+                const newCost = totalCost / totalShares;
 
-            // 扣除拟加仓金额
-            const planBuyInput = row.querySelector('.plan-buy-input');
-            const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
-            planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+                row.querySelector('.shares-input').value = totalShares.toFixed(2);
+                row.querySelector('.cost-input').value = newCost.toFixed(4);
 
-            // 记录交易历史（先保存，以便 saveAndCalculate 能读取到今日新增份额）
-            await addTradeRecord(trade.rowId, {
-                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                type: 'add',
-                amount: trade.amount,
-                shares: parseFloat(newShares.toFixed(2)),
-                netValue: parseFloat(price.toFixed(4)),
-                isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
-                createdAt: new Date().toISOString(),
-                localDate: new Date().toLocaleDateString('en-CA')
-            });
+                const planBuyInput = row.querySelector('.plan-buy-input');
+                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+
+                await addTradeRecord(trade.rowId, {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    type: 'add',
+                    amount: trade.amount,
+                    shares: parseFloat(newShares.toFixed(2)),
+                    netValue: parseFloat(price.toFixed(4)),
+                    isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                    createdAt: new Date().toISOString(),
+                    localDate: new Date().toLocaleDateString('en-CA')
+                });
+            }
 
             await saveRow(row);
             saveAndCalculate();
@@ -3126,32 +3121,48 @@
                 const shares = parseFloat(row.querySelector('.shares-input').value) || 0;
                 const cost = parseFloat(row.querySelector('.cost-input').value) || 0;
 
-                const newShares = trade.amount / price;
-                const totalShares = shares + newShares;
-                const totalCost = (shares * cost) + trade.amount;
-                const newCost = totalCost / totalShares;
+                const tradeType = trade.type || 'add';
+                if (tradeType === 'reduce') {
+                    const reduceShares = parseFloat(trade.shares) || 0;
+                    if (!(reduceShares > 0) || reduceShares > shares) continue;
+                    row.querySelector('.shares-input').value = (shares - reduceShares).toFixed(2);
 
-                row.querySelector('.shares-input').value = totalShares.toFixed(2);
-                row.querySelector('.cost-input').value = newCost.toFixed(4);
+                    await saveRow(row);
+                    await addTradeRecord(trade.rowId, {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
+                        type: 'reduce',
+                        amount: parseFloat((reduceShares * price).toFixed(2)),
+                        shares: parseFloat(reduceShares.toFixed(2)),
+                        netValue: parseFloat(price.toFixed(4)),
+                        isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                        createdAt: now.toISOString(),
+                        localDate: new Date().toLocaleDateString('en-CA')
+                    });
+                } else {
+                    const newShares = trade.amount / price;
+                    const totalShares = shares + newShares;
+                    const totalCost = (shares * cost) + trade.amount;
+                    const newCost = totalCost / totalShares;
 
-                // 扣除拟加仓金额
-                const planBuyInput = row.querySelector('.plan-buy-input');
-                const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
-                planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
+                    row.querySelector('.shares-input').value = totalShares.toFixed(2);
+                    row.querySelector('.cost-input').value = newCost.toFixed(4);
 
-                await saveRow(row);
+                    const planBuyInput = row.querySelector('.plan-buy-input');
+                    const currentPlanBuy = parseFloat(planBuyInput.value) || 0;
+                    planBuyInput.value = Math.max(0, currentPlanBuy - trade.amount);
 
-                // 记录交易历史
-                await addTradeRecord(trade.rowId, {
-                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
-                    type: 'add',
-                    amount: trade.amount,
-                    shares: parseFloat(newShares.toFixed(2)),
-                    netValue: parseFloat(price.toFixed(4)),
-                    isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
-                    createdAt: now.toISOString(),
-                    localDate: new Date().toLocaleDateString('en-CA')
-                });
+                    await saveRow(row);
+                    await addTradeRecord(trade.rowId, {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + successCount,
+                        type: 'add',
+                        amount: trade.amount,
+                        shares: parseFloat(newShares.toFixed(2)),
+                        netValue: parseFloat(price.toFixed(4)),
+                        isBefore15: trade.isBefore15 !== undefined ? trade.isBefore15 : true,
+                        createdAt: now.toISOString(),
+                        localDate: new Date().toLocaleDateString('en-CA')
+                    });
+                }
 
                 // 从后端删除这条待确认交易
                 await deletePendingTradeFromBackend(trade.id);
@@ -3235,19 +3246,22 @@
                 pendingTrades.forEach(trade => {
                     const date = new Date(trade.createdAt);
                     const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                    const isAdd = (trade.type || 'add') === 'add';
+                    const colorClass = isAdd ? 'text-indigo-400' : 'text-rose-400';
+                    const bgClass = isAdd ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-rose-500/10 border-rose-500/30';
                     html += `
-                        <div class="bg-indigo-500/10 p-4 rounded-lg border border-indigo-500/30">
+                        <div class="${bgClass} p-4 rounded-lg border">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="flex items-center gap-2">
-                                        <span class="text-indigo-400 font-black">加仓</span>
-                                        <span class="bg-indigo-500/30 text-indigo-400 px-2 py-0.5 rounded text-[10px] font-black">待确认</span>
+                                        <span class="${colorClass} font-black">${isAdd ? '加仓' : '减仓'}</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-black ${isAdd ? 'bg-indigo-500/30 text-indigo-400' : 'bg-rose-500/30 text-rose-400'}">待确认</span>
                                     </div>
-                                    <div class="text-[10px] text-indigo-400 mt-1">系统将自动确认</div>
+                                    <div class="text-[10px] ${colorClass} mt-1">系统将自动确认</div>
                                     <div class="text-[10px] text-[var(--text-muted)] mt-1">${dateStr}</div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="mono font-black text-indigo-400">+¥${Math.round(trade.amount).toLocaleString()}</div>
+                                    <div class="mono font-black ${colorClass}">${isAdd ? '+' : '-'}¥${Math.round(trade.amount).toLocaleString()}</div>
                                 </div>
                             </div>
                             <div class="mt-2 flex gap-2">
@@ -3309,6 +3323,184 @@
             if (currentTradeHistoryRowId) {
                 const row = document.querySelector(`tr[data-id="${currentTradeHistoryRowId}"]`);
                 if (row) openTradeHistoryModal(row);
+            }
+        }
+
+        // ==================== 股票涨跌幅提醒相关 ====================
+        let currentAlertRulesPositionId = null;
+        let currentAlertRules = [];
+
+        async function openAlertRulesModal(row) {
+            const positionId = row.dataset.id;
+            const code = row.querySelector('.code-input')?.value || '';
+            const name = row.querySelector('.stock-name')?.innerText || '未知股票';
+            
+            currentAlertRulesPositionId = positionId;
+            document.getElementById('alertRulesStockName').innerText = `${name} (#${code})`;
+            
+            // 加载现有规则
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/alert-rules/position/${positionId}`);
+                const data = await response.json();
+                currentAlertRules = data.rules || [];
+            } catch (e) {
+                console.error('加载提醒规则失败:', e);
+                currentAlertRules = [];
+            }
+            
+            renderAlertRulesList();
+            document.getElementById('alertRulesModal').classList.remove('hidden');
+        }
+
+        function closeAlertRulesModal() {
+            document.getElementById('alertRulesModal').classList.add('hidden');
+            currentAlertRulesPositionId = null;
+            currentAlertRules = [];
+        }
+
+        function renderAlertRulesList() {
+            const container = document.getElementById('alertRulesList');
+            container.innerHTML = '';
+            
+            currentAlertRules.forEach((rule, index) => {
+                const ruleEl = document.createElement('div');
+                ruleEl.className = 'alert-rule-item flex items-center gap-3 p-3 bg-[var(--bg-main)] rounded-lg';
+                ruleEl.innerHTML = `
+                    <select class="direction-select bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-[10px] font-bold outline-none" data-index="${index}">
+                        <option value="up" ${rule.direction === 'up' ? 'selected' : ''}>涨</option>
+                        <option value="down" ${rule.direction === 'down' ? 'selected' : ''}>跌</option>
+                        <option value="both" ${rule.direction === 'both' ? 'selected' : ''}>涨/跌</option>
+                    </select>
+                    <div class="flex-1 flex items-center gap-2">
+                        <span class="text-[10px] text-[var(--text-muted)]">>=</span>
+                        <input type="number" class="threshold-input bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3 py-2 text-[10px] font-bold w-20 outline-none text-center" value="${rule.threshold}" min="0.1" max="20" step="0.1" data-index="${index}">
+                        <span class="text-[10px] text-[var(--text-muted)]">%</span>
+                    </div>
+                    <label class="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" class="enabled-checkbox" ${rule.enabled ? 'checked' : ''} data-index="${index}">
+                        <span class="text-[10px] text-[var(--text-muted)]">启用</span>
+                    </label>
+                    <button onclick="removeAlertRule(${index})" class="text-rose-400 hover:text-rose-300 text-lg font-bold">&times;</button>
+                `;
+                container.appendChild(ruleEl);
+            });
+            
+            // 更新添加按钮状态
+            const addBtn = document.getElementById('addAlertRuleBtn');
+            if (currentAlertRules.length >= 3) {
+                addBtn.classList.add('hidden');
+            } else {
+                addBtn.classList.remove('hidden');
+            }
+
+            // 绑定事件
+            container.querySelectorAll('.direction-select').forEach(select => {
+                select.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    currentAlertRules[idx].direction = e.target.value;
+                });
+            });
+            container.querySelectorAll('.threshold-input').forEach(input => {
+                input.addEventListener('input', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    currentAlertRules[idx].threshold = parseFloat(e.target.value) || 0;
+                });
+            });
+            container.querySelectorAll('.enabled-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.index);
+                    currentAlertRules[idx].enabled = e.target.checked;
+                });
+            });
+        }
+
+        function addAlertRuleRow() {
+            if (currentAlertRules.length >= 3) {
+                showToast('每只股票最多只能配置3条提醒规则');
+                return;
+            }
+            currentAlertRules.push({
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                positionId: currentAlertRulesPositionId,
+                direction: 'both',
+                threshold: 3,
+                enabled: true
+            });
+            renderAlertRulesList();
+        }
+
+        function removeAlertRule(index) {
+            currentAlertRules.splice(index, 1);
+            renderAlertRulesList();
+        }
+
+        async function saveAlertRules() {
+            // 验证数据
+            for (const rule of currentAlertRules) {
+                if (!rule.threshold || rule.threshold <= 0 || rule.threshold > 20) {
+                    showToast('阈值必须在 0.1% - 20% 之间');
+                    return;
+                }
+            }
+
+            try {
+                // 先删除该持仓的所有旧规则
+                const existingRules = await (await fetch(`${API_BASE_URL}/api/alert-rules/position/${currentAlertRulesPositionId}`)).json();
+                for (const rule of existingRules.rules || []) {
+                    await fetch(`${API_BASE_URL}/api/alert-rules/${rule.id}`, { method: 'DELETE' });
+                }
+
+                // 创建新规则
+                for (const rule of currentAlertRules) {
+                    await fetch(`${API_BASE_URL}/api/alert-rules`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(rule)
+                    });
+                }
+
+                showToast('提醒规则保存成功');
+                closeAlertRulesModal();
+
+                // 更新按钮显示状态
+                updateAlertRulesButtonState(currentAlertRulesPositionId);
+            } catch (e) {
+                console.error('保存提醒规则失败:', e);
+                showToast('保存失败，请重试');
+            }
+        }
+
+        async function updateAlertRulesButtonState(positionId) {
+            const row = document.querySelector(`tr[data-id="${positionId}"]`);
+            if (!row) return;
+            const btn = row.querySelector('.alert-rules-btn');
+            if (!btn) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/alert-rules/position/${positionId}`);
+                const data = await response.json();
+                const rules = data.rules || [];
+                const enabledCount = rules.filter(r => r.enabled).length;
+                
+                if (enabledCount > 0) {
+                    btn.classList.add('bg-indigo-500/20');
+                    btn.innerText = `已设置(${enabledCount})`;
+                } else {
+                    btn.classList.remove('bg-indigo-500/20');
+                    btn.innerText = '设置提醒';
+                }
+            } catch (e) {
+                console.error('获取提醒规则状态失败:', e);
+            }
+        }
+
+        async function initAlertRulesButtonStates() {
+            // 获取所有股票行的提醒按钮并更新状态
+            const rows = document.querySelectorAll('#stockBody tr');
+            for (const row of rows) {
+                if (row.dataset.isFund !== 'true') {
+                    await updateAlertRulesButtonState(row.dataset.id);
+                }
             }
         }
     </script>

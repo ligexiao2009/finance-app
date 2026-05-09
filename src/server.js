@@ -1547,6 +1547,79 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ========== 资产记录 API ==========
+  if (req.method === 'GET' && req.url === '/api/assets') {
+    try {
+      await sendCachedJson(req, res, 'assets', async () => {
+        return await db.getAssetRecords();
+      });
+    } catch (error) {
+      console.error('Error getting asset records:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get asset records' }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/api/assets') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const record = JSON.parse(body);
+        const id = await db.createAssetRecord({
+          recordedAt: new Date().toISOString(),
+          total: record.total,
+          alipay: record.alipay,
+          wechat: record.wechat,
+          ths: record.ths,
+          crypto: record.crypto,
+          cmb: record.cmb,
+          provident: record.provident,
+          receivable: record.receivable,
+          debt: record.debt,
+        });
+        invalidateCache('assets');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, id }));
+      } catch (error) {
+        console.error('Error creating asset record:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to create asset record' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'DELETE' && req.url.startsWith('/api/assets/')) {
+    const id = req.url.split('/api/assets/')[1];
+    try {
+      await db.deleteAssetRecord(id);
+      invalidateCache('assets');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+      console.error('Error deleting asset record:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to delete asset record' }));
+    }
+    return;
+  }
+
+  if (req.method === 'DELETE' && req.url === '/api/assets') {
+    try {
+      await db.deleteAllAssetRecords();
+      invalidateCache('assets');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+      console.error('Error deleting all asset records:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to delete asset records' }));
+    }
+    return;
+  }
+
   // ========== 基金实时估算 API ==========
   if (req.method === 'GET' && req.url.startsWith('/api/fund-estimate/')) {
     try {

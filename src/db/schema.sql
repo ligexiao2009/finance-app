@@ -127,3 +127,21 @@ CREATE TABLE IF NOT EXISTS alert_rules (
 -- 索引优化查询
 CREATE INDEX IF NOT EXISTS idx_alert_rules_position_id ON alert_rules(position_id);
 CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);
+
+-- ==================== 资产记录表 ====================
+CREATE TABLE IF NOT EXISTS asset_records (
+    id SERIAL PRIMARY KEY,
+    recorded_at TIMESTAMP NOT NULL,
+    total DECIMAL(15, 2) NOT NULL,
+    alipay DECIMAL(15, 2) DEFAULT 0,
+    wechat DECIMAL(15, 2) DEFAULT 0,
+    ths DECIMAL(15, 2) DEFAULT 0,
+    crypto DECIMAL(15, 2) DEFAULT 0,
+    cmb DECIMAL(15, 2) DEFAULT 0,
+    provident DECIMAL(15, 2) DEFAULT 0,
+    receivable DECIMAL(15, 2) DEFAULT 0,
+    debt DECIMAL(15, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_asset_records_recorded_at ON asset_records(recorded_at);

@@ -417,6 +417,43 @@ async function getEnabledAlertRules() {
   return res.rows.map(row => snakeToCamel(row));
 }
 
+// ==================== 资产记录表操作 ====================
+async function getAssetRecords() {
+  const res = await query('SELECT * FROM asset_records ORDER BY recorded_at DESC');
+  return res.rows.map(row => {
+    const converted = snakeToCamel(row);
+    if (converted.recordedAt) {
+      const d = new Date(converted.recordedAt);
+      converted.recordedAt = d.getFullYear() + '/' +
+        (d.getMonth() + 1).toString().padStart(2, '0') + '/' +
+        d.getDate().toString().padStart(2, '0') + ' ' +
+        d.getHours().toString().padStart(2, '0') + ':' +
+        d.getMinutes().toString().padStart(2, '0');
+      converted.day = (d.getMonth() + 1) + '-' + d.getDate();
+    }
+    return converted;
+  });
+}
+
+async function createAssetRecord(record) {
+  const { recordedAt, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt } = record;
+  const res = await query(
+    `INSERT INTO asset_records (recorded_at, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id`,
+    [recordedAt, total, alipay || 0, wechat || 0, ths || 0, crypto || 0, cmb || 0, provident || 0, receivable || 0, debt || 0]
+  );
+  return res.rows[0].id;
+}
+
+async function deleteAssetRecord(id) {
+  await query('DELETE FROM asset_records WHERE id = $1', [id]);
+}
+
+async function deleteAllAssetRecords() {
+  await query('DELETE FROM asset_records');
+}
+
 module.exports = {
   // Database connection
   pool,
@@ -467,4 +504,10 @@ module.exports = {
   deleteAlertRulesByPositionId,
   resetAlertRulesDaily,
   getEnabledAlertRules,
+
+  // Asset records operations
+  getAssetRecords,
+  createAssetRecord,
+  deleteAssetRecord,
+  deleteAllAssetRecords,
 };

@@ -13,26 +13,26 @@
             --card-glass: rgba(255, 255, 255, 0.88);
         }
 
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: var(--app-bg); 
-            display: flex; justify-content: center; 
-            min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box; 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--app-bg);
+            display: flex; justify-content: center;
+            min-height: 100vh; margin: 0; padding: 15px; box-sizing: border-box;
         }
 
-        .app-card { 
-            background: var(--card-glass); 
-            backdrop-filter: blur(15px); 
+        .app-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.4);
-            border-radius: 32px; padding: 24px; width: 100%; max-width: 400px; 
-            box-shadow: 0 20px 50px rgba(31, 38, 135, 0.08); 
-            height: fit-content; 
+            border-radius: 32px; padding: 24px; width: 100%; max-width: 400px;
+            box-shadow: 0 20px 50px rgba(31, 38, 135, 0.08);
+            height: fit-content;
         }
 
-        .summary-card { 
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
-            padding: 22px; border-radius: 24px; color: #fff; 
+        .summary-card {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 22px; border-radius: 24px; color: #fff;
             box-shadow: 0 10px 25px rgba(30, 60, 114, 0.25);
             position: relative;
         }
@@ -51,17 +51,17 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 14px; margin-bottom: 24px; }
         .label-wrap { display: flex; align-items: center; margin-bottom: 4px; font-size: 12px; color: #64748b; font-weight: 600; }
         .brand-line { width: 4px; height: 12px; border-radius: 2px; margin-right: 8px; }
-        
+
         .input-box { position: relative; border-bottom: 2px solid #e2e8f0; transition: 0.3s; }
         .input-box:focus-within { border-bottom-color: #1e3c72; }
         .input-box::before { content: "¥"; position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: #1e293b; font-size: 14px; font-weight: 700; }
-        
+
         input { width: 100%; padding: 10px 0 10px 20px; border: none; background: transparent; font-size: 18px; font-weight: 700; outline: none; color: #1e293b; box-sizing: border-box; }
         .blur-text { filter: blur(6px); pointer-events: none; user-select: none; }
 
         .btn-stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 25px; }
-        .save-btn { 
-            background: #1e293b; color: white; border: none; padding: 15px; 
+        .save-btn {
+            background: #1e293b; color: white; border: none; padding: 15px;
             border-radius: 18px; font-weight: 700; cursor: pointer; font-size: 16px;
             transition: 0.2s; box-shadow: 0 8px 15px rgba(20, 136, 204, 0.2);
         }
@@ -72,20 +72,20 @@
 
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .section-title { font-size: 13px; font-weight: 700; color: #64748b; letter-spacing: 0.5px; }
-        
-        .clear-all-btn { 
-            color: var(--down); font-size: 11px; font-weight: 700; cursor: pointer; 
-            padding: 4px 12px; border-radius: 8px; background: rgba(231, 76, 60, 0.1); 
+
+        .clear-all-btn {
+            color: var(--down); font-size: 11px; font-weight: 700; cursor: pointer;
+            padding: 4px 12px; border-radius: 8px; background: rgba(231, 76, 60, 0.1);
             border: 1px solid rgba(231, 76, 60, 0.15); transition: 0.2s;
         }
         .clear-all-btn:active { transform: scale(0.92); background: rgba(231, 76, 60, 0.2); }
 
         .history-list { max-height: 280px; overflow-y: auto; }
-        .history-item { 
-            display: grid; grid-template-columns: 1.2fr 1.8fr 30px; 
-            align-items: center; padding: 14px 12px; 
-            background: rgba(255, 255, 255, 0.5); 
-            border-radius: 18px; margin-bottom: 10px; 
+        .history-item {
+            display: grid; grid-template-columns: 1.2fr 1.8fr 30px;
+            align-items: center; padding: 14px 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 18px; margin-bottom: 10px;
             border: 1px solid rgba(255, 255, 255, 0.6);
             transition: all 0.2s; cursor: pointer;
         }
@@ -93,7 +93,7 @@
 
         .hist-amount { font-size: 14px; font-weight: 800; font-family: "DIN Alternate", sans-serif; }
         .hist-time-center { font-size: 12px; color: #64748b; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        
+
         .diff-tag { font-size: 9px; padding: 2px 6px; border-radius: 5px; font-weight: 800; margin-top: 4px; width: fit-content; }
         .diff-up { background: #fee2e2; color: #b91c1c; }
         .diff-down { background: #dcfce7; color: #15803d; }
@@ -111,7 +111,7 @@
         <div class="summary-header">
             <span>NET WORTH / 净资产</span>
             <button onclick="togglePrivacy()" id="eye-toggle" style="background:none; border:none; color:white; cursor:pointer; padding:5px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z""")/>><circle cx="12" cy="12" r="3""")/>></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
         </div>
         <div class="summary-val">¥ <span id="res">0.00</span></div>
@@ -143,12 +143,10 @@
             <div class="label-wrap"><div class="brand-line" style="background:var(--gjj)"></div>公积金</div>
             <div class="input-box"><input type="text" inputmode="decimal" class="asset-input" id="provident" data-name="公积金" placeholder="0.00"></div>
         </div>
-        <!-- 新增：借出 / 应收 -->
         <div class="item">
             <div class="label-wrap"><div class="brand-line" style="background:var(--receiv)"></div>借出 / 应收</div>
             <div class="input-box"><input type="text" inputmode="decimal" class="asset-input" id="receivable" data-name="借出" placeholder="0.00"></div>
         </div>
-        <!-- 负债项 -->
         <div class="item">
             <div class="label-wrap"><div class="brand-line" style="background:var(--debt)"></div>欠款 / 负债</div>
             <div class="input-box"><input type="text" inputmode="decimal" class="asset-input" id="debt" data-name="负债" placeholder="0.00" style="color:var(--down)"></div>
@@ -172,7 +170,7 @@
         <div class="history-list" id="hist-list"></div>
         <div class="chart-box" id="chart-wrap" style="display:none;">
             <svg class="chart-svg" id="svg-chart">
-                <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1488cc" stop-opacity="0.2""")/>><stop offset="100%" stop-color="#fff" stop-opacity="0""")/>></linearGradient></defs>
+                <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1488cc" stop-opacity="0.2"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
                 <text x="0" y="10" class="axis-label" id="y-max"></text><text x="0" y="125" class="axis-label" id="y-min"></text>
                 <text x="0" y="145" class="axis-label" id="x-start"></text><text x="100%" y="145" class="axis-label" text-anchor="end" id="x-end"></text>
                 <path fill="url(#g)" id="c-area"></path><path fill="none" stroke="#1488cc" stroke-width="2.5" id="c-line" stroke-linejoin="round"></path>
@@ -186,20 +184,33 @@
     const resDisp = document.getElementById('res');
     const timeDisp = document.getElementById('last-update');
     const histList = document.getElementById('hist-list');
-    // 更新了 KEY 列表
     const ASSET_KEYS = ['alipay', 'wechat', 'ths', 'crypto', 'cmb', 'provident', 'receivable', 'debt'];
     let isPrivate = localStorage.getItem('v_privacy') === 'true';
+    let records = [];
 
-    window.onload = () => {
+    async function getRecords() {
+        try {
+            const res = await fetch('/api/assets');
+            records = await res.json();
+            return records;
+        } catch (e) {
+            console.error('Failed to fetch asset records:', e);
+            return [];
+        }
+    }
+
+    async function loadInputs() {
         ASSET_KEYS.forEach(k => {
             const v = localStorage.getItem('v_all_fn_' + k);
             if (v) document.getElementById(k).value = v;
         });
-        const savedTime = localStorage.getItem('v_all_fn_last_update');
-        if (savedTime) timeDisp.innerText = savedTime;
         update(false);
         applyPrivacyStyle();
-        render();
+    }
+
+    window.onload = async () => {
+        await loadInputs();
+        await render();
     };
 
     function togglePrivacy() {
@@ -227,59 +238,61 @@
         const netWorth = assets - debt;
         resDisp.innerText = netWorth.toLocaleString('zh-CN', {minimumFractionDigits: 2});
         if (shoudTime) {
-            const timeStr = new Date().toLocaleString('zh-CN', {hour12: false});
-            timeDisp.innerText = timeStr;
-            localStorage.setItem('v_all_fn_last_update', timeStr);
+            timeDisp.innerText = new Date().toLocaleString('zh-CN', {hour12: false});
         }
     }
 
-    function saveRecord() {
+    async function saveRecord() {
         const total = parseFloat(resDisp.innerText.replace(/,/g, ''));
-        const now = new Date();
-        const fullTime = now.getFullYear() + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-        const chartDay = (now.getMonth()+1) + '-' + now.getDate();
-        const timeStr = now.toLocaleString('zh-CN', {hour12: false});
+        const timeStr = new Date().toLocaleString('zh-CN', {hour12: false});
         timeDisp.innerText = timeStr;
-        localStorage.setItem('v_all_fn_last_update', timeStr);
-        let detail = {};
-        ASSET_KEYS.forEach(k => detail[k] = document.getElementById(k).value || "0");
-        let h = JSON.parse(localStorage.getItem('v_all_fn_hist') || "[]");
-        h.unshift({amount: total, time: fullTime, day: chartDay, detail: detail});
-        localStorage.setItem('v_all_fn_hist', JSON.stringify(h));
-        render();
-        const card = document.getElementById('summary-card');
-        card.classList.remove('save-active');
-        void card.offsetWidth; card.classList.add('save-active');
+        const detail = {};
+        ASSET_KEYS.forEach(k => detail[k] = parseFloat(document.getElementById(k).value) || 0);
+        try {
+            await fetch('/api/assets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ total, ...detail })
+            });
+            await render();
+            const card = document.getElementById('summary-card');
+            card.classList.remove('save-active');
+            void card.offsetWidth; card.classList.add('save-active');
+        } catch (e) {
+            console.error('Failed to save asset record:', e);
+        }
     }
 
-    function render() {
-        let h = JSON.parse(localStorage.getItem('v_all_fn_hist') || "[]");
-        histList.innerHTML = h.map((r, i) => {
-            const amount = r.amount != null ? Number(r.amount) : 0;
+    async function render() {
+        const records = await getRecords();
+        histList.innerHTML = records.map((r, i) => {
+            const total = r.total != null ? Number(r.total) : 0;
             let diffHtml = "";
-            if (i < h.length - 1) {
-                const nextAmount = h[i+1].amount != null ? Number(h[i+1].amount) : 0;
-                const d = amount - nextAmount;
+            if (i < records.length - 1) {
+                const nextTotal = records[i+1].total != null ? Number(records[i+1].total) : 0;
+                const d = total - nextTotal;
                 diffHtml = `<span class="diff-tag ${d>=0?'diff-up':'diff-down'}">${d>=0?'+':'-'}${Math.abs(d).toLocaleString()}</span>`;
-            } else { diffHtml = `<span class="diff-tag" style="background:#eee;color:#999">START</span>`; }
+            } else {
+                diffHtml = `<span class="diff-tag" style="background:#eee;color:#999">START</span>`;
+            }
             return `<div class="history-item">
                 <div class="hist-info-left ${isPrivate?'blur-text':''}">
-                    <div class="hist-amount">¥${amount.toLocaleString()}</div>
+                    <div class="hist-amount">¥${total.toLocaleString()}</div>
                     ${diffHtml}
                 </div>
-                <div class="hist-time-center">${r.time}</div>
-                <div class="del-btn-wrap"><button class="del-btn" onclick="del(${i})">🗑️</button></div>
+                <div class="hist-time-center">${r.recordedAt}</div>
+                <div class="del-btn-wrap"><button class="del-btn" onclick="del(${r.id})">🗑️</button></div>
             </div>`;
         }).join('');
-        draw(h);
+        draw(records);
     }
 
-    function draw(h) {
+    function draw(records) {
         const box = document.getElementById('chart-wrap');
-        if (h.length < 2) { box.style.display='none'; return; }
+        if (records.length < 2) { box.style.display='none'; return; }
         box.style.display='block';
-        const data = [...h].reverse().slice(-10);
-        const vals = data.map(r => r.amount != null ? Number(r.amount) : 0);
+        const data = [...records].reverse().slice(-10);
+        const vals = data.map(r => r.total != null ? Number(r.total) : 0);
         const w = document.getElementById('svg-chart').clientWidth, ht = 120;
         let max = Math.max(...vals), min = Math.min(...vals);
         let pad = (max - min) * 0.2 || 1000;
@@ -298,76 +311,80 @@
         document.getElementById('c-area').setAttribute('d', `${d} L ${w},${ht} L 0,${ht} Z`);
     }
 
-    function del(idx) { if(confirm("删除此记录？")) { let h = JSON.parse(localStorage.getItem('v_all_fn_hist')); h.splice(idx,1); localStorage.setItem('v_all_fn_hist',JSON.stringify(h)); render(); } }
-    function clearAllHistory() { if(confirm("确定要清空所有资产轨迹吗？")) { localStorage.removeItem('v_all_fn_hist'); render(); } }
-    function exportData() {
-        let h = JSON.parse(localStorage.getItem('v_all_fn_hist') || "[]");
-        if (!h.length) return;
-        let csv = "\uFEFF时间,总计," + ASSET_KEYS.join(",") + "\n";
-        csv += [...h].reverse().map(r => [r.time, r.amount, ...ASSET_KEYS.map(k => (r.detail?r.detail[k]:""))].join(",")).join("\n");
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = `财富备份.csv`; a.click();
+    async function del(id) {
+        if(confirm("删除此记录？")) {
+            await fetch('/api/assets/' + id, { method: 'DELETE' });
+            render();
+        }
     }
 
-    function importData(input) {
+    async function clearAllHistory() {
+        if(confirm("确定要清空所有资产轨迹吗？")) {
+            await fetch('/api/assets', { method: 'DELETE' });
+            render();
+        }
+    }
+
+    function exportData() {
+        if (!records.length) return;
+        let csv = "﻿时间,总计," + ASSET_KEYS.join(",") + "\n";
+        csv += [...records].reverse().map(r => {
+            const detail = {
+                alipay: r.alipay, wechat: r.wechat, ths: r.ths, crypto: r.crypto,
+                cmb: r.cmb, provident: r.provident, receivable: r.receivable, debt: r.debt
+            };
+            return [r.recordedAt, r.total, ...ASSET_KEYS.map(k => detail[k] || '')].join(",");
+        }).join("\n");
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'})); a.download = 'Asset_backup.csv'; a.click();
+    }
+
+    async function importData(input) {
         const file = input.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 let csv = e.target.result;
-                csv = csv.replace(/^\uFEFF/, '');
+                csv = csv.replace(/^﻿/, '');
                 const lines = csv.split("\n").filter(line => line.trim());
                 if (lines.length < 2) return;
-                const history = [];
+                const toImport = [];
                 for (let i = 1; i < lines.length; i++) {
                     const values = lines[i].split(",");
                     if (values.length < 2) continue;
                     const detail = {};
                     ASSET_KEYS.forEach((k, idx) => {
                         const val = values[2 + idx];
-                        detail[k] = (val && val.trim() !== "" && val !== "0") ? val.trim() : "";
+                        detail[k] = (val && val.trim() !== "" && val !== "0") ? parseFloat(val) || 0 : 0;
                     });
                     const amountStr = (values[1] || "").replace(/,/g, "");
-                    const amount = parseFloat(amountStr) || 0;
-                    let day = "导入";
-                    if (values[0] && values[0].includes(" ")) {
-                        const datePart = values[0].split(" ")[0];
-                        if (datePart.includes("/")) {
-                            const parts = datePart.split("/");
-                            day = parts[parts.length - 2] + "-" + parts[parts.length - 1];
-                        }
-                    }
-                    history.push({
-                        time: values[0],
-                        amount: amount,
-                        day: day,
-                        detail: detail
-                    });
+                    const total = parseFloat(amountStr) || 0;
+                    toImport.push({ recordedAt: values[0], total, ...detail });
                 }
-                if (history.length) {
-                    history.reverse();
-                    localStorage.setItem('v_all_fn_hist', JSON.stringify(history));
-                    const latest = history[0];
-                    if (latest.time) {
-                        timeDisp.innerText = latest.time;
-                        localStorage.setItem('v_all_fn_last_update', latest.time);
-                    }
-                    if (latest.detail) {
-                        ASSET_KEYS.forEach(k => {
-                            if (latest.detail[k]) {
-                                document.getElementById(k).value = latest.detail[k];
-                                localStorage.setItem('v_all_fn_' + k, latest.detail[k]);
-                            }
+                if (toImport.length) {
+                    toImport.reverse();
+                    for (const rec of toImport) {
+                        await fetch('/api/assets', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(rec)
                         });
                     }
+                    const latest = toImport[0];
+                    ASSET_KEYS.forEach(k => {
+                        if (latest[k]) {
+                            document.getElementById(k).value = latest[k];
+                            localStorage.setItem('v_all_fn_' + k, latest[k]);
+                        }
+                    });
                     update(false);
-                    render();
-                    alert("导入成功！共导入 " + history.length + " 条记录。");
+                    await render();
+                    alert("Import success: " + toImport.length + " records");
                 }
                 input.value = "";
             } catch(err) {
                 console.error(err);
-                alert("导入失败");
+                alert("Import failed");
                 input.value = "";
             }
         };

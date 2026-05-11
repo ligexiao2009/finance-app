@@ -1433,6 +1433,7 @@ const server = http.createServer(async (req, res) => {
             planBuy: rowData.planBuy || 0,
             alert: rowData.alert || null,
             targetPrice: rowData.targetPrice || null,
+            categoryId: rowData.categoryId || null,
           });
         } else {
           // 创建新记录
@@ -1447,6 +1448,7 @@ const server = http.createServer(async (req, res) => {
             planBuy: rowData.planBuy || 0,
             alert: rowData.alert || null,
             targetPrice: rowData.targetPrice || null,
+            categoryId: rowData.categoryId || null,
           });
         }
 
@@ -1544,6 +1546,90 @@ const server = http.createServer(async (req, res) => {
     fetchQuotesBatch,
     sendWechatMessage
   })) {
+    return;
+  }
+
+  // ========== 分类 API ==========
+  if (req.method === 'GET' && req.url === '/api/categories') {
+    try {
+      await sendCachedJson(req, res, 'categories', async () => {
+        return await db.getCategories();
+      });
+    } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to get categories' }));
+    }
+    return;
+  }
+
+  // ========== 分类更新 API ==========
+  if (req.method === 'POST' && req.url === '/api/update-category') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { id, categoryId } = JSON.parse(body);
+        await db.updatePosition(id, { categoryId });
+        invalidateCache('data');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
+    return;
+  }
+
+  // ========== 分类 CRUD API ==========
+  if (req.method === 'POST' && req.url === '/api/categories') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { id, name, sortOrder } = JSON.parse(body);
+        await db.createCategory({ id: id || Date.now().toString(), name, sortOrder: sortOrder || 0 });
+        invalidateCache('categories');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'PUT' && req.url.startsWith('/api/categories/')) {
+    const id = req.url.split('/api/categories/')[1];
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { name, sortOrder } = JSON.parse(body);
+        await db.updateCategory(id, { name, sortOrder });
+        invalidateCache('categories');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: e.message }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'DELETE' && req.url.startsWith('/api/categories/')) {
+    const id = req.url.split('/api/categories/')[1];
+    try {
+      await db.deleteCategory(id);
+      invalidateCache('categories');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: e.message }));
+    }
     return;
   }
 

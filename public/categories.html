@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>分类管理</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "PingFang SC", sans-serif; background: #f5f5f5; color: #333; padding: 32px; }
+    .wrap { max-width: 720px; margin: auto; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+    .bar { display: flex; gap: 8px; margin-bottom: 20px; }
+    .bar input { padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 14px; outline: none; width: 200px; }
+    .bar input:focus { border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.15); }
+    .bar button { padding: 8px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; background: #4a90d9; color: #fff; }
+    .bar button:hover { background: #3a7bc8; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    th, td { padding: 12px 16px; text-align: left; font-size: 14px; }
+    th { background: #fafafa; font-weight: 600; color: #666; border-bottom: 1px solid #eee; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { border-bottom: 1px solid #f0f0f0; }
+    tr:last-child td { border-bottom: none; }
+    .sort-badge { display: inline-block; background: #f0f0f0; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #888; min-width: 28px; text-align: center; }
+    .act { padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid transparent; font-weight: 500; margin-right: 6px; transition: 0.15s; }
+    .act-edit { color: #4a90d9; border-color: #d0e2f7; background: #f6faff; }
+    .act-edit:hover { background: #e8f1fd; }
+    .act-del { color: #e05050; border-color: #f5d0d0; background: #fff8f8; }
+    .act-del:hover { background: #fde8e8; }
+    .toast { position: fixed; top: 20px; right: 20px; background: #333; color: #fff; padding: 10px 24px; border-radius: 6px; font-size: 13px; display: none; z-index: 999; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>分类管理</h1>
+
+    <div class="bar">
+        <input type="text" id="inputName" placeholder="分类名称">
+        <input type="number" id="inputSort" placeholder="排序" style="width:100px">
+        <button onclick="save()">保存</button>
+    </div>
+
+    <table>
+        <thead><tr><th>名称</th><th>排序</th><th style="width:160px">操作</th></tr></thead>
+        <tbody id="tbody"></tbody>
+    </table>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+    const BASE = (window.API_BASE_URL || '') + '/api/categories';
+    let editId = null;
+
+    async function load() {
+        const res = await fetch(BASE);
+        const data = await res.json();
+        document.getElementById('tbody').innerHTML = data.map(c => `
+            <tr>
+                <td><b>${c.name}</b></td>
+                <td><span class="sort-badge">${c.sortOrder}</span></td>
+                <td>
+                    <button class="act act-edit" onclick="edit('${c.id}','${c.name}',${c.sortOrder})">编辑</button>
+                    <button class="act act-del" onclick="del('${c.id}')">删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function edit(id, name, sort) {
+        editId = id;
+        document.getElementById('inputName').value = name;
+        document.getElementById('inputSort').value = sort;
+    }
+
+    async function save() {
+        const name = document.getElementById('inputName').value.trim();
+        const sortOrder = parseInt(document.getElementById('inputSort').value) || 0;
+        if (!name) return;
+        if (editId) {
+            await fetch(BASE + '/' + editId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, sortOrder }) });
+        } else {
+            await fetch(BASE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, sortOrder }) });
+        }
+        editId = null;
+        document.getElementById('inputName').value = '';
+        document.getElementById('inputSort').value = '';
+        load();
+        t(editId ? '已更新' : '已添加');
+    }
+
+    async function del(id) {
+        if (!confirm('确定删除？')) return;
+        await fetch(BASE + '/' + id, { method: 'DELETE' });
+        load();
+        t('已删除');
+    }
+
+    function t(msg) {
+        const el = document.getElementById('toast');
+        el.style.display = 'block'; el.textContent = msg;
+        setTimeout(() => el.style.display = 'none', 2000);
+    }
+
+    load();
+</script>
+</body>
+</html>

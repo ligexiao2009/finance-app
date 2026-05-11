@@ -145,3 +145,26 @@ CREATE TABLE IF NOT EXISTS asset_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_asset_records_recorded_at ON asset_records(recorded_at);
+
+-- ==================== 持仓分类表 ====================
+CREATE TABLE IF NOT EXISTS categories (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    sort_order INT DEFAULT 0
+);
+
+-- 预设分类
+INSERT INTO categories (id, name, sort_order) VALUES
+('a_stock_large', 'A股大盘', 1),
+('a_stock_small', 'A股中小', 2),
+('hk_stock', '港股', 3),
+('us_stock', '美股', 4),
+('index_fund', '指数基金', 5),
+('sector_fund', '行业基金', 6),
+('bond_fund', '债券基金', 7),
+('hybrid_fund', '混合基金', 8),
+('overseas_fund', '海外基金', 9)
+ON CONFLICT (id) DO NOTHING;
+
+-- positions 加分类字段
+ALTER TABLE positions ADD COLUMN IF NOT EXISTS category_id VARCHAR(50);

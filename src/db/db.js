@@ -170,13 +170,14 @@ async function getPositionByCode(code, isFund) {
 async function createPosition(position) {
   const {
     id, code, name, shares = 0, cost = 0, isFund = false,
-    isOverseas = false, planBuy = 0, alert = null, targetPrice = null
+    isOverseas = false, planBuy = 0, alert = null, targetPrice = null,
+    categoryId = null
   } = position;
 
   await query(
-    `INSERT INTO positions (id, code, name, shares, cost, is_fund, is_overseas, plan_buy, alert, target_price)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [id, code, name, shares, cost, isFund, isOverseas, planBuy, alert, targetPrice]
+    `INSERT INTO positions (id, code, name, shares, cost, is_fund, is_overseas, plan_buy, alert, target_price, category_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [id, code, name, shares, cost, isFund, isOverseas, planBuy, alert, targetPrice, categoryId]
   );
   return position;
 }
@@ -454,6 +455,39 @@ async function deleteAllAssetRecords() {
   await query('DELETE FROM asset_records');
 }
 
+async function getCategories() {
+  const res = await query('SELECT id, name, sort_order FROM categories ORDER BY sort_order');
+  return res.rows.map(row => snakeToCamel(row));
+}
+
+async function createCategory(category) {
+  const { id, name, sortOrder = 0 } = category;
+  await query(
+    'INSERT INTO categories (id, name, sort_order) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = $2, sort_order = $3',
+    [id, name, sortOrder]
+  );
+}
+
+async function updateCategory(id, updates) {
+  const fields = [];
+  const values = [];
+  let paramCount = 1;
+  for (const [key, value] of Object.entries(updates)) {
+    const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    fields.push(`${dbKey} = $${paramCount}`);
+    values.push(value);
+    paramCount++;
+  }
+  if (fields.length === 0) return;
+  values.push(id);
+  await query(`UPDATE categories SET ${fields.join(', ')} WHERE id = $${paramCount}`, values);
+}
+
+async function deleteCategory(id) {
+  await query('UPDATE positions SET category_id = NULL WHERE category_id = $1', [id]);
+  await query('DELETE FROM categories WHERE id = $1', [id]);
+}
+
 module.exports = {
   // Database connection
   pool,
@@ -507,6 +541,10 @@ module.exports = {
 
   // Asset records operations
   getAssetRecords,
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   createAssetRecord,
   deleteAssetRecord,
   deleteAllAssetRecords,

@@ -17,9 +17,10 @@ jobs:
           username: root
           key: ${{ secrets.SSH_KEY }}
           script: |
+            export PATH=$PATH:/root/.nvm/versions/node/v22.22.2/bin
             cd /root/product/finance-app
             git fetch origin 
             git checkout dev 
             git pull origin dev
-            /root/.nvm/versions/node/v22.22.2/bin/npm install 
-            /root/.nvm/versions/node/v22.22.2/bin/pm2 restart stock || \ /root/.nvm/versions/node/v22.22.2/bin/pm2 start ./start.sh --interpreter bash --name stock
+            npm install 
+            pm2 restart stock || pm2 start ./start.sh --interpreter bash --name stock

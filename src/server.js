@@ -1549,6 +1549,49 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ========== 加密币行情 API ==========
+  const CRYPTO_PAIRS = [
+    { pair: 'BTC_USDT', code: 'BTC', name: 'Bitcoin' },
+    { pair: 'ETH_USDT', code: 'ETH', name: 'Ethereum' },
+    { pair: 'OKB_USDT', code: 'OKB', name: 'OKB' },
+  ];
+
+  async function fetchSingleGateioQuote(pair, code, name) {
+    const url = `https://api.gateio.ws/api/v4/spot/tickers?currency_pair=${pair}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const ticker = Array.isArray(data) ? data[0] : data;
+    return {
+      code,
+      name,
+      price: parseFloat(ticker.last) || 0,
+      change: parseFloat(ticker.change_percentage) || 0,
+      priceDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+      isFund: false,
+    };
+  }
+
+  if (req.method === 'GET' && req.url === '/api/crypto-quotes') {
+    try {
+      await sendCachedJson(req, res, 'crypto-quotes', async () => {
+        const result = {};
+        for (const { pair, code, name } of CRYPTO_PAIRS) {
+          try {
+            const quote = await fetchSingleGateioQuote(pair, code, name);
+            result[`${code}:crypto`] = quote;
+          } catch (e) {
+            console.error(`Gate.io ${pair} fetch error:`, e.message);
+          }
+        }
+        return { quotes: result };
+      }, { ttlMs: 60000 });
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // ========== 分类 API ==========
   if (req.method === 'GET' && req.url === '/api/categories') {
     try {

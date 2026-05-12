@@ -38,11 +38,16 @@ CREATE TABLE IF NOT EXISTS pending_trades (
     row_id VARCHAR(50) NOT NULL,
     code VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
+    type VARCHAR(10) NOT NULL DEFAULT 'add' CHECK (type IN ('add', 'reduce')),
     amount DECIMAL(15, 2) NOT NULL,
+    shares DECIMAL(15, 4),
     is_before_15 BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY (row_id) REFERENCES positions(id) ON DELETE CASCADE
 );
+
+ALTER TABLE pending_trades ADD COLUMN IF NOT EXISTS type VARCHAR(10) NOT NULL DEFAULT 'add';
+ALTER TABLE pending_trades ADD COLUMN IF NOT EXISTS shares DECIMAL(15, 4);
 
 -- 索引优化查询
 CREATE INDEX IF NOT EXISTS idx_pending_trades_row_id ON pending_trades(row_id);
@@ -104,3 +109,62 @@ SELECT
     (p.shares * p.cost) as estimated_value
 FROM positions p
 ORDER BY p.code;
+
+-- ==================== 股票涨跌幅提醒规则表 ====================
+CREATE TABLE IF NOT EXISTS alert_rules (
+    id VARCHAR(50) PRIMARY KEY,
+    position_id VARCHAR(50) NOT NULL,
+    direction VARCHAR(5) NOT NULL CHECK (direction IN ('up', 'down', 'both')),
+    threshold DECIMAL(5, 2) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    triggered_today BOOLEAN NOT NULL DEFAULT false,
+    trigger_time TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (position_id) REFERENCES positions(id) ON DELETE CASCADE
+);
+
+-- 索引优化查询
+CREATE INDEX IF NOT EXISTS idx_alert_rules_position_id ON alert_rules(position_id);
+CREATE INDEX IF NOT EXISTS idx_alert_rules_enabled ON alert_rules(enabled);
+
+-- ==================== 资产记录表 ====================
+CREATE TABLE IF NOT EXISTS asset_records (
+    id SERIAL PRIMARY KEY,
+    recorded_at TIMESTAMP NOT NULL,
+    total DECIMAL(15, 2) NOT NULL,
+    alipay DECIMAL(15, 2) DEFAULT 0,
+    wechat DECIMAL(15, 2) DEFAULT 0,
+    ths DECIMAL(15, 2) DEFAULT 0,
+    crypto DECIMAL(15, 2) DEFAULT 0,
+    cmb DECIMAL(15, 2) DEFAULT 0,
+    provident DECIMAL(15, 2) DEFAULT 0,
+    receivable DECIMAL(15, 2) DEFAULT 0,
+    debt DECIMAL(15, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_asset_records_recorded_at ON asset_records(recorded_at);
+
+-- ==================== 持仓分类表 ====================
+CREATE TABLE IF NOT EXISTS categories (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    sort_order INT DEFAULT 0
+);
+
+-- 预设分类
+INSERT INTO categories (id, name, sort_order) VALUES
+('a_stock_large', 'A股大盘', 1),
+('a_stock_small', 'A股中小', 2),
+('hk_stock', '港股', 3),
+('us_stock', '美股', 4),
+('index_fund', '指数基金', 5),
+('sector_fund', '行业基金', 6),
+('bond_fund', '债券基金', 7),
+('hybrid_fund', '混合基金', 8),
+('overseas_fund', '海外基金', 9)
+ON CONFLICT (id) DO NOTHING;
+
+-- positions 加分类字段
+ALTER TABLE positions ADD COLUMN IF NOT EXISTS category_id VARCHAR(50);

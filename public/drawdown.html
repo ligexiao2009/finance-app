@@ -2,192 +2,2878 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Drawdown Calculator</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="app-config.js"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="投资助手">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>投资助手 Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
+            /* 现代 iOS 色彩系统 */
             --ios-bg: #f2f2f7;
             --ios-card: #ffffff;
+            --ios-card-glass: rgba(255, 255, 255, 0.85);
+            --ios-input-bg: rgba(118, 118, 128, 0.12);
             --ios-primary: #007aff;
-            --ios-up: #ff3b30;    /* 涨红 */
-            --ios-up-bg: rgba(255, 59, 48, 0.1);
-            --ios-down: #34c759;  /* 跌绿 */
-            --ios-down-bg: rgba(52, 199, 89, 0.1);
-            --ios-text: #000000;
-            --ios-secondary-text: #8e8e93;
-            --ios-border: #d1d1d6;
+            --ios-primary-gradient: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
+            --ios-red: #ff3b30;
+            --ios-green: #34c759;
+            --ios-orange: #ff9500;
+            --ios-text: #1c1c1e;
+            --ios-secondary: #8e8e93;
+            --ios-border: rgba(60, 60, 67, 0.1);
+            
+            /* 优化多层柔和阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.08);
+            
+            /* 圆角系统 */
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --ios-bg: #000000;
-                --ios-card: #1c1c1e;
-                --ios-text: #ffffff;
-                --ios-border: #38383a;
-                --ios-up-bg: rgba(255, 69, 58, 0.15);
-                --ios-down-bg: rgba(48, 209, 88, 0.15);
-            }
+        [data-theme="dark"] {
+            --ios-bg: #000000;
+            --ios-card: #1c1c1e;
+            --ios-card-glass: rgba(28, 28, 30, 0.85);
+            --ios-input-bg: rgba(118, 118, 128, 0.24);
+            --ios-text: #f2f2f7;
+            --ios-secondary: #98989d;
+            --ios-border: rgba(84, 84, 88, 0.3);
+            
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            background-color: var(--ios-bg);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overscroll-behavior-y: none;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-            background-color: var(--ios-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
             color: var(--ios-text);
-            margin: 0;
-            display: flex; justify-content: center; align-items: flex-start; 
-            height: 100vh; padding-top: 8vh; box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+            display: flex; justify-content: center;
+            padding: env(safe-area-inset-top) 16px 40px;
+            transition: background-color 0.4s ease, color 0.4s ease;
         }
 
-        .container { width: 92%; max-width: 400px; }
+        .container {
+            width: 100%;
+            max-width: 440px;
+            padding-top: 12px;
+        }
 
+        /* --- Header --- */
         .header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 20px; padding: 0 4px;
-        }
-
-        h1 { font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
-        
-        .clear-btn {
-            font-size: 14px; font-weight: 600; color: var(--ios-primary);
-            background: rgba(0, 122, 255, 0.1); border: none;
-            padding: 8px 16px; border-radius: 20px; cursor: pointer;
-        }
-
-        /* 结果区域 - 背景色动态变化 */
-        .result-group {
-            background: var(--ios-card);
-            border-radius: 16px;
-            padding: 28px 16px;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 24px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 平滑过渡 */
+            padding: 0 4px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.8px;
+        }
+        .theme-toggle {
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            opacity: 0.8;
+            transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+            background: var(--ios-input-bg);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .theme-toggle:active { 
+            transform: scale(0.9); 
+            opacity: 0.5; 
         }
 
-        .res-label { font-size: 13px; color: var(--ios-secondary-text); letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
-        .res-value { font-size: 48px; font-weight: 800; margin: 4px 0; letter-spacing: -1.5px; }
-        .res-sub { font-size: 14px; margin-top: 10px; font-weight: 500; }
-
-        /* 输入区域 */
-        .card {
-            background: var(--ios-card);
+        /* --- 分段切换器 (Segmented Control) --- */
+        .segmented-control {
+            background: var(--ios-input-bg);
             border-radius: 14px;
-            padding: 0 16px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            display: flex;
+            padding: 3px;
+            margin-bottom: 24px;
+        }
+        .segment {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ios-text);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            opacity: 0.6;
+        }
+        .segment.active {
+            background: var(--ios-card);
+            color: var(--ios-text);
+            box-shadow: var(--shadow-sm);
+            opacity: 1;
         }
 
-        .input-item {
-            display: flex; align-items: center; padding: 16px 0;
+        .tool-content {
+            display: none;
+        }
+        .tool-content.active {
+            display: block;
+            animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* --- 核心数值卡片 --- */
+        .display-card {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 32px 24px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .label {
+            font-size: 13px;
+            color: var(--ios-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+        .value {
+            font-size: 48px;
+            font-weight: 800;
+            margin: 12px 0;
+            letter-spacing: -1.5px;
+            font-variant-numeric: tabular-nums;
+        }
+        .sub-value {
+            font-size: 15px;
+            font-weight: 500;
+            min-height: 22px;
+            color: var(--ios-secondary);
+        }
+
+        /* --- 输入区域 --- */
+        .input-group {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .input-group.fund-input-group {
+            overflow: visible;
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 0.5px solid var(--ios-border);
+            position: relative;
+        }
+        .row:last-child { border-bottom: none; }
+        .row label {
+            font-size: 16px;
+            font-weight: 500;
+            flex: 1;
+        }
+        .row input {
+            background: transparent;
+            border: none;
+            color: var(--ios-text);
+            font-size: 17px;
+            text-align: right;
+            width: 60%;
+            outline: none;
+            font-family: inherit;
+            font-weight: 600;
+            padding: 0;
+        }
+        .row input::placeholder { color: var(--ios-secondary); font-weight: 400; }
+        .row .unit {
+            color: var(--ios-secondary);
+            margin-left: 8px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* 快捷操作区 (全选/清空) */
+        .quick-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 10px 20px 14px;
+            background: var(--ios-card);
             border-bottom: 0.5px solid var(--ios-border);
         }
-        .input-item:last-child { border-bottom: none; }
-
-        .label { font-size: 17px; width: 100px; }
-        input {
-            flex: 1; background: transparent; border: none; color: var(--ios-text);
-            font-size: 17px; text-align: right; outline: none;
+        .quick-btn {
+            background: rgba(0, 122, 255, 0.08);
+            color: var(--ios-primary);
+            border: 1px solid rgba(0, 122, 255, 0.10);
+            padding: 7px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            line-height: 1;
         }
-        .unit { color: var(--ios-secondary-text); font-size: 17px; margin-left: 6px; width: 20px; }
+        .quick-btn:active { transform: scale(0.96); opacity: 0.8; }
+        .quick-btn.clear {
+            color: var(--ios-secondary);
+            background: rgba(118, 118, 128, 0.08);
+            border-color: rgba(60, 60, 67, 0.08);
+        }
+
+        /* --- 按钮 --- */
+        .btn-clear {
+            display: block;
+            margin: 24px auto 0;
+            color: var(--ios-primary);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--ios-input-bg);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            transition: all 0.2s ease;
+        }
+        .btn-clear:active { transform: scale(0.96); opacity: 0.8; }
+
+        .up { color: var(--ios-red) !important; }
+        .down { color: var(--ios-green) !important; }
+        .highlight { color: var(--ios-primary); font-weight: 700; }
+        .tip-success { color: var(--ios-green); font-weight: 600;}
+        .tip-warning { color: var(--ios-orange); font-weight: 600;}
+
+        /* --- 基金回撤模块 --- */
+        .btn-analyze {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 18px;
+            background: var(--ios-primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            box-shadow: 0 8px 20px rgba(0, 122, 255, 0.3);
+            letter-spacing: 0.5px;
+        }
+        .btn-analyze:active {
+            transform: translateY(2px) scale(0.98);
+            box-shadow: 0 4px 10px rgba(0, 122, 255, 0.2);
+        }
+        .btn-analyze:disabled {
+            background: var(--ios-input-bg);
+            color: var(--ios-secondary);
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 预设天数标签 */
+        .days-preset {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px 20px;
+            flex-wrap: wrap;
+            background: var(--ios-card);
+        }
+        .days-preset-btn {
+            padding: 8px 14px;
+            background: var(--ios-input-bg);
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--ios-text);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .days-preset-btn.active {
+            background: var(--ios-text);
+            color: var(--ios-bg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 结果卡片 */
+        .fund-result-card {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            position: relative;
+        }
+        .fund-result-card.collapsed {
+            padding-top: 16px;
+            padding-bottom: 12px;
+        }
+        .fund-result-card.has-sort-control {
+            padding-top: 56px;
+        }
+        .fund-result-card.has-sort-control.collapsed {
+            padding-top: 52px;
+        }
+        .fund-top-actions {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .fund-sort-btn,
+        .fund-toolbar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            border: 1px solid rgba(60, 60, 67, 0.08);
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: rgba(118, 118, 128, 0.08);
+            color: var(--ios-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+        }
+        .fund-sort-btn.active {
+            color: var(--ios-primary);
+            border-color: rgba(0, 122, 255, 0.14);
+            background: rgba(0, 122, 255, 0.08);
+        }
+        .fund-toolbar-btn.active {
+            color: var(--ios-primary);
+            border-color: rgba(0, 122, 255, 0.14);
+            background: rgba(0, 122, 255, 0.08);
+        }
+        .fund-sort-btn .sort-icon {
+            font-size: 10px;
+            opacity: 0.78;
+            transform: translateY(-0.5px);
+        }
+        .fund-sort-btn .sort-label {
+            letter-spacing: 0.1px;
+        }
+        .fund-sort-btn:active {
+            transform: scale(0.96);
+        }
+        .fund-header {
+            display: grid;
+            grid-template-columns: 1fr 85px 85px 85px;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .fund-result-card.collapsed .fund-header {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .fund-result-card.collapsed .fund-meta {
+            gap: 4px;
+        }
+        .fund-code {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .fund-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .fund-name {
+            font-size: 13px;
+            color: var(--ios-secondary);
+            font-weight: 500;
+        }
+        .fund-result-card.collapsed .fund-name {
+            line-height: 1.28;
+        }
+        .fund-corner-ribbon {
+            position: absolute;
+            top: 12px;
+            right: -42px;
+            width: 120px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(35deg);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            box-shadow: 0 6px 14px rgba(255, 149, 0, 0.08);
+            pointer-events: none;
+        }
+        .fund-corner-ribbon.with-controls {
+            top: 42px;
+        }
+        .fund-corner-ribbon.recovering {
+            background: linear-gradient(135deg, rgba(255, 149, 0, 0.14), rgba(255, 149, 0, 0.24));
+            color: #a35a00;
+        }
+        .fund-corner-ribbon.recovered {
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.14), rgba(0, 122, 255, 0.22));
+            color: #0b63ce;
+            box-shadow: 0 6px 14px rgba(0, 122, 255, 0.08);
+        }
+        .fund-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(30%, 1fr));
+            gap: 16px 8px;
+        }
+        .fund-card-body {
+            display: block;
+        }
+        .fund-card-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 14px;
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: rgba(0, 122, 255, 0.82);
+            cursor: pointer;
+            padding: 4px 0 0;
+            text-align: right;
+        }
+        .fund-result-card.collapsed .fund-card-toggle {
+            margin-top: 8px;
+            padding-top: 0;
+        }
+        .fund-card-toggle .toggle-icon {
+            font-size: 10px;
+            opacity: 0.72;
+            transition: transform 0.2s ease;
+        }
+        .fund-result-card.collapsed .fund-card-toggle .toggle-icon {
+            transform: rotate(-90deg);
+        }
+        .fund-toolbar-btn {
+            background: rgba(118, 118, 128, 0.08);
+            color: var(--ios-primary);
+        }
+        .fund-toolbar-btn:active {
+            transform: scale(0.96);
+            opacity: 0.85;
+        }
+        .analysis-summary-card {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 18px 18px 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-md);
+        }
+        .analysis-summary-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .analysis-summary-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--ios-text);
+        }
+        .analysis-summary-meta {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            font-weight: 600;
+        }
+        .analysis-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .analysis-summary-item {
+            background: var(--ios-input-bg);
+            border-radius: var(--radius-md);
+            padding: 12px 10px;
+            text-align: center;
+        }
+        .analysis-summary-item.clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .analysis-summary-item.clickable.active {
+            background: rgba(0, 122, 255, 0.10);
+            box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.14);
+        }
+        .analysis-summary-item.clickable:active {
+            transform: scale(0.98);
+        }
+        .analysis-summary-label {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            font-weight: 600;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+        .analysis-summary-value {
+            margin-top: 6px;
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ios-text);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+            word-break: break-word;
+        }
+        .analysis-summary-value.up {
+            color: var(--ios-red);
+        }
+        .analysis-summary-value.down {
+            color: var(--ios-green);
+        }
+        @media (min-width: 380px) {
+            .analysis-summary-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+        .stat-item {
+            text-align: center;
+            background: var(--ios-input-bg);
+            padding: 12px 8px;
+            border-radius: var(--radius-md);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: 800;
+            margin-top: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-value.negative { color: var(--ios-green); }
+        .stat-value.positive { color: var(--ios-red); }
+        .stat-sub {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        .loading-spinner {
+            text-align: center;
+            padding: 40px;
+            color: var(--ios-secondary);
+            font-weight: 500;
+            font-size: 15px;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .error-msg {
+            color: var(--ios-red);
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 59, 48, 0.1);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        /* 净值曲线图 */
+        .chart-container {
+            margin-top: 16px;
+            padding: 14px 12px 10px;
+            background: linear-gradient(180deg, rgba(118, 118, 128, 0.08) 0%, rgba(118, 118, 128, 0.05) 100%);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(60, 60, 67, 0.10);
+            box-shadow: 0 8px 18px rgba(60, 60, 67, 0.05);
+            transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+        }
+        .chart-container.highlighted {
+            border-color: rgba(52, 199, 89, 0.22);
+            box-shadow: 0 10px 24px rgba(52, 199, 89, 0.10);
+            transform: translateY(-1px);
+        }
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+            padding: 0 2px;
+        }
+        .chart-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ios-text);
+            letter-spacing: 0.2px;
+        }
+        .chart-meta {
+            font-size: 11px;
+            color: var(--ios-secondary);
+            font-weight: 500;
+        }
+        .chart-container canvas {
+            width: 100% !important;
+            height: 128px !important;
+        }
+
+        /* --- 多选下拉框样式 (Glassmorphism) --- */
+        .fund-select-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            min-width: 250px;
+        }
+        .fund-select-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            width: 126px;
+            flex-shrink: 0;
+        }
+        .fund-select-display {
+            background: transparent;
+            border: none;
+            color: var(--ios-text);
+            font-size: 15px;
+            width: 100%;
+            outline: none;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .fund-select-text {
+            color: var(--ios-primary);
+        }
+        .fund-select-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(0, 122, 255, 0.10);
+            color: var(--ios-primary);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .fund-select-chevron {
+            color: var(--ios-secondary);
+            font-size: 16px;
+            line-height: 1;
+            transform: translateY(-0.5px);
+        }
+        .fund-inline-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(60, 60, 67, 0.08);
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: rgba(0, 122, 255, 0.08);
+            color: var(--ios-primary);
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .fund-inline-btn.active {
+            background: rgba(0, 122, 255, 0.12);
+            border-color: rgba(0, 122, 255, 0.14);
+            color: var(--ios-primary);
+        }
+        .fund-inline-btn:active {
+            transform: scale(0.96);
+            opacity: 0.85;
+        }
+        .fund-inline-btn.clear {
+            background: rgba(118, 118, 128, 0.08);
+            border-color: rgba(60, 60, 67, 0.08);
+            color: var(--ios-secondary);
+        }
+        .fund-inline-btn.clear.active {
+            background: rgba(118, 118, 128, 0.16);
+            border-color: rgba(60, 60, 67, 0.12);
+            color: var(--ios-text);
+        }
+        .fund-dropdown {
+            position: absolute;
+            top: calc(100% + 12px);
+            right: 0;
+            background: var(--ios-card-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 0.5px solid var(--ios-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            min-width: 300px;
+            display: none;
+            overflow: hidden;
+            transform-origin: top right;
+        }
+        .fund-dropdown.show {
+            display: block;
+            animation: dropdownPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes dropdownPop {
+            from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        #fund-options-list {
+            max-height: 280px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+        .fund-option {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .fund-option:last-child { border-bottom: none; }
+        .fund-option:hover { background: rgba(0, 122, 255, 0.05); }
+        
+        .fund-option-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 1.5px solid var(--ios-secondary);
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+        .fund-option.selected .fund-option-checkbox {
+            background: var(--ios-primary);
+            border-color: var(--ios-primary);
+        }
+        .fund-option-checkbox::after {
+            content: '';
+            width: 6px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) translateY(-1px);
+            display: none;
+        }
+        .fund-option.selected .fund-option-checkbox::after { display: block; }
+        
+        .fund-option-info { flex: 1; min-width: 0; }
+        .fund-option-code { font-size: 15px; font-weight: 600; color: var(--ios-text); }
+        .fund-option-name {
+            font-size: 12px;
+            color: var(-row input-ios-secondary);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .fund-search-box {
+            padding: 12px;
+            background: var(--ios-card);
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+
+        /* 对比图 */
+        .compare-chart-container {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 24px 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-md);
+        }
+        .compare-chart-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ios-text);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .compare-chart-container canvas {
+            width: 100% !important;
+            height: 220px !important;
+        }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--ios-border); border-radius: 10px; }
+
+        /* Loading 遮罩层 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+        [data-theme="dark"] .loading-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .loading-content {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 40px;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            max-width: 400px;
+            width: 90%;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .loading-spinner-large {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--ios-input-bg);
+            border-top-color: var(--ios-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ios-text);
+            margin-bottom: 12px;
+        }
+
+        .loading-progress {
+            font-size: 14px;
+            color: var(--ios-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .progress-bar-container {
+            background: var(--ios-input-bg);
+            border-radius: 10px;
+            height: 6px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--ios-primary-gradient);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .loading-subtext {
+            font-size: 12px;
+            color: var(--ios-secondary);
+            margin-top: 16px;
+        }
+
+        /* 修复进度弹框 */
+        .recovery-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+        [data-theme="dark"] .recovery-modal-overlay {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .recovery-modal {
+            background: var(--ios-card);
+            border-radius: var(--radius-xl);
+            padding: 28px 24px 24px;
+            max-width: 340px;
+            width: 90%;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .recovery-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--ios-text);
+        }
+        .recovery-modal-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 0.5px solid var(--ios-border);
+        }
+        .recovery-modal-row:last-child {
+            border-bottom: none;
+        }
+        .recovery-modal-label {
+            font-size: 15px;
+            color: var(--ios-secondary);
+            font-weight: 500;
+        }
+        .recovery-modal-value {
+            font-size: 18px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .recovery-modal-close {
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            padding: 14px;
+            background: var(--ios-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .recovery-modal-close:active {
+            transform: scale(0.96);
+            opacity: 0.8;
+        }
+        .stat-item.clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .stat-item.clickable.active {
+            background: rgba(0, 122, 255, 0.12);
+            box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.14);
+        }
+        .stat-item.clickable:active {
+            transform: scale(0.96);
+            background: rgba(0, 122, 255, 0.1);
+        }
+         .fund-search-input {
+            width: 100% !important;
+            padding: 10px 14px;
+            background: var(--ios-input-bg);
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            color: var(--ios-text);
+            outline: none;
+        }
     </style>
 </head>
-<body>
+<body data-theme="light">
 
-<div class="container">
+    <div class="container">
     <div class="header">
-        <h1>回撤计算</h1>
-        <button class="clear-btn" onclick="clearAll()">清除</button>
+        <h1>回撤分析</h1>
+        <div class="theme-toggle" onclick="toggleTheme()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </div>
     </div>
 
-    <div class="result-group" id="resultCard">
-        <span class="res-label" id="typeLabel">资产状态</span>
-        <div class="res-value" id="mainResult">0.00%</div>
-        <div class="res-sub" id="subResult">请输入数值</div>
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner-large"></div>
+            <div class="loading-title" id="loading-title">深度分析中</div>
+            <div class="loading-progress" id="loading-progress">正在准备数据...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="loading-subtext" id="loading-subtext">此次分析已耗时 0 秒</div>
+        </div>
     </div>
-    
-    <div class="card">
-        <div class="input-item">
-            <span class="label">前次高点</span>
-            <input type="text" id="highVal" placeholder="0.00" inputmode="text" oninput="validateAndCalc(this)">
-            <span class="unit">%</span>
+
+    <div id="recovery-modal-overlay" class="recovery-modal-overlay" style="display: none;" onclick="closeRecoveryModal(event)">
+        <div class="recovery-modal" onclick="event.stopPropagation()">
+            <div class="recovery-modal-title" id="recovery-modal-title">修复详情</div>
+            <div id="recovery-modal-content"></div>
+            <button class="recovery-modal-close" onclick="closeRecoveryModal()">好的</button>
         </div>
-        <div class="input-item">
-            <span class="label">当前数值</span>
-            <input type="text" id="currentVal" placeholder="0.00" inputmode="text" oninput="validateAndCalc(this)">
-            <span class="unit">%</span>
+    </div>
+
+    <div class="segmented-control">
+        <button class="segment active" onclick="switchTab(0)">基金回撤</button>
+        <button class="segment" onclick="switchTab(1)">成本推算</button>
+        <button class="segment" onclick="switchTab(2)">回撤计算</button>
+    </div>
+
+    <div id="tab-fund" class="tool-content active">
+        <div class="input-group fund-input-group">
+            <div class="row">
+                <label>选择基金</label>
+                <div class="fund-select-wrapper">
+                    <button type="button" class="fund-inline-btn" id="select-all-funds-btn" onclick="event.stopPropagation(); selectAllFunds();">全选</button>
+                    <button type="button" class="fund-inline-btn clear" id="clear-funds-btn" onclick="event.stopPropagation(); clearFundSelection();">清空</button>
+                    <div class="fund-select-status">
+                        <button type="button" class="fund-select-display" id="fund-select-display">点击选择</button>
+                    </div>
+                    <input type="hidden" id="in-fund-codes">
+                    <div class="fund-dropdown" id="fund-dropdown">
+                        <div class="fund-search-box">
+                            <input type="text" class="fund-search-input" id="fund-search-input" placeholder="输入代码或名称搜索" oninput="filterFundOptions(this.value)">
+                        </div>
+                        <div id="fund-options-list"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <label>分析周期</label>
+                <input type="number" id="in-fund-days" placeholder="90" value="90" oninput="onDaysInputChange()">
+                <span class="unit">天</span>
+            </div>
+            <div class="days-preset">
+                <button type="button" class="days-preset-btn" data-days="30" onclick="setDaysPreset(30)">近1月</button>
+                <button type="button" class="days-preset-btn active" data-days="90" onclick="setDaysPreset(90)">近3月</button>
+                <button type="button" class="days-preset-btn" data-days="180" onclick="setDaysPreset(180)">近半年</button>
+                <button type="button" class="days-preset-btn" data-days="365" onclick="setDaysPreset(365)">近1年</button>
+                <button type="button" class="days-preset-btn" data-days="730" onclick="setDaysPreset(730)">近2年</button>
+                <button type="button" class="days-preset-btn" data-days="1095" onclick="setDaysPreset(1095)">近3年</button>
+                <button type="button" class="days-preset-btn" data-days="1825" onclick="setDaysPreset(1825)">近5年</button>
+                <button type="button" class="days-preset-btn" data-days="18250" onclick="setDaysPreset(18250)">成立来</button>
+            </div>
         </div>
+        <button class="btn-analyze" onclick="analyzeFundDrawdown()">开始分析</button>
+        <div id="fund-results"></div>
+    </div>
+
+    <div id="tab-cost" class="tool-content">
+        <div class="display-card" id="card-cost">
+            <div class="label">推算成本点位</div>
+            <div class="value" id="res-cost-point">0.00</div>
+            <div class="sub-value" id="res-cost-tip">输入下方数据以开始推算</div>
+        </div>
+        <div class="input-group">
+            <div class="row">
+                <label>当前点位</label>
+                <input type="number" id="in-now-p" placeholder="例如: 4690" oninput="runCost()">
+                <span class="unit">点</span>
+            </div>
+            <div class="row">
+                <label>收益率</label>
+                <input type="number" id="in-now-y" placeholder="例如: -14.61" oninput="runCost()">
+                <span class="unit">%</span>
+            </div>
+            <div class="row">
+                <label>目标成本</label>
+                <input type="number" id="in-target-p" placeholder="例如: 5000" oninput="runCost()">
+                <span class="unit">点</span>
+            </div>
+        </div>
+        <button class="btn-clear" onclick="clearInputs('cost')">清空重置</button>
+    </div>
+
+    <div id="tab-drawdown" class="tool-content">
+        <div class="display-card" id="card-dd">
+            <div class="label" id="dd-label">实际回撤率</div>
+            <div class="value" id="res-dd-value">0.00%</div>
+            <div class="sub-value" id="res-dd-tip">等待输入数据...</div>
+        </div>
+        <div class="input-group">
+            <div class="row">
+                <label>前高点收益</label>
+                <input type="number" id="in-h-v" placeholder="0.00" oninput="runDD()">
+                <span class="unit">%</span>
+            </div>
+            <div class="row">
+                <label>当前收益率</label>
+                <input type="number" id="in-c-v" placeholder="-14.61" oninput="runDD()">
+                <span class="unit">%</span>
+            </div>
+        </div>
+        <button class="btn-clear" onclick="clearInputs('dd')">清空重置</button>
     </div>
 </div>
 
 <script>
-    function validateAndCalc(el) {
-        let val = el.value;
-        val = val.replace(/[^\d.-]/g, ""); 
-        if (val.indexOf('-') > 0) val = val.replace('-', ''); 
-        const dots = val.split('.');
-        if (dots.length > 2) val = dots + '.' + dots.slice(1).join(''); 
-        el.value = val;
-        calculate();
+    const STORAGE_KEY = 'invest_drawdown_v1';
+
+    // 持仓基金数据
+    let holdingFunds = [];
+    let selectedFundCodes = new Set();
+    let fundQuotes = {}; // 存储基金行情数据
+    let customFundNames = {}; // 缓存自定义基金名称
+    let loadingFundCodes = new Set(); // 正在加载中的基金代码
+    let loadingTimerId = null;
+    let loadingStartTime = 0;
+
+    // 初始化
+    window.onload = function() {
+        loadData();
+        const savedTab = parseInt(localStorage.getItem('invest_dd_tab') || '0');
+        switchTab(savedTab);
+        loadHoldingFunds().then(() => {
+            // 加载完成后默认全选持仓
+            selectAllFunds();
+        });
+        initFundSelect();
+    };
+
+    // 主题切换
+    function toggleTheme() {
+        const body = document.body;
+        const isDark = body.getAttribute('data-theme') === 'dark';
+        body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        localStorage.setItem('invest_dd_theme', isDark ? 'light' : 'dark');
+        
+        // 更换 SVG 图标
+        const svg = document.querySelector('.theme-toggle svg');
+        if (isDark) {
+            // 月亮换太阳
+            svg.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+        } else {
+            // 太阳换月亮
+            svg.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+        }
     }
 
-    function calculate() {
-        const hStr = document.getElementById('highVal').value;
-        const cStr = document.getElementById('currentVal').value;
-        const cardEl = document.getElementById('resultCard');
-        const mainEl = document.getElementById('mainResult');
-        const subEl = document.getElementById('subResult');
-        const labelEl = document.getElementById('typeLabel');
+    // 加载保存的主题
+    (function() {
+        const savedTheme = localStorage.getItem('invest_dd_theme');
+        const body = document.body;
+        if (savedTheme) {
+            body.setAttribute('data-theme', savedTheme);
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            body.setAttribute('data-theme', 'dark');
+        }
+        
+        // 初始化图标
+        setTimeout(() => {
+           const isDark = body.getAttribute('data-theme') === 'dark';
+           const svg = document.querySelector('.theme-toggle svg');
+           if(isDark && svg) svg.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+        }, 50);
+    })();
 
-        if (hStr === "" || cStr === "" || hStr === "-" || cStr === "-") {
-            resetDisplay();
+    function switchTab(index) {
+        const tabs = document.querySelectorAll('.tool-content');
+        const segments = document.querySelectorAll('.segment');
+        tabs.forEach((t, i) => t.classList.toggle('active', i === index));
+        segments.forEach((s, i) => s.classList.toggle('active', i === index));
+        localStorage.setItem('invest_dd_tab', index);
+    }
+
+    function runCost() {
+        const p = parseFloat(document.getElementById('in-now-p').value);
+        const y = parseFloat(document.getElementById('in-now-y').value);
+        const t = parseFloat(document.getElementById('in-target-p').value);
+        const resP = document.getElementById('res-cost-point');
+        const resT = document.getElementById('res-cost-tip');
+
+        saveData();
+
+        if (isNaN(p) || isNaN(y)) return;
+
+        const cost = p / (1 + (y / 100));
+        resP.innerText = cost.toFixed(2);
+
+        if (!isNaN(t)) {
+            if (t >= cost) {
+                resT.innerHTML = '<span class="tip-success">✓ 已达标，无需补仓</span>';
+            } else if (t <= p) {
+                resT.innerHTML = '<span class="tip-warning">⚠ 目标低于现价，无法测算</span>';
+            } else {
+                const multi = (cost - t) / (t - p);
+                resT.innerHTML = '需补入当前仓位 <span class="highlight">' + multi.toFixed(2) + '</span> 倍资金';
+            }
+        } else {
+            resT.innerHTML = '距回本还需上涨 <span class="highlight">' + ((cost/p-1)*100).toFixed(2) + '%</span>';
+        }
+    }
+
+    function runDD() {
+        const h = parseFloat(document.getElementById('in-h-v').value);
+        const c = parseFloat(document.getElementById('in-c-v').value);
+        const valEl = document.getElementById('res-dd-value');
+        const tipEl = document.getElementById('res-dd-tip');
+        const labelEl = document.getElementById('dd-label');
+
+        saveData();
+
+        if (isNaN(h) || isNaN(c)) return;
+
+        const dd = ((1+c/100)/(1+h/100) - 1) * 100;
+        valEl.innerText = (dd > 0 ? "+" : "") + dd.toFixed(2) + "%";
+        valEl.className = "value " + (dd >= 0 ? "up" : "down");
+        labelEl.innerText = dd >= 0 ? "资产增长率" : "实际回撤率";
+
+        const diff = Math.abs(c - h).toFixed(2);
+        tipEl.innerHTML = dd >= 0
+            ? '<span class="up">↑</span> 上涨 ' + diff + ' 个百分点'
+            : '<span class="down">↓</span> 回撤 ' + diff + ' 个百分点';
+    }
+
+    function clearInputs(type) {
+        if(type === 'cost') {
+            ['in-now-p', 'in-now-y', 'in-target-p'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('res-cost-point').innerText = '0.00';
+            document.getElementById('res-cost-tip').innerText = '输入下方数据以开始推算';
+        } else {
+            ['in-h-v', 'in-c-v'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('res-dd-value').innerText = '0.00%';
+            document.getElementById('res-dd-value').className = 'value';
+            document.getElementById('dd-label').innerText = '实际回撤率';
+            document.getElementById('res-dd-tip').innerText = '等待输入数据...';
+        }
+        saveData();
+    }
+
+    function saveData() {
+        const data = {
+            'in-now-p': document.getElementById('in-now-p').value,
+            'in-now-y': document.getElementById('in-now-y').value,
+            'in-target-p': document.getElementById('in-target-p').value,
+            'in-h-v': document.getElementById('in-h-v').value,
+            'in-c-v': document.getElementById('in-c-v').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadData() {
+        const rawData = localStorage.getItem(STORAGE_KEY);
+        if (!rawData) return;
+        try {
+            const data = JSON.parse(rawData);
+            for (let id in data) {
+                const el = document.getElementById(id);
+                if (el && data[id]) el.value = data[id];
+            }
+            runCost();
+            runDD();
+        } catch (e) {}
+    }
+
+    let chartDataList = [];
+    let latestFundAnalysisResults = [];
+    let latestFundQuotes = {};
+    let fundResultSortMode = 'drawdown';
+    let chartInstances = {};
+    let chartFocusStates = {};
+    let chartItemsByFundCode = {};
+    let tradeHistoryByFundCode = {};
+    let tradeHistoryLoadingByFundCode = {};
+    let expandedFundCards = {};
+    const DEFAULT_EXPANDED_FUND_CARDS = 0;
+    const AUTO_EXPAND_FUND_CARDS_LIMIT = 3;
+    let fundResultFilterMode = '';
+    
+    function getCSSVariableValue(name) {
+        return getComputedStyle(document.body).getPropertyValue(name).trim();
+    }
+
+    function getFundShortName(name) {
+        const compactName = (name || '').replace(/\s+/g, '');
+        if (!compactName) return '';
+        if (compactName.length <= 8) return compactName;
+        return compactName.slice(0, 8);
+    }
+
+    function getFundChartItem(result) {
+        if (!result?.success) return null;
+        const dd = result.maxDrawdown;
+        return {
+            id: 'chart-' + result.fundCode,
+            fundCode: result.fundCode,
+            navList: result.navList,
+            peakDate: dd.peakDate,
+            troughDate: dd.troughDate,
+            costChangePercent: result.costChangePercent,
+            recoveryDate: dd.recoveryDate,
+            hasRecoveryProgress: Boolean(dd.recoveryDate || dd.currentRecoveryPercent),
+            tradeRecords: tradeHistoryByFundCode[result.fundCode] || []
+        };
+    }
+
+    function getTradeRecordDate(record) {
+        if (!record) return '';
+        if (record.localDate) return String(record.localDate).slice(0, 10).replace(/\//g, '-');
+        if (record.createdAt) return String(record.createdAt).slice(0, 10).replace(/\//g, '-');
+        return '';
+    }
+
+    function getTradeRecordKind(type) {
+        const text = String(type || '').toLowerCase();
+        if (/(reduce|sell|redeem|赎回|卖)/.test(text)) return 'sell';
+        if (/(add|buy|申购|买)/.test(text)) return 'buy';
+        return 'buy';
+    }
+
+    function getTradeMarkerData(navList, tradeRecords = []) {
+        if (!Array.isArray(navList) || !navList.length || !Array.isArray(tradeRecords) || !tradeRecords.length) {
+            return [];
+        }
+
+        const labels = navList.map(n => String(n.date || '').replace(/\//g, '-'));
+        const firstNav = navList[0].nav;
+        const navByDate = new Map();
+        navList.forEach(item => {
+            navByDate.set(String(item.date || '').replace(/\//g, '-'), item.nav);
+        });
+
+        const groupedMarkers = new Map();
+
+        tradeRecords.forEach(record => {
+            const tradeDate = getTradeRecordDate(record);
+            const matchedDate = labels.find(label => label >= tradeDate);
+            if (!matchedDate) return;
+            const nav = navByDate.get(matchedDate);
+            if (!nav || !firstNav) return;
+
+            const existing = groupedMarkers.get(matchedDate);
+            if (existing) {
+                existing.records.push(record);
+                return;
+            }
+
+            groupedMarkers.set(matchedDate, {
+                x: matchedDate,
+                y: ((nav / firstNav) - 1) * 100,
+                records: [record],
+                kind: getTradeRecordKind(record.type),
+                tradeDate
+            });
+        });
+
+        return Array.from(groupedMarkers.values()).map(marker => {
+            const kinds = new Set(marker.records.map(record => getTradeRecordKind(record.type)));
+            const finalKind = kinds.size > 1 ? 'mixed' : marker.kind;
+            return {
+                ...marker,
+                kind: finalKind
+            };
+        });
+    }
+
+    function getTradeSpotlightMarker(markers = []) {
+        if (!Array.isArray(markers) || !markers.length) return null;
+        const sorted = [...markers].sort((a, b) => String(b.tradeDate || '').localeCompare(String(a.tradeDate || '')));
+        return sorted.find(marker => marker.kind === 'buy') || sorted[0];
+    }
+
+    function getChartConfig(navList, peakDate, troughDate, costChangePercent = null, focusState = '', recoveryDate = '', hasRecoveryProgress = false, tradeRecords = []) {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+        const textColor = isDark ? '#98989d' : '#8e8e93';
+        const firstNav = navList[0].nav;
+        const normalData = [];
+        const drawdownData = [];
+        const recoveryData = [];
+        const tradeMarkerData = getTradeMarkerData(navList, tradeRecords);
+        const normalizeDate = (d) => (d || '').replace(/\//g, '-');
+        const pDate = normalizeDate(peakDate);
+        const tDate = normalizeDate(troughDate);
+        const rDate = normalizeDate(recoveryDate);
+        const isDrawdownFocused = focusState === 'drawdown';
+        const recoveryEndDate = rDate || normalizeDate(navList[navList.length - 1]?.date);
+        const shouldShowRecovery = Boolean(tDate && recoveryEndDate && hasRecoveryProgress);
+
+        navList.forEach((n, index) => {
+            const nDate = normalizeDate(n.date);
+            const isInRange = nDate >= pDate && nDate <= tDate;
+            const isRecoveryRange = shouldShowRecovery && nDate >= tDate && nDate <= recoveryEndDate;
+            const changePercent = ((n.nav / firstNav) - 1) * 100;
+            normalData.push(isDrawdownFocused && (isInRange || isRecoveryRange) ? null : changePercent);
+            drawdownData.push(isDrawdownFocused && isInRange ? changePercent : null);
+            recoveryData.push(isDrawdownFocused && isRecoveryRange ? changePercent : null);
+
+            // Let the highlighted segment inherit one point from the previous section
+            // so the transition looks continuous instead of leaving a small visual gap.
+            if (isDrawdownFocused && isInRange && index > 0 && drawdownData[index - 1] === null) {
+                drawdownData[index - 1] = normalData[index - 1];
+            }
+            if (isDrawdownFocused && isRecoveryRange && index > 0 && recoveryData[index - 1] === null) {
+                recoveryData[index - 1] = drawdownData[index - 1] ?? normalData[index - 1];
+            }
+        });
+
+        const datasets = [
+            {
+                label: '净值',
+                kind: 'nav',
+                data: normalData,
+                borderColor: '#007aff',
+                borderWidth: 2,
+                fill: true,
+                backgroundColor: (context) => {
+                    const chart = context.chart;
+                    const {ctx, chartArea} = chart;
+                    if (!chartArea) return null;
+                    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                    gradient.addColorStop(0, isDark ? 'rgba(0,122,255,0.2)' : 'rgba(0,122,255,0.1)');
+                    gradient.addColorStop(1, 'rgba(0,122,255,0)');
+                    return gradient;
+                },
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: false
+            }
+        ];
+
+        if (isDrawdownFocused) {
+            datasets.push({
+                label: '回撤段',
+                kind: 'drawdown',
+                data: drawdownData,
+                borderColor: '#34c759',
+                borderWidth: 4,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        }
+
+        if (isDrawdownFocused && shouldShowRecovery) {
+            datasets.push({
+                label: '修复区间',
+                kind: 'recovery',
+                data: recoveryData,
+                borderColor: '#ff9500',
+                borderWidth: 3,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        }
+
+        if (costChangePercent !== null && costChangePercent !== undefined) {
+            const costData = new Array(navList.length).fill(costChangePercent);
+            datasets.push({
+                label: '持仓成本',
+                kind: 'cost',
+                data: costData,
+                borderColor: '#ff9500',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        }
+
+        if (tradeMarkerData.length) {
+            datasets.push({
+                label: '交易记录',
+                kind: 'trade',
+                data: tradeMarkerData,
+                showLine: false,
+                borderWidth: 0,
+                pointRadius: ctx => (ctx.raw?.records?.length || 1) > 1 ? 3.1 : 2.5,
+                pointHoverRadius: 5,
+                pointHitRadius: 14,
+                pointBackgroundColor: 'rgba(255,255,255,0.96)',
+                pointBorderColor: ctx => {
+                    if (ctx.raw?.kind === 'sell') return '#34c759';
+                    if (ctx.raw?.kind === 'mixed') return '#8e8e93';
+                    return '#ff5a5f';
+                },
+                pointBorderWidth: ctx => (ctx.raw?.records?.length || 1) > 1 ? 1.8 : 1.4,
+                pointStyle: 'circle'
+            });
+        }
+
+        const spotlightTrade = getTradeSpotlightMarker(tradeMarkerData);
+        const spotlightPlugin = spotlightTrade ? {
+            id: `trade-spotlight-${spotlightTrade.x}-${spotlightTrade.kind}`,
+            afterDatasetsDraw(chart) {
+                const { ctx, chartArea, scales } = chart;
+                if (!chartArea || !scales.x || !scales.y) return;
+                const x = scales.x.getPixelForValue(spotlightTrade.x);
+                const y = scales.y.getPixelForValue(spotlightTrade.y);
+                if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+                const label = spotlightTrade.kind === 'sell' ? '减仓' : spotlightTrade.kind === 'mixed' ? '交易' : '加仓';
+                const bgColor = spotlightTrade.kind === 'sell' ? '#34c759' : spotlightTrade.kind === 'mixed' ? '#8e8e93' : '#ff5a5f';
+                const textColor = '#ffffff';
+                const fontSize = 10;
+                const padX = 8;
+                const padY = 5;
+                const radius = 6;
+                const pointerH = 5;
+                ctx.save();
+                ctx.font = `600 ${fontSize}px "SF Pro Display", sans-serif`;
+                const boxW = ctx.measureText(label).width + padX * 2;
+                const boxH = fontSize + padY * 2;
+                const prefersRight = x < chartArea.left + (chartArea.right - chartArea.left) * 0.65;
+                let boxX = prefersRight ? x + 7 : x - boxW - 7;
+                boxX = Math.max(chartArea.left + 4, Math.min(boxX, chartArea.right - boxW - 4));
+                let boxY = Math.max(chartArea.top + 4, y - boxH - 14);
+                const pointerX = Math.max(boxX + 10, Math.min(x, boxX + boxW - 10));
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = bgColor;
+
+                ctx.beginPath();
+                ctx.moveTo(boxX + radius, boxY);
+                ctx.lineTo(boxX + boxW - radius, boxY);
+                ctx.quadraticCurveTo(boxX + boxW, boxY, boxX + boxW, boxY + radius);
+                ctx.lineTo(boxX + boxW, boxY + boxH - radius);
+                ctx.quadraticCurveTo(boxX + boxW, boxY + boxH, boxX + boxW - radius, boxY + boxH);
+                ctx.lineTo(pointerX + 5, boxY + boxH);
+                ctx.lineTo(x, boxY + boxH + pointerH);
+                ctx.lineTo(pointerX - 5, boxY + boxH);
+                ctx.lineTo(boxX + radius, boxY + boxH);
+                ctx.quadraticCurveTo(boxX, boxY + boxH, boxX, boxY + boxH - radius);
+                ctx.lineTo(boxX, boxY + radius);
+                ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+                ctx.closePath();
+                ctx.shadowColor = 'rgba(0,0,0,0.10)';
+                ctx.shadowBlur = 8;
+                ctx.shadowOffsetY = 2;
+                ctx.fill();
+
+                ctx.shadowColor = 'transparent';
+                ctx.fillStyle = textColor;
+                ctx.fillText(label, boxX + padX, boxY + boxH / 2 + 0.5);
+                ctx.restore();
+            }
+        } : null;
+
+        return {
+            data: {
+                labels: navList.map(n => normalizeDate(n.date)),
+                datasets
+            },
+            plugins: spotlightPlugin ? [spotlightPlugin] : [],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)',
+                        titleColor: isDark ? '#fff' : '#000',
+                        bodyColor: isDark ? '#ccc' : '#333',
+                        borderColor: gridColor,
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            title: items => {
+                                if (!items?.length) return '';
+                                const raw = items[0].raw;
+                                if (raw?.records?.length) return raw.tradeDate || items[0].label || '';
+                                return items[0].label || '';
+                            },
+                            label: ctx => {
+                                if (ctx.dataset.kind === 'trade' && ctx.raw?.records?.length) {
+                                    const records = ctx.raw.records;
+                                    const buyCount = records.filter(record => getTradeRecordKind(record.type) === 'buy').length;
+                                    const sellCount = records.length - buyCount;
+                                    const summary = [];
+                                    if (buyCount) summary.push(`加仓 ${buyCount} 笔`);
+                                    if (sellCount) summary.push(`减仓 ${sellCount} 笔`);
+                                    const totalAmount = records.reduce((sum, record) => sum + (Number(record.amount) || 0), 0);
+                                    if (totalAmount) summary.push(`金额 ${Math.round(totalAmount)}`);
+                                    return summary.join(' · ');
+                                }
+                                if (ctx.parsed.y !== null) {
+                                    let prefix = '';
+                                    if (ctx.dataset.kind === 'drawdown') {
+                                        prefix = '回撤 ';
+                                    } else if (ctx.dataset.kind === 'recovery') {
+                                        prefix = '修复 ';
+                                    } else if (ctx.dataset.kind === 'cost') {
+                                        prefix = '持仓成本 ';
+                                        return prefix + ctx.parsed.y.toFixed(2) + '%';
+                                    } else {
+                                        prefix = '涨跌 ';
+                                    }
+                                    const sign = ctx.parsed.y >= 0 ? '+' : '';
+                                    return prefix + sign + ctx.parsed.y.toFixed(2) + '%';
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: { display: false },
+                        ticks: {
+                            color: textColor,
+                            maxTicksLimit: 4,
+                            font: { size: 10 },
+                            callback: function(value, index, ticks) {
+                                const label = this.getLabelForValue(value);
+                                if (!label) return '';
+                                if (index === 0) return label;
+                                const prevValue = ticks[index - 1].value;
+                                const prevLabel = this.getLabelForValue(prevValue);
+                                if (label.substring(0, 4) !== prevLabel.substring(0, 4)) return label;
+                                return label;
+                            }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        border: { display: false },
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            maxTicksLimit: 5,
+                            font: { size: 10 },
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function renderFundChart(item) {
+        const ctx = document.getElementById(item.id);
+        if (!ctx || !item.navList || item.navList.length === 0) return;
+        if (chartInstances[item.id]) {
+            chartInstances[item.id].destroy();
+        }
+        const chartConfig = getChartConfig(
+            item.navList,
+            item.peakDate,
+            item.troughDate,
+            item.costChangePercent,
+            chartFocusStates[item.id] || '',
+            item.recoveryDate,
+            item.hasRecoveryProgress,
+            item.tradeRecords || []
+        );
+        chartInstances[item.id] = new Chart(ctx, {
+            type: 'line',
+            data: chartConfig.data,
+            options: chartConfig.options,
+            plugins: chartConfig.plugins || []
+        });
+    }
+
+    async function ensureFundTradeHistory(fundCode) {
+        if (tradeHistoryByFundCode[fundCode]) return tradeHistoryByFundCode[fundCode];
+        if (tradeHistoryLoadingByFundCode[fundCode]) return tradeHistoryLoadingByFundCode[fundCode];
+
+        const holdingFund = holdingFunds.find(f => f.code === fundCode);
+        if (!holdingFund?.id) {
+            tradeHistoryByFundCode[fundCode] = [];
+            return [];
+        }
+
+        tradeHistoryLoadingByFundCode[fundCode] = fetch(window.API_BASE_URL + '/api/trade-history/' + holdingFund.id)
+            .then(res => res.json())
+            .then(data => {
+                const records = Array.isArray(data?.records) ? data.records : [];
+                tradeHistoryByFundCode[fundCode] = records;
+                return records;
+            })
+            .catch(error => {
+                console.error('加载交易历史失败:', fundCode, error);
+                tradeHistoryByFundCode[fundCode] = [];
+                return [];
+            })
+            .finally(() => {
+                delete tradeHistoryLoadingByFundCode[fundCode];
+            });
+
+        return tradeHistoryLoadingByFundCode[fundCode];
+    }
+
+    function hydrateExpandedFundTrades(items = []) {
+        items.forEach(item => {
+            if (!item?.fundCode || (Array.isArray(item.tradeRecords) && item.tradeRecords.length)) return;
+            ensureFundTradeHistory(item.fundCode).then(records => {
+                item.tradeRecords = records;
+                if (chartInstances[item.id]) {
+                    renderFundChart(item);
+                }
+            });
+        });
+    }
+
+    function focusFundChart(chartId, focusType = 'drawdown') {
+        const nextState = chartFocusStates[chartId] === focusType ? '' : focusType;
+        const previousState = chartFocusStates[chartId] || '';
+        chartFocusStates = {};
+        document.querySelectorAll('.chart-container.highlighted').forEach(el => el.classList.remove('highlighted'));
+        document.querySelectorAll('.stat-item.clickable.active').forEach(el => el.classList.remove('active'));
+
+        const targetItem = chartDataList.find(item => item.id === chartId);
+
+        if (!nextState) {
+            if (previousState && targetItem) {
+                renderFundChart(targetItem);
+            }
             return;
         }
 
-        const h = parseFloat(hStr);
-        const c = parseFloat(cStr);
-        const diffPoints = (c - h).toFixed(2);
-        const highNet = 1 + (h / 100);
-        const currNet = 1 + (c / 100);
-        
-        if (currNet >= highNet) {
-            // 增长状态：背景变红
-            cardEl.style.backgroundColor = "var(--ios-up-bg)";
-            labelEl.innerText = "资产增长率";
-            const growth = ((currNet - highNet) / highNet * 100).toFixed(2);
-            mainEl.innerText = "+" + growth + "%";
-            mainEl.style.color = "var(--ios-up)";
-            subEl.innerText = "📈 较前高上涨 " + Math.abs(diffPoints) + " 个百分点";
-            subEl.style.color = "var(--ios-up)";
-        } else {
-            // 回撤状态：背景变绿
-            cardEl.style.backgroundColor = "var(--ios-down-bg)";
-            labelEl.innerText = "实际回撤率";
-            const drawdown = ((highNet - currNet) / highNet * 100).toFixed(2);
-            mainEl.innerText = "-" + drawdown + "%";
-            mainEl.style.color = "var(--ios-down)";
-            subEl.innerText = "📉 较前高跌了 " + Math.abs(diffPoints) + " 个百分点";
-            subEl.style.color = "var(--ios-down)";
+        chartFocusStates[chartId] = nextState;
+        const canvas = document.getElementById(chartId);
+        const chartContainer = canvas?.closest('.chart-container');
+        const activeStat = document.querySelector(`[data-chart-id="${chartId}"][data-focus="${focusType}"]`);
+        if (chartContainer) {
+            chartContainer.classList.add('highlighted');
+            chartContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        if (activeStat) activeStat.classList.add('active');
+        if (targetItem) {
+            renderFundChart(targetItem);
+        }
+    }
+    
+    function drawCompareChart(canvasId, results) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(60,60,67,0.08)';
+        const textColor = isDark ? '#98989d' : '#8e8e93';
+
+        const colors = [
+            '#007aff', '#ff3b30', '#34c759', '#ff9500', '#af52de',
+            '#5856d6', '#ff2d55', '#00c7be'
+        ];
+
+        const allDates = new Set();
+        results.forEach(r => {
+            if (r.success && r.navList) {
+                r.navList.forEach(n => allDates.add(n.date));
+            }
+        });
+        const sortedDates = Array.from(allDates).sort();
+
+        const datasets = [];
+        results.forEach((r, idx) => {
+            if (!r.success || !r.navList) return;
+            const navMap = new Map();
+            r.navList.forEach(n => navMap.set(n.date, n.nav));
+
+            let firstNav = null;
+            for (const date of sortedDates) {
+                const nav = navMap.get(date);
+                if (nav) {
+                    firstNav = nav;
+                    break;
+                }
+            }
+            if (!firstNav) return;
+
+            const data = [];
+            sortedDates.forEach(date => {
+                const nav = navMap.get(date);
+                if (nav) {
+                    data.push(((nav / firstNav) - 1) * 100);
+                } else {
+                    data.push(null);
+                }
+            });
+
+            datasets.push({
+                label: `${r.fundCode} ${getFundShortName(r.fundName)}`,
+                fullLabel: `${r.fundCode} ${r.fundName || ''}`,
+                data: data,
+                borderColor: colors[idx % colors.length],
+                borderWidth: 2,
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHitRadius: 15,
+                spanGaps: true
+            });
+        });
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: sortedDates, // 使用完整日期作为标签
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: textColor,
+                            font: { size: 11, family: "SF Pro Display" },
+                            usePointStyle: true,
+                            boxWidth: 6
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)',
+                        titleColor: isDark ? '#fff' : '#000',
+                        bodyColor: isDark ? '#ccc' : '#333',
+                        borderColor: gridColor,
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: ctx => {
+                                if (ctx.parsed.y !== null) {
+                                    const sign = ctx.parsed.y >= 0 ? '+' : '';
+                                    const displayLabel = ctx.dataset.fullLabel || ctx.dataset.label;
+                                    return ` ${displayLabel}: ${sign}${ctx.parsed.y.toFixed(2)}%`;
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                   x: {
+                        display: true,
+                        grid: { display: false },
+                        ticks: { 
+                            color: textColor, 
+                            maxTicksLimit: 6, 
+                            font: { size: 10 },
+                            callback: function(value, index, ticks) {
+                            const label = this.getLabelForValue(value); // 拿到 "2025-01-16"
+                            if (!label) return '';
+                            
+                            // 第一个点必须带年份
+                            if (index === 0) return label;
+
+                            // 拿到前一个显示的点的索引（注意这里要用 ticks 数组）
+                            const prevValue = ticks[index - 1].value;
+                            const prevLabel = this.getLabelForValue(prevValue);
+                            
+                            // 比较年份是否变化
+                            if (label.substring(0, 4) !== prevLabel.substring(0, 4)) {
+                                return label; // 跨年了，显示全称
+                            }
+                            return label; // 同一年，显示 MM-DD
+                                }
+                            }
+                        },
+                    y: {
+                        display: true,
+                        border: { display: false },
+                        grid: { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            font: { size: 10 },
+                            callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function drawChart(canvasId, navList, peakDate, troughDate, costChangePercent = null, recoveryDate = '', hasRecoveryProgress = false, tradeRecords = []) {
+        renderFundChart({
+            id: canvasId,
+            navList,
+            peakDate,
+            troughDate,
+            costChangePercent,
+            recoveryDate,
+            hasRecoveryProgress,
+            tradeRecords
+        });
+    }
+
+    async function loadHoldingFunds() {
+        try {
+            if(typeof window.API_BASE_URL === 'undefined') window.API_BASE_URL = '';
+            const response = await fetch(window.API_BASE_URL + '/api/data');
+            const data = await response.json();
+            if (data && data.rows) {
+                holdingFunds = data.rows.filter(row => row.isFund === true || row.isFund === 'true' || row.isFund === 1);
+                if (holdingFunds.length > 0) {
+                    const params = new URLSearchParams();
+                    params.set('items', holdingFunds.map(f => `${f.code}:1`).join(','));
+                    const quotesRes = await fetch(window.API_BASE_URL + `/api/quotes?${params.toString()}`);
+                    const quotesData = await quotesRes.json();
+                    fundQuotes = quotesData?.quotes || {};
+                }
+                renderFundOptions();
+            }
+        } catch (e) {
+            console.error('加载持仓基金失败:', e);
         }
     }
 
-    function clearAll() {
-        document.getElementById('highVal').value = "";
-        document.getElementById('currentVal').value = "";
-        resetDisplay();
+    function initFundSelect() {
+        const displayBtn = document.getElementById('fund-select-display');
+        const dropdown = document.getElementById('fund-dropdown');
+        const searchInput = document.getElementById('fund-search-input');
+
+        displayBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isShowing = dropdown.classList.toggle('show');
+            if (isShowing && searchInput) {
+                searchInput.value = '';
+                renderFundOptions('');
+                setTimeout(() => searchInput.focus(), 50);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && e.target !== displayBtn) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('click', (e) => e.stopPropagation());
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const kw = searchInput.value.trim();
+                    if (kw && /^\d+$/.test(kw)) {
+                        toggleFundSelection(kw);
+                        searchInput.value = '';
+                        renderFundOptions('');
+                    }
+                }
+            });
+        }
     }
 
-    function resetDisplay() {
-        const cardEl = document.getElementById('resultCard');
-        const mainEl = document.getElementById('mainResult');
-        const subEl = document.getElementById('subResult');
-        cardEl.style.backgroundColor = "var(--ios-card)";
-        mainEl.innerText = "0.00%";
-        mainEl.style.color = "var(--ios-text)";
-        subEl.innerText = "请输入数值";
-        subEl.style.color = "var(--ios-secondary-text)";
-        document.getElementById('typeLabel').innerText = "资产状态";
+    function filterFundOptions(keyword) { renderFundOptions(keyword); }
+
+    async function fetchCustomFundName(fundCode) {
+        if (customFundNames[fundCode] || loadingFundCodes.has(fundCode)) return;
+        loadingFundCodes.add(fundCode);
+        try {
+            const res = await fetch(window.API_BASE_URL + '/api/fund-estimate/' + fundCode);
+            const data = await res.json();
+            if (data.success && data.fundName) {
+                customFundNames[fundCode] = data.fundName;
+                const searchInput = document.getElementById('fund-search-input');
+                if (searchInput) renderFundOptions(searchInput.value);
+            }
+        } catch (e) {
+            console.error('获取基金名称失败:', e);
+        } finally {
+            loadingFundCodes.delete(fundCode);
+        }
+    }
+
+    function renderFundOptions(searchKeyword = '') {
+        const container = document.getElementById('fund-options-list');
+        if (!container) return;
+        const kw = searchKeyword.trim().toLowerCase();
+        let filteredFunds = holdingFunds;
+        if (kw) {
+            filteredFunds = holdingFunds.filter(fund =>
+                (fund.code && fund.code.toLowerCase().includes(kw)) ||
+                (fund.name && fund.name.toLowerCase().includes(kw))
+            );
+        }
+
+        filteredFunds = [...filteredFunds].sort((a, b) => {
+            const getProfit = (fund) => {
+                const quote = fundQuotes[`${fund.code}:1`];
+                if (quote && quote.price && fund.cost && fund.cost > 0) {
+                    return ((quote.price - fund.cost) / fund.cost) * 100;
+                }
+                return 0;
+            };
+            return getProfit(a) - getProfit(b);
+        });
+
+        let html = '';
+        html += filteredFunds.map(fund => {
+            const quote = fundQuotes[`${fund.code}:1`];
+            let profitHtml = '';
+            if (quote && quote.price && fund.cost && fund.cost > 0) {
+                const profitPercent = ((quote.price - fund.cost) / fund.cost) * 100;
+                const color = profitPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                const sign = profitPercent >= 0 ? '+' : '';
+                profitHtml = `<span style="float: right; color: ${color}; font-weight: 600;">${sign}${profitPercent.toFixed(2)}%</span>`;
+            }
+            return `
+            <div class="fund-option ${selectedFundCodes.has(fund.code) ? 'selected' : ''}" data-code="${fund.code}">
+                <div class="fund-option-checkbox"></div>
+                <div class="fund-option-info">
+                    <div class="fund-option-code">${fund.code}</div>
+                    <div class="fund-option-name">${fund.name || ''}${profitHtml}</div>
+                </div>
+            </div>
+        `}).join('');
+
+        if (kw && /^\d+$/.test(kw) && !holdingFunds.some(f => f.code === kw)) {
+            if (filteredFunds.length > 0) html += `<div style="height: 0.5px; background: var(--ios-border); margin: 0 16px;"></div>`;
+            const isSelected = selectedFundCodes.has(kw);
+            const fundName = customFundNames[kw];
+            const isLoading = loadingFundCodes.has(kw);
+
+            let displayName = isSelected ? (fundName ? `${fundName} · 已添加` : '已添加') : (fundName ? fundName : (isLoading ? '加载中...' : '添加此基金'));
+            html += `
+            <div class="fund-option ${isSelected ? 'selected' : ''}" data-code="${kw}" data-custom="true">
+                <div class="fund-option-checkbox"></div>
+                <div class="fund-option-info">
+                    <div class="fund-option-code">${kw}</div>
+                    <div class="fund-option-name" style="color: ${isSelected && fundName ? 'var(--ios-secondary)' : 'var(--ios-primary)'};">
+                        ${displayName}
+                    </div>
+                </div>
+            </div>`;
+            if (!fundName && !isLoading) fetchCustomFundName(kw);
+        }
+
+        if (!html) html = '<div style="padding: 30px; text-align: center; color: var(--ios-secondary); font-size: 14px;">暂无相关基金</div>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.fund-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                toggleFundSelection(opt.dataset.code);
+            });
+        });
+    }
+
+    function toggleFundSelection(code) {
+        selectedFundCodes.has(code) ? selectedFundCodes.delete(code) : selectedFundCodes.add(code);
+        updateFundSelection();
+    }
+
+    function updateFundSelection() {
+        document.getElementById('in-fund-codes').value = Array.from(selectedFundCodes).join(',');
+        const displayBtn = document.getElementById('fund-select-display');
+        const selectAllBtn = document.getElementById('select-all-funds-btn');
+        const clearBtn = document.getElementById('clear-funds-btn');
+        if (selectedFundCodes.size === 0) {
+            displayBtn.innerHTML = '<span class="fund-select-text">点击选择</span><span class="fund-select-chevron">›</span>';
+        } else if (selectedFundCodes.size === 1) {
+            const code = Array.from(selectedFundCodes)[0];
+            const fund = holdingFunds.find(f => f.code === code);
+            displayBtn.innerHTML = `<span class="fund-select-pill">${fund ? fund.code : code}</span><span class="fund-select-chevron">›</span>`;
+        } else {
+            displayBtn.innerHTML = `<span class="fund-select-pill">已选 ${selectedFundCodes.size} 支</span><span class="fund-select-chevron">›</span>`;
+        }
+
+        const isAllSelected = holdingFunds.length > 0 && selectedFundCodes.size === holdingFunds.length;
+        const isNoneSelected = selectedFundCodes.size === 0;
+        if (selectAllBtn) selectAllBtn.classList.toggle('active', isAllSelected);
+        if (clearBtn) clearBtn.classList.toggle('active', isNoneSelected);
+
+        document.querySelectorAll('.fund-option').forEach(opt => {
+            opt.classList.toggle('selected', selectedFundCodes.has(opt.dataset.code));
+        });
+    }
+
+    function clearFundSelection() { selectedFundCodes.clear(); updateFundSelection(); }
+    function selectAllFunds() { holdingFunds.forEach(fund => selectedFundCodes.add(fund.code)); updateFundSelection(); }
+
+    function setDaysPreset(days) {
+        document.getElementById('in-fund-days').value = days;
+        document.querySelectorAll('.days-preset-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+        });
+    }
+
+    function onDaysInputChange() {
+        const inputDays = parseInt(document.getElementById('in-fund-days').value);
+        let matched = false;
+        document.querySelectorAll('.days-preset-btn').forEach(btn => {
+            const isActive = parseInt(btn.dataset.days) === inputDays;
+            btn.classList.toggle('active', isActive);
+            if (isActive) matched = true;
+        });
+        if (!matched) document.querySelectorAll('.days-preset-btn').forEach(btn => btn.classList.remove('active'));
+    }
+
+    function getSortedFundResults(results, quotes, sortMode = fundResultSortMode) {
+        return [...results].sort((a, b) => {
+            if (!a.success) return 1;
+            if (!b.success) return -1;
+
+            if (sortMode === 'change_desc' || sortMode === 'change_asc') {
+                const aChange = Number(quotes?.[`${a.fundCode}:1`]?.change);
+                const bChange = Number(quotes?.[`${b.fundCode}:1`]?.change);
+                const normalizedA = Number.isFinite(aChange) ? aChange : -Infinity;
+                const normalizedB = Number.isFinite(bChange) ? bChange : -Infinity;
+                if (normalizedA !== normalizedB) {
+                    return sortMode === 'change_desc'
+                        ? normalizedB - normalizedA
+                        : normalizedA - normalizedB;
+                }
+            }
+
+            if (sortMode === 'holding_profit_desc' || sortMode === 'holding_profit_asc') {
+                const aProfit = getHoldingProfit(a, quotes);
+                const bProfit = getHoldingProfit(b, quotes);
+                const normalizedA = Number.isFinite(aProfit) ? aProfit : -Infinity;
+                const normalizedB = Number.isFinite(bProfit) ? bProfit : -Infinity;
+                if (normalizedA !== normalizedB) {
+                    return sortMode === 'holding_profit_desc'
+                        ? normalizedB - normalizedA
+                        : normalizedA - normalizedB;
+                }
+            }
+
+            return parseFloat(b.maxDrawdown.maxDrawdownPercent) - parseFloat(a.maxDrawdown.maxDrawdownPercent);
+        });
+    }
+
+    function getFundSortButtonHtml(sortMode) {
+        const isActive = sortMode === 'change_desc' || sortMode === 'change_asc';
+        const btnClass = isActive ? 'fund-sort-btn active' : 'fund-sort-btn';
+        const btnIcon = sortMode === 'change_desc'
+            ? '↓'
+            : sortMode === 'change_asc'
+                ? '↑'
+                : '';
+        const btnText = sortMode === 'change_desc'
+            ? '涨跌倒序'
+            : sortMode === 'change_asc'
+                ? '涨跌正序'
+                : '今日涨跌';
+        return `<button type="button" class="${btnClass}" onclick="toggleFundResultSort()">${btnIcon ? `<span class="sort-icon">${btnIcon}</span>` : ''}<span class="sort-label">${btnText}</span></button>`;
+    }
+
+    function isFundCardExpanded(fundCode, index) {
+        if (Object.prototype.hasOwnProperty.call(expandedFundCards, fundCode)) {
+            return expandedFundCards[fundCode];
+        }
+        const successCount = latestFundAnalysisResults.filter(result => result && result.success).length;
+        if (successCount > 0 && successCount <= AUTO_EXPAND_FUND_CARDS_LIMIT) {
+            return true;
+        }
+        return index < DEFAULT_EXPANDED_FUND_CARDS;
+    }
+
+    async function toggleFundCard(fundCode) {
+        const cardEl = document.querySelector(`[data-fund-code="${fundCode}"]`);
+        const currentExpanded = cardEl ? !cardEl.classList.contains('collapsed') : isFundCardExpanded(fundCode, DEFAULT_EXPANDED_FUND_CARDS);
+        const nextExpanded = !currentExpanded;
+        expandedFundCards[fundCode] = nextExpanded;
+
+        if (!cardEl) {
+            renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+            return;
+        }
+
+        const bodyEl = cardEl.querySelector('.fund-card-body');
+        const toggleEl = cardEl.querySelector('.fund-card-toggle');
+        const chartItem = chartItemsByFundCode[fundCode];
+
+        cardEl.classList.toggle('collapsed', !nextExpanded);
+        if (bodyEl) {
+            bodyEl.style.display = nextExpanded ? '' : 'none';
+        }
+        if (toggleEl) {
+            toggleEl.setAttribute('aria-label', nextExpanded ? '收起详情' : '展开详情');
+        }
+
+        if (nextExpanded && chartItem) {
+            if (!chartDataList.some(item => item.fundCode === fundCode)) {
+                chartDataList.push(chartItem);
+            }
+            chartItem.tradeRecords = await ensureFundTradeHistory(fundCode);
+            drawChart(
+                chartItem.id,
+                chartItem.navList,
+                chartItem.peakDate,
+                chartItem.troughDate,
+                chartItem.costChangePercent,
+                chartItem.recoveryDate,
+                chartItem.hasRecoveryProgress,
+                chartItem.tradeRecords
+            );
+            return;
+        }
+
+        chartDataList = chartDataList.filter(item => item.fundCode !== fundCode);
+        if (chartInstances[chartItem?.id]) {
+            chartInstances[chartItem.id].destroy();
+            delete chartInstances[chartItem.id];
+        }
+        delete chartFocusStates[chartItem?.id];
+        cardEl.querySelector('.chart-container.highlighted')?.classList.remove('highlighted');
+        cardEl.querySelector('.stat-item.clickable.active')?.classList.remove('active');
+    }
+
+    function setAllFundCardsExpanded(expanded) {
+        latestFundAnalysisResults
+            .filter(result => result && result.success)
+            .forEach(result => {
+                expandedFundCards[result.fundCode] = expanded;
+            });
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    function areAllFundCardsExpanded(results) {
+        const successResults = results.filter(result => result && result.success);
+        if (!successResults.length) return false;
+        return successResults.every((result, index) => isFundCardExpanded(result.fundCode, index));
+    }
+
+    function toggleAllFundCards() {
+        const shouldCollapse = areAllFundCardsExpanded(latestFundAnalysisResults);
+        setAllFundCardsExpanded(!shouldCollapse);
+    }
+
+    function toggleHoldingProfitSort() {
+        if (fundResultSortMode === 'drawdown' || fundResultSortMode === 'change') {
+            fundResultSortMode = 'holding_profit_desc';
+        } else if (fundResultSortMode === 'holding_profit_desc') {
+            fundResultSortMode = 'holding_profit_asc';
+        } else {
+            fundResultSortMode = 'drawdown';
+        }
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    function getFundExpandToggleHtml(results) {
+        const isAllExpanded = areAllFundCardsExpanded(results);
+        return `<button type="button" class="fund-toolbar-btn" onclick="toggleAllFundCards()">${isAllExpanded ? '全部收起' : '全部展开'}</button>`;
+    }
+
+    function getHoldingProfit(result, quotes) {
+        const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+        const currentNav = Number(quotes?.[`${result.fundCode}:1`]?.price);
+        if (!holdingFund || !(holdingFund.shares > 0) || !(holdingFund.cost > 0) || !Number.isFinite(currentNav) || currentNav <= 0) {
+            return null;
+        }
+        return (currentNav - holdingFund.cost) * holdingFund.shares;
+    }
+
+    function getFundChangeLabel(fundCode, quotePriceDate) {
+        if (!quotePriceDate) return '净值涨跌';
+
+        const holdingFund = holdingFunds.find(f => f.code === fundCode);
+        if (holdingFund?.isOverseas && quotePriceDate.length === 8) {
+            return `${quotePriceDate.slice(4, 6)}-${quotePriceDate.slice(6, 8)}涨跌`;
+        }
+
+        const today = new Date();
+        const todayStr = today.getFullYear().toString() + (today.getMonth() + 1).toString().padStart(2, '0') + today.getDate().toString().padStart(2, '0');
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.getFullYear().toString() + (yesterday.getMonth() + 1).toString().padStart(2, '0') + yesterday.getDate().toString().padStart(2, '0');
+
+        if (quotePriceDate === todayStr) return '今日涨跌';
+        if (quotePriceDate === yesterdayStr) return '昨日涨跌';
+        if (quotePriceDate.length === 8) return `${quotePriceDate.slice(4, 6)}-${quotePriceDate.slice(6, 8)}涨跌`;
+        return '净值涨跌';
+    }
+
+    function toggleFundResultFilter(mode) {
+        fundResultFilterMode = fundResultFilterMode === mode ? '' : mode;
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    function getFundAnalysisSummaryHtml(results, quotes) {
+        const successResults = results.filter(result => result && result.success);
+        if (!successResults.length) return '';
+
+        let todayTotalProfit = 0;
+        let hasTodayProfit = false;
+        let positiveHoldingCount = 0;
+        let totalHoldingProfit = 0;
+        let hasHoldingProfit = false;
+
+        successResults.forEach(result => {
+            const quote = quotes?.[`${result.fundCode}:1`];
+            const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+
+            // 计算今日总收益 = (当前净值 - 昨日净值) * 持有份额
+            if (holdingFund && holdingFund.shares > 0 && quote && quote.price && quote.change !== undefined && quote.change !== null) {
+                const currentNav = Number(quote.price);
+                const changePercent = Number(quote.change);
+                if (Number.isFinite(currentNav) && Number.isFinite(changePercent)) {
+                    const previousNav = currentNav / (1 + changePercent / 100);
+                    const dailyProfit = (currentNav - previousNav) * holdingFund.shares;
+                    todayTotalProfit += dailyProfit;
+                    hasTodayProfit = true;
+                }
+            }
+
+            const holdingProfit = getHoldingProfit(result, quotes);
+            if (holdingFund && holdingProfit !== null) {
+                totalHoldingProfit += holdingProfit;
+                hasHoldingProfit = true;
+                if (holdingProfit > 0) positiveHoldingCount += 1;
+            }
+        });
+
+        // 格式化今日总收益
+        const todayProfitClass = hasTodayProfit ? (todayTotalProfit >= 0 ? 'up' : 'down') : '';
+        const todayProfitText = hasTodayProfit
+            ? `${todayTotalProfit >= 0 ? '+' : ''}${Math.round(todayTotalProfit)}`
+            : '--';
+
+        // 格式化持仓总收益
+        const totalHoldingProfitClass = hasHoldingProfit ? (totalHoldingProfit >= 0 ? 'up' : 'down') : '';
+        const totalHoldingProfitText = hasHoldingProfit
+            ? `${totalHoldingProfit >= 0 ? '+' : ''}${Math.round(totalHoldingProfit)}`
+            : '--';
+
+        return `<div class="analysis-summary-card">
+            <div class="analysis-summary-header">
+                <div class="analysis-summary-title">分析结果</div>
+                <div class="analysis-summary-meta">共 ${successResults.length} 支基金</div>
+            </div>
+            <div class="analysis-summary-grid">
+                <div class="analysis-summary-item">
+                    <div class="analysis-summary-label">今日总收益</div>
+                    <div class="analysis-summary-value ${todayProfitClass}">${todayProfitText}</div>
+                </div>
+                <div class="analysis-summary-item clickable${fundResultFilterMode === 'positive_holding' ? ' active' : ''}" onclick="toggleFundResultFilter('positive_holding')">
+                    <div class="analysis-summary-label">持仓盈利</div>
+                    <div class="analysis-summary-value up">${positiveHoldingCount}</div>
+                </div>
+                <div class="analysis-summary-item clickable${fundResultSortMode === 'holding_profit_desc' || fundResultSortMode === 'holding_profit_asc' ? ' active' : ''}" onclick="toggleHoldingProfitSort()">
+                    <div class="analysis-summary-label">持仓总收益</div>
+                    <div class="analysis-summary-value ${totalHoldingProfitClass}">${totalHoldingProfitText}</div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    const MAX_COMPARE_CHART_FUNDS = 5;
+
+    function renderFundAnalysisResults(results, quotes) {
+        Object.values(chartInstances).forEach(chart => chart?.destroy());
+        chartInstances = {};
+        chartFocusStates = {};
+        chartDataList = [];
+        chartItemsByFundCode = {};
+        const resultsEl = document.getElementById('fund-results');
+        const sortedResults = getSortedFundResults(results, quotes, fundResultSortMode);
+        const filteredResults = fundResultFilterMode === 'positive_holding'
+            ? sortedResults.filter(result => !result.success || ((getHoldingProfit(result, quotes) ?? -Infinity) > 0))
+            : sortedResults;
+        const successResults = filteredResults.filter(r => r.success);
+        const shouldShowCompareChart = successResults.length > 1 && successResults.length <= MAX_COMPARE_CHART_FUNDS;
+        const shouldAutoExpandAll = successResults.length > 0 && successResults.length <= AUTO_EXPAND_FUND_CARDS_LIMIT;
+        const shouldShowTopActions = !shouldAutoExpandAll && successResults.length > 1;
+        let html = '';
+
+        if (shouldShowCompareChart) {
+            html += `<div class="compare-chart-container">
+                <div class="compare-chart-title">组合收益走势对比</div>
+                <canvas id="compare-chart"></canvas>
+            </div>`;
+        }
+
+        html += getFundAnalysisSummaryHtml(sortedResults, quotes);
+
+        for (let index = 0; index < filteredResults.length; index++) {
+            const result = filteredResults[index];
+
+            if (!result.success) {
+                html += `<div class="fund-result-card${index === 0 && shouldShowTopActions ? ' has-sort-control' : ''}">
+                    ${index === 0 && shouldShowTopActions ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${getFundExpandToggleHtml(sortedResults)}</div>` : ''}
+                    <div class="fund-code">${result.fundCode}</div>
+                    <div class="error-msg">获取失败: ${result.error}</div>
+                </div>`;
+                continue;
+            }
+
+            const dd = result.maxDrawdown;
+            const ret = result.returnData;
+            const annualizedReturn = ret?.annualizedReturn || result.annualizedReturn;
+            const isPositive = parseFloat(ret.returnPercent) >= 0;
+            const chartId = 'chart-' + result.fundCode;
+            const quote = quotes[`${result.fundCode}:1`];
+            const isExpanded = isFundCardExpanded(result.fundCode, index);
+            const annualizedSubHtml = annualizedReturn
+                ? `${annualizedReturn.label} ${parseFloat(annualizedReturn.returnPercent) >= 0 ? '+' : ''}${annualizedReturn.returnPercent}%<br>共 ${result.dataRange.dataPoints} 交易日`
+                : `共 ${result.dataRange.dataPoints} 交易日`;
+            
+            let yesterdayChangeHtml = '';
+            
+            if (quote && quote.change !== undefined && quote.change !== null && !isNaN(quote.change)) {
+                const change = quote.change;
+                const color = change >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                const sign = change >= 0 ? '+' : '';
+                const label = getFundChangeLabel(result.fundCode, quote.priceDate);
+                yesterdayChangeHtml = `
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--ios-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight:600;">${label}</span>
+                        <span style="color: ${color}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${sign}${change.toFixed(2)}%</span>
+                    </div>`;
+            }
+
+            const holdingFund = holdingFunds.find(f => f.code === result.fundCode);
+            let rightHeaderHtml = '';
+            let holdingYieldHtml = '';
+            
+            if (holdingFund && holdingFund.shares && holdingFund.shares > 0) {
+                const currentNav = quote?.price || 0;
+                if (currentNav > 0 && holdingFund.cost && holdingFund.cost > 0) {
+                    const holdingProfit = (currentNav - holdingFund.cost) * holdingFund.shares;
+                    const holdingYieldPercent = ((currentNav - holdingFund.cost) / holdingFund.cost) * 100;
+                    const profitColor = holdingProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                    const yieldColor = holdingYieldPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+                    const profitSign = holdingProfit >= 0 ? '+' : '';
+                    const yieldSign = holdingYieldPercent >= 0 ? '+' : '';
+                    
+                    holdingYieldHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益率</span>
+                        <span style="color: ${yieldColor}; font-weight: 800; font-size: 16px; margin-top: 4px; font-variant-numeric: tabular-nums;">${yieldSign}${holdingYieldPercent.toFixed(2)}%</span>
+                    </div>`;
+                    
+                    rightHeaderHtml = `<div style="display: flex; flex-direction: column; align-items: center;">
+                        <span style="color: var(--ios-secondary); font-size: 11px; font-weight: 600; text-align: center;">持仓收益</span>
+                        <span style="color: ${profitColor}; font-weight: 800; font-size: 16px; margin-top:2px;">${profitSign}${Math.round(holdingProfit)}</span>
+                    </div>`;
+                }
+            }
+
+            let recoveryHtml = '';
+            let peakRecoveryProfit = null;
+            let peakNav = null;
+            let peakNavDate = null;
+            let ribbonHtml = '';
+
+            if (holdingFund && holdingFund.shares && holdingFund.shares > 0 && holdingFund.cost && holdingFund.cost > 0 && result.navList && result.navList.length > 0) {
+                let maxNav = 0;
+                let maxNavItem = null;
+                for (const item of result.navList) {
+                    if (item.nav && item.nav > maxNav) {
+                        maxNav = item.nav;
+                        maxNavItem = item;
+                    }
+                }
+                if (maxNavItem) {
+                    peakNav = maxNavItem.nav;
+                    peakNavDate = maxNavItem.date;
+                    peakRecoveryProfit = (peakNav - holdingFund.cost) * holdingFund.shares;
+                }
+            }
+
+            const modalData = JSON.stringify({
+                fundCode: result.fundCode,
+                fundName: result.fundName,
+                peakDate: dd.peakDate,
+                troughDate: dd.troughDate,
+                recoveryDate: dd.recoveryDate,
+                recoveryDays: dd.recoveryDays,
+                recovered: dd.recovered,
+                currentRecoveryPercent: dd.currentRecoveryPercent,
+                remainingRecoveryPercent: dd.remainingRecoveryPercent,
+                peakNav: peakNav,
+                peakNavDate: peakNavDate,
+                costBasis: holdingFund?.cost,
+                shares: holdingFund?.shares,
+                peakRecoveryProfit: peakRecoveryProfit
+            });
+
+            if (dd.recovered && dd.recoveryDate) {
+                ribbonHtml = index === 0 && shouldShowTopActions ? '' : '<div class="fund-corner-ribbon recovered">已修复</div>';
+                recoveryHtml = `
+                    <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
+                        <div class="stat-label">修复周期</div>
+                        <div class="stat-value" style="color: var(--ios-text);">${dd.recoveryDays}天</div>
+                        <div class="stat-sub">${dd.troughDate.slice(5)}至${dd.recoveryDate.slice(5)}</div>
+                    </div>`;
+            } else if (dd.currentRecoveryPercent) {
+                ribbonHtml = index === 0 && shouldShowTopActions ? '' : '<div class="fund-corner-ribbon recovering">修复中</div>';
+                recoveryHtml = `
+                    <div class="stat-item clickable" onclick='showRecoveryModal(${modalData})'>
+                        <div class="stat-label">修复进度</div>
+                        <div class="stat-value" style="color: var(--ios-orange);">+${dd.currentRecoveryPercent}%</div>
+                        <div class="stat-sub">仍需 +${dd.remainingRecoveryPercent}%</div>
+                    </div>`;
+            }
+
+            html += `<div class="fund-result-card${index === 0 && shouldShowTopActions ? ' has-sort-control' : ''}${isExpanded ? '' : ' collapsed'}" data-fund-code="${result.fundCode}">
+                ${index === 0 && shouldShowTopActions ? `<div class="fund-top-actions">${getFundSortButtonHtml(fundResultSortMode)}${getFundExpandToggleHtml(sortedResults)}</div>` : ''}
+                ${ribbonHtml}
+                <div class="fund-header">
+                    <div class="fund-meta">
+                        <div class="fund-code">${result.fundCode}</div>
+                        <div class="fund-name" title="${result.fundName || ''}" style="max-width: 130px; font-size: 12px; line-height: 1.4; white-space: nowrap;">
+                            ${(result.fundName || '').replace(/\s+/g, '').slice(0, 6)}<br/>
+                            ${(result.fundName || '').replace(/\s+/g, '').length > 6 ? (result.fundName || '').replace(/\s+/g, '').slice(6, 12) : ''}
+                        </div>
+                    </div>
+                    ${yesterdayChangeHtml || '<div></div>'}
+                    ${holdingYieldHtml || '<div></div>'}
+                    ${rightHeaderHtml || '<div></div>'}
+                </div>
+                <div class="fund-card-body"${isExpanded ? '' : ' style="display:none;"'}>
+                    <div class="fund-stats">
+                        <div class="stat-item clickable" data-chart-id="${chartId}" data-focus="drawdown" onclick="focusFundChart('${chartId}', 'drawdown')">
+                            <div class="stat-label">最大回撤</div>
+                            <div class="stat-value negative">${dd.maxDrawdownPercent}%</div>
+                            <div class="stat-sub">${dd.peakDate.slice(5)}至${dd.troughDate.slice(5)}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">区间收益</div>
+                            <div class="stat-value ${isPositive ? 'positive' : 'negative'}">${isPositive ? '+' : ''}${ret.returnPercent}%</div>
+                            <div class="stat-sub">${annualizedSubHtml}</div>
+                        </div>
+                        ${recoveryHtml}
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <div class="chart-title">区间走势</div>
+                            <div class="chart-meta">${result.dataRange.dataPoints} 个交易日</div>
+                        </div>
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                </div>
+                <button type="button" class="fund-card-toggle" onclick="toggleFundCard('${result.fundCode}')" aria-label="${isExpanded ? '收起详情' : '展开详情'}"><span class="toggle-icon">⌃</span></button>
+            </div>`;
+
+            const chartItem = getFundChartItem(result);
+            if (chartItem) {
+                chartItemsByFundCode[result.fundCode] = chartItem;
+            }
+
+            if (isExpanded && chartItem) {
+                chartDataList.push(chartItem);
+            }
+        }
+
+        resultsEl.innerHTML = html;
+
+        if (shouldShowCompareChart) drawCompareChart('compare-chart', successResults);
+        chartDataList.forEach(item => drawChart(item.id, item.navList, item.peakDate, item.troughDate, item.costChangePercent, item.recoveryDate, item.hasRecoveryProgress, item.tradeRecords || []));
+        hydrateExpandedFundTrades(chartDataList);
+    }
+
+    function toggleFundResultSort() {
+        if (!latestFundAnalysisResults.length) return;
+        if (fundResultSortMode === 'drawdown' || fundResultSortMode === 'holding_profit_desc' || fundResultSortMode === 'holding_profit_asc') {
+            fundResultSortMode = 'change_desc';
+        } else if (fundResultSortMode === 'change_desc') {
+            fundResultSortMode = 'change_asc';
+        } else {
+            fundResultSortMode = 'drawdown';
+        }
+        renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    }
+
+    async function analyzeFundDrawdown() {
+        chartDataList = [];
+        const codesInput = document.getElementById('in-fund-codes').value.trim();
+        const days = parseInt(document.getElementById('in-fund-days').value) || 365;
+        const resultsEl = document.getElementById('fund-results');
+        const btnEl = document.querySelector('.btn-analyze');
+
+        if (!codesInput) {
+            resultsEl.innerHTML = '<div class="error-msg">请先选择或输入基金代码</div>';
+            return;
+        }
+
+        const fundCodes = codesInput.split(',').map(c => c.trim()).filter(c => c);
+        
+        // 显示 Loading 遮罩
+        showLoading();
+        updateLoadingProgress(0, '正在获取实时行情...', '准备阶段');
+        
+        try {
+            // 不需要实时估值，直接跳过
+            const estimates = {};
+
+            updateLoadingProgress(20, '正在获取实时行情...', '获取行情');
+            
+            // 获取实时行情
+            const quotesRes = await fetch(window.API_BASE_URL + '/api/quotes?items=' + fundCodes.map(c => `${c}:1`).join(','));
+            const quotesData = await quotesRes.json();
+            const quotes = quotesData?.quotes || {};
+            latestFundQuotes = quotes;
+            fundResultSortMode = 'drawdown';
+
+            const results = [];
+            // 逐个分析基金
+            for (let i = 0; i < fundCodes.length; i++) {
+                const code = fundCodes[i];
+                const progress = Math.round(30 + (i / fundCodes.length) * 60); // 30% - 90%
+                updateLoadingProgress(
+                    progress, 
+                    `正在分析 ${i + 1}/${fundCodes.length}`, 
+                    `处理基金 ${code}`
+                );
+                
+                try {
+                    // 查找持仓基金的成本数据
+                    const holdingFund = holdingFunds.find(f => f.code === code);
+                    const costBasis = (holdingFund && holdingFund.cost && holdingFund.cost > 0) ? holdingFund.cost : null;
+                                
+                    // 构建 URL，如果有持仓成本则传递
+                    let url = window.API_BASE_URL + '/api/fund-drawdown/' + code + '?days=' + days;
+                    if (costBasis) {
+                        url += '&costBasis=' + encodeURIComponent(costBasis);
+                    }
+                                
+                    const res = await fetch(url);
+                    const data = await res.json();
+                    results.push(data);
+                } catch (e) {
+                    results.push({ success: false, fundCode: code, error: e.message });
+                }
+            }
+            latestFundAnalysisResults = results;
+    
+            // 更新进度到 100%
+            updateLoadingProgress(100, '分析完成！', '正在渲染图表...');
+                
+            // 延迟一小段时间后关闭 loading，让用户看到完成状态
+            await new Promise(resolve => setTimeout(resolve, 500));
+            hideLoading();
+    
+            renderFundAnalysisResults(latestFundAnalysisResults, latestFundQuotes);
+    
+        } catch (e) {
+            hideLoading();
+            resultsEl.innerHTML = `<div class="error-msg">拉取数据失败：${e.message}</div>`;
+        } finally {
+            btnEl.disabled = false;
+            btnEl.textContent = '开始分析';
+        }
+    }
+    
+    // ==================== Loading 控制函数 ====================
+    function showLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = 'flex';
+        startLoadingTimer();
+        document.body.style.overflow = 'hidden'; // 禁止背景滚动
+    }
+    
+    function hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = 'none';
+        stopLoadingTimer();
+        document.body.style.overflow = ''; // 恢复滚动
+    }
+    
+    function updateLoadingProgress(progress, title, subtext) {
+        const progressBar = document.getElementById('progress-bar');
+        const loadingTitle = document.getElementById('loading-title');
+        const loadingProgress = document.getElementById('loading-progress');
+        const loadingSubtext = document.getElementById('loading-subtext');
+    
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+        }
+        if (loadingTitle) {
+            loadingTitle.textContent = title;
+        }
+        if (loadingProgress) {
+            loadingProgress.textContent = subtext;
+        }
+    }
+
+    function updateLoadingElapsedText() {
+        const loadingSubtext = document.getElementById('loading-subtext');
+        if (!loadingSubtext || !loadingStartTime) return;
+
+        const elapsedSeconds = Math.floor((Date.now() - loadingStartTime) / 1000);
+        loadingSubtext.textContent = `此次分析已耗时 ${elapsedSeconds} 秒`;
+    }
+
+    function startLoadingTimer() {
+        stopLoadingTimer();
+        loadingStartTime = Date.now();
+        updateLoadingElapsedText();
+        loadingTimerId = setInterval(updateLoadingElapsedText, 1000);
+    }
+
+    function stopLoadingTimer() {
+        if (loadingTimerId) {
+            clearInterval(loadingTimerId);
+            loadingTimerId = null;
+        }
+        loadingStartTime = 0;
+    }
+
+    // ==================== 修复进度弹框函数 ====================
+    function showRecoveryModal(data) {
+        const overlay = document.getElementById('recovery-modal-overlay');
+        const titleEl = document.getElementById('recovery-modal-title');
+        const contentEl = document.getElementById('recovery-modal-content');
+
+        titleEl.textContent = `${data.fundCode} ${data.fundName || ''}`.slice(0, 20);
+
+        let html = '';
+
+        // 回撤区间
+        html += `<div class="recovery-modal-row">
+            <span class="recovery-modal-label">回撤区间</span>
+            <span class="recovery-modal-value">${data.peakDate?.slice(5) || '-'} 至 ${data.troughDate?.slice(5) || '-'}</span>
+        </div>`;
+
+        if (data.recovered && data.recoveryDate) {
+            // 已修复
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">修复周期</span>
+                <span class="recovery-modal-value">${data.recoveryDays}天</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">修复完成</span>
+                <span class="recovery-modal-value">${data.recoveryDate?.slice(5) || '-'}</span>
+            </div>`;
+        } else if (data.currentRecoveryPercent) {
+            // 修复中
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">已修复</span>
+                <span class="recovery-modal-value" style="color: var(--ios-orange);">+${data.currentRecoveryPercent}%</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">仍需修复</span>
+                <span class="recovery-modal-value">+${data.remainingRecoveryPercent}%</span>
+            </div>`;
+        }
+
+        // 成本和份额、本金
+        if (data.costBasis && data.shares) {
+            const principal = data.costBasis * data.shares;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">持仓成本</span>
+                <span class="recovery-modal-value">${parseFloat(data.costBasis).toFixed(4)}</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">持有份额</span>
+                <span class="recovery-modal-value">${parseFloat(data.shares).toFixed(2)}</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">本金</span>
+                <span class="recovery-modal-value">${Math.round(principal)}</span>
+            </div>`;
+        }
+
+        // 回到周期最高收益和收益率
+        if (data.peakRecoveryProfit !== null && data.peakRecoveryProfit !== undefined && data.peakNav && data.costBasis && data.costBasis > 0) {
+            const profitColor = data.peakRecoveryProfit >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            const profitSign = data.peakRecoveryProfit >= 0 ? '+' : '';
+            const peakYieldPercent = ((data.peakNav - data.costBasis) / data.costBasis) * 100;
+            const yieldColor = peakYieldPercent >= 0 ? 'var(--ios-red)' : 'var(--ios-green)';
+            const yieldSign = peakYieldPercent >= 0 ? '+' : '';
+
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">回到周期最高收益率</span>
+                <span class="recovery-modal-value" style="color: ${yieldColor};">${yieldSign}${peakYieldPercent.toFixed(2)}%</span>
+            </div>`;
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">回到周期最高赚</span>
+                <span class="recovery-modal-value" style="color: ${profitColor};">${profitSign}${Math.round(data.peakRecoveryProfit)}</span>
+            </div>`;
+        }
+        if (data.peakNav) {
+            const peakDateDisplay = data.peakNavDate ? data.peakNavDate.slice(5) : '-';
+            html += `<div class="recovery-modal-row">
+                <span class="recovery-modal-label">周期最高净值</span>
+                <span class="recovery-modal-value">${parseFloat(data.peakNav).toFixed(4)} (${peakDateDisplay})</span>
+            </div>`;
+        }
+
+        contentEl.innerHTML = html;
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRecoveryModal(event) {
+        if (event && event.target && event.target.id !== 'recovery-modal-overlay') return;
+        const overlay = document.getElementById('recovery-modal-overlay');
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
     }
 </script>
-
 </body>
 </html>

@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>房贷计算器</title>
+    <style>
+        :root {
+            --bg: #eef5fb;
+            --bg-accent: radial-gradient(circle at top left, rgba(8, 145, 178, 0.16), transparent 30%), radial-gradient(circle at 85% 10%, rgba(15, 118, 110, 0.1), transparent 24%), radial-gradient(circle at bottom right, rgba(249, 115, 22, 0.12), transparent 26%);
+            --card: rgba(255, 255, 255, 0.92);
+            --card-strong: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: rgba(148, 163, 184, 0.2);
+            --shadow: 0 18px 44px rgba(15, 23, 42, 0.07);
+            --primary: #0f766e;
+            --primary-soft: rgba(15, 118, 110, 0.1);
+            --accent: #ea580c;
+            --danger: #dc2626;
+            --ink-soft: #47607b;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, "SF Pro Display", "PingFang SC", sans-serif;
+            color: var(--text);
+            background: var(--bg-accent), var(--bg);
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+        }
+
+        .page {
+            width: min(100%, 480px);
+            margin: 0 auto;
+            padding: calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 22px);
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero {
+            padding: 4px 2px 12px;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            color: var(--primary);
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+            margin-bottom: 10px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1.05;
+            letter-spacing: -0.04em;
+        }
+
+        .hero p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+            border-radius: 24px;
+            padding: 14px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0));
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .section-tip {
+            color: var(--ink-soft);
+            font-size: 11px;
+        }
+
+        .segmented {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            background: rgba(248, 250, 252, 0.86);
+            padding: 5px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            position: relative;
+            z-index: 1;
+        }
+
+        .segmented.two {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .segment {
+            border: none;
+            border-radius: 12px;
+            padding: 9px 6px;
+            background: transparent;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .segment:active {
+            transform: scale(0.98);
+        }
+
+        .segment.active {
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(20, 184, 166, 0.2);
+        }
+
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .field-grid.single {
+            grid-template-columns: 1fr;
+        }
+
+        .field-grid.compact-three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .field {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 252, 0.94));
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 16px;
+            padding: 8px 10px;
+            min-height: 60px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+            transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+
+        .field:focus-within {
+            border-color: rgba(15, 118, 110, 0.35);
+            box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transform: translateY(-1px);
+        }
+
+        .field label {
+            display: block;
+            color: var(--ink-soft);
+            font-size: 10px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            padding: 0;
+            appearance: none;
+            line-height: 1.2;
+            min-height: 20px;
+        }
+
+        .field-main {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .field-main input,
+        .field-main select {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .field-unit {
+            flex-shrink: 0;
+            color: var(--primary);
+            font-size: 10px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.08);
+            border: 1px solid rgba(15, 118, 110, 0.12);
+        }
+
+        .field .suffix {
+            margin-top: 5px;
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .preset {
+            border: none;
+            border-radius: 999px;
+            padding: 7px 10px;
+            background: rgba(255, 255, 255, 0.82);
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 800;
+            border: 1px solid rgba(15, 118, 110, 0.12);
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .summary-card {
+            border-radius: 16px;
+            padding: 14px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92));
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .summary-card.primary {
+            background: linear-gradient(135deg, #0f766e, #14b8a6);
+            color: #fff;
+        }
+
+        .summary-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: inherit;
+            opacity: 0.86;
+        }
+
+        .summary-value {
+            margin-top: 8px;
+            font-size: 22px;
+            line-height: 1.05;
+            font-weight: 900;
+            letter-spacing: -0.05em;
+        }
+
+        .summary-sub {
+            margin-top: 4px;
+            font-size: 11px;
+            color: inherit;
+            opacity: 0.8;
+        }
+
+        .detail-list {
+            margin-top: 10px;
+            border-top: 1px solid rgba(148, 163, 184, 0.16);
+            position: relative;
+            z-index: 1;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 11px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .detail-name {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            text-align: right;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .detail-note {
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 10px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: var(--card-strong);
+            position: relative;
+            z-index: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 440px;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            text-align: right;
+            font-size: 12px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            white-space: nowrap;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            background: rgba(248, 250, 252, 0.88);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty {
+            color: var(--danger);
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (max-width: 430px) {
+            .field .suffix {
+                display: none;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .field-grid,
+            .field-grid.compact-three,
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h1 {
+                font-size: 27px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="hero">
+            <a class="back-link" href="index.html">‹ 返回首页</a>
+            <div class="hero-kicker">Mortgage Planner</div>
+            <h1>房贷计算器</h1>
+            <p>支持商业贷、公积金和组合贷，切换等额本息或等额本金，快速看清月供、总利息和还款节奏。</p>
+        </div>
+
+        <div class="card">
+            <div class="section-head">
+                <div class="section-title">贷款类型</div>
+                <div class="section-tip">金额单位默认万元</div>
+            </div>
+            <div class="segmented" id="loan-type-segment">
+                <button class="segment active" type="button" data-type="commercial">商业贷</button>
+                <button class="segment" type="button" data-type="fund">公积金</button>
+                <button class="segment" type="button" data-type="combo">组合贷</button>
+            </div>
+
+            <div class="section-head" style="margin-top: 16px;">
+                <div class="section-title">还款方式</div>
+                <div class="section-tip">切换后自动重算</div>
+            </div>
+            <div class="segmented two" id="repayment-type-segment">
+                <button class="segment active" type="button" data-method="equal-payment">等额本息</button>
+                <button class="segment" type="button" data-method="equal-principal">等额本金</button>
+            </div>
+
+            <div id="fields-container"></div>
+            <div class="badge-row">
+                <button class="preset" type="button" data-years="20">20 年</button>
+                <button class="preset" type="button" data-years="30">30 年</button>
+                <button class="preset" type="button" data-rate="3.1">利率 3.10%</button>
+                <button class="preset" type="button" data-rate="3.6">利率 3.60%</button>
+            </div>
+            <div id="error-text" class="empty" style="display: none;"></div>
+        </div>
+
+        <div class="card">
+            <div class="section-head">
+                <div class="section-title">核心结果</div>
+                <div class="section-tip" id="summary-tip">按当前输入实时更新</div>
+            </div>
+            <div class="summary">
+                <div class="summary-card primary">
+                    <div class="summary-label" id="payment-label">参考月供</div>
+                    <div class="summary-value" id="payment-value">¥0</div>
+                    <div class="summary-sub" id="payment-sub">输入参数后自动计算</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">总利息</div>
+                    <div class="summary-value" id="interest-value">¥0</div>
+                    <div class="summary-sub" id="interest-sub">总还款 ¥0</div>
+                </div>
+            </div>
+
+            <div class="detail-list">
+                <div class="detail-row">
+                    <div>
+                        <div class="detail-name">贷款总额</div>
+                        <div class="detail-note" id="principal-note">本金合计</div>
+                    </div>
+                    <div class="detail-value" id="principal-value">¥0</div>
+                </div>
+                <div class="detail-row">
+                    <div>
+                        <div class="detail-name" id="secondary-label">首月月供</div>
+                        <div class="detail-note" id="secondary-note">适用于等额本金对比</div>
+                    </div>
+                    <div class="detail-value" id="secondary-value">¥0</div>
+                </div>
+                <div class="detail-row">
+                    <div>
+                        <div class="detail-name">末月月供</div>
+                        <div class="detail-note">便于观察还款压力尾部变化</div>
+                    </div>
+                    <div class="detail-value" id="last-payment-value">¥0</div>
+                </div>
+                <div class="detail-row">
+                    <div>
+                        <div class="detail-name">月供递减</div>
+                        <div class="detail-note">仅等额本金会逐月递减</div>
+                    </div>
+                    <div class="detail-value" id="decrease-value">¥0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-head">
+                <div class="section-title">前 12 期预览</div>
+                <div class="section-tip">看清本金和利息占比</div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>期数</th>
+                            <th>月供</th>
+                            <th>本金</th>
+                            <th>利息</th>
+                            <th>剩余本金</th>
+                        </tr>
+                    </thead>
+                    <tbody id="schedule-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #64748b;">输入参数后显示还款明细</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'mortgage_calculator_v1';
+        const defaults = {
+            loanType: 'commercial',
+            repaymentMethod: 'equal-payment',
+            years: 30,
+            commercialAmount: 100,
+            commercialRate: 3.6,
+            fundAmount: 60,
+            fundRate: 2.85
+        };
+
+        let state = loadState();
+
+        function loadState() {
+            try {
+                return { ...defaults, ...(JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}) };
+            } catch (e) {
+                return { ...defaults };
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function formatMoney(value) {
+            return '¥' + Number(value || 0).toLocaleString('zh-CN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function toMonthlyRate(rate) {
+            return Number(rate || 0) / 100 / 12;
+        }
+
+        function renderFields() {
+            const container = document.getElementById('fields-container');
+            const yearsOptions = [10, 15, 20, 25, 30, 35].map(year => {
+                const selected = Number(state.years) === year ? 'selected' : '';
+                return `<option value="${year}" ${selected}>${year} 年</option>`;
+            }).join('');
+
+            if (state.loanType === 'combo') {
+                container.innerHTML = `
+                    <div class="field-grid">
+                        <div class="field">
+                            <label>商业贷款金额</label>
+                            <div class="field-main">
+                                <input id="commercialAmount" type="number" min="0" step="0.1" value="${state.commercialAmount}">
+                                <span class="field-unit">万元</span>
+                            </div>
+                            <div class="suffix">按商业贷款部分单独计算</div>
+                        </div>
+                        <div class="field">
+                            <label>商业贷款利率</label>
+                            <div class="field-main">
+                                <input id="commercialRate" type="number" min="0" step="0.01" value="${state.commercialRate}">
+                                <span class="field-unit">%</span>
+                            </div>
+                            <div class="suffix">输入年利率</div>
+                        </div>
+                        <div class="field">
+                            <label>公积金贷款金额</label>
+                            <div class="field-main">
+                                <input id="fundAmount" type="number" min="0" step="0.1" value="${state.fundAmount}">
+                                <span class="field-unit">万元</span>
+                            </div>
+                            <div class="suffix">按公积金部分单独计算</div>
+                        </div>
+                        <div class="field">
+                            <label>公积金贷款利率</label>
+                            <div class="field-main">
+                                <input id="fundRate" type="number" min="0" step="0.01" value="${state.fundRate}">
+                                <span class="field-unit">%</span>
+                            </div>
+                            <div class="suffix">输入年利率</div>
+                        </div>
+                    </div>
+                    <div class="field-grid single">
+                        <div class="field">
+                            <label>贷款期限</label>
+                            <div class="field-main">
+                                <select id="years">${yearsOptions}</select>
+                                <span class="field-unit">年</span>
+                            </div>
+                            <div class="suffix">最长可模拟 35 年</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const amountKey = state.loanType === 'commercial' ? 'commercialAmount' : 'fundAmount';
+                const rateKey = state.loanType === 'commercial' ? 'commercialRate' : 'fundRate';
+                container.innerHTML = `
+                    <div class="field-grid compact-three">
+                        <div class="field">
+                            <label>贷款总额</label>
+                            <div class="field-main">
+                                <input id="${amountKey}" type="number" min="0" step="0.1" value="${state[amountKey]}">
+                                <span class="field-unit">万元</span>
+                            </div>
+                            <div class="suffix">建议按合同贷款金额填写</div>
+                        </div>
+                        <div class="field">
+                            <label>年利率</label>
+                            <div class="field-main">
+                                <input id="${rateKey}" type="number" min="0" step="0.01" value="${state[rateKey]}">
+                                <span class="field-unit">%</span>
+                            </div>
+                            <div class="suffix">支持精确到小数点后两位</div>
+                        </div>
+                        <div class="field">
+                            <label>贷款期限</label>
+                            <div class="field-main">
+                                <select id="years">${yearsOptions}</select>
+                                <span class="field-unit">年</span>
+                            </div>
+                            <div class="suffix">用于估算完整还款周期</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            bindFieldEvents();
+        }
+
+        function bindFieldEvents() {
+            document.querySelectorAll('#fields-container input, #fields-container select').forEach(el => {
+                el.addEventListener('input', handleFieldInput);
+                el.addEventListener('change', handleFieldInput);
+            });
+        }
+
+        function handleFieldInput(event) {
+            const { id, value } = event.target;
+            state[id] = id === 'years' ? Number(value || 0) : parseFloat(value || 0);
+            saveState();
+            calculate();
+        }
+
+        function getLoanParts() {
+            if (state.loanType === 'combo') {
+                return [
+                    { principal: Number(state.commercialAmount || 0) * 10000, monthlyRate: toMonthlyRate(state.commercialRate) },
+                    { principal: Number(state.fundAmount || 0) * 10000, monthlyRate: toMonthlyRate(state.fundRate) }
+                ].filter(part => part.principal > 0);
+            }
+
+            if (state.loanType === 'commercial') {
+                return [{ principal: Number(state.commercialAmount || 0) * 10000, monthlyRate: toMonthlyRate(state.commercialRate) }];
+            }
+
+            return [{ principal: Number(state.fundAmount || 0) * 10000, monthlyRate: toMonthlyRate(state.fundRate) }];
+        }
+
+        function calculatePartEqualPayment(principal, monthlyRate, months) {
+            if (!principal || !months) return { monthlyPayment: 0, totalPayment: 0, totalInterest: 0, schedule: [] };
+
+            if (!monthlyRate) {
+                const monthlyPayment = principal / months;
+                const schedule = [];
+                let remaining = principal;
+                for (let month = 1; month <= months; month++) {
+                    const principalPaid = month === months ? remaining : monthlyPayment;
+                    remaining = Math.max(0, remaining - principalPaid);
+                    schedule.push({ month, payment: principalPaid, principalPaid, interestPaid: 0, remaining });
+                }
+                return { monthlyPayment, totalPayment: principal, totalInterest: 0, schedule };
+            }
+
+            const factor = Math.pow(1 + monthlyRate, months);
+            const monthlyPayment = principal * monthlyRate * factor / (factor - 1);
+            const schedule = [];
+            let remaining = principal;
+
+            for (let month = 1; month <= months; month++) {
+                const interestPaid = remaining * monthlyRate;
+                const principalPaid = month === months ? remaining : (monthlyPayment - interestPaid);
+                remaining = Math.max(0, remaining - principalPaid);
+                schedule.push({ month, payment: principalPaid + interestPaid, principalPaid, interestPaid, remaining });
+            }
+
+            const totalPayment = monthlyPayment * months;
+            return { monthlyPayment, totalPayment, totalInterest: totalPayment - principal, schedule };
+        }
+
+        function calculatePartEqualPrincipal(principal, monthlyRate, months) {
+            if (!principal || !months) return { firstPayment: 0, lastPayment: 0, monthlyDecrease: 0, totalPayment: 0, totalInterest: 0, schedule: [] };
+
+            const monthlyPrincipal = principal / months;
+            const schedule = [];
+            let totalPayment = 0;
+
+            for (let month = 1; month <= months; month++) {
+                const remainingBefore = principal - monthlyPrincipal * (month - 1);
+                const interestPaid = remainingBefore * monthlyRate;
+                const principalPaid = month === months ? principal - monthlyPrincipal * (months - 1) : monthlyPrincipal;
+                const payment = principalPaid + interestPaid;
+                const remaining = Math.max(0, remainingBefore - principalPaid);
+                totalPayment += payment;
+                schedule.push({ month, payment, principalPaid, interestPaid, remaining });
+            }
+
+            const firstPayment = schedule[0]?.payment || 0;
+            const lastPayment = schedule[schedule.length - 1]?.payment || 0;
+            return {
+                firstPayment,
+                lastPayment,
+                monthlyDecrease: schedule.length > 1 ? schedule[0].payment - schedule[1].payment : 0,
+                totalPayment,
+                totalInterest: totalPayment - principal,
+                schedule
+            };
+        }
+
+        function mergeSchedules(parts) {
+            const maxMonths = Math.max(...parts.map(part => part.schedule.length), 0);
+            const merged = [];
+            for (let month = 1; month <= maxMonths; month++) {
+                let payment = 0;
+                let principalPaid = 0;
+                let interestPaid = 0;
+                let remaining = 0;
+                parts.forEach(part => {
+                    const row = part.schedule[month - 1];
+                    if (!row) return;
+                    payment += row.payment;
+                    principalPaid += row.principalPaid;
+                    interestPaid += row.interestPaid;
+                    remaining += row.remaining;
+                });
+                merged.push({ month, payment, principalPaid, interestPaid, remaining });
+            }
+            return merged;
+        }
+
+        function calculate() {
+            const months = Number(state.years || 0) * 12;
+            const parts = getLoanParts();
+            const errorText = document.getElementById('error-text');
+
+            if (!months || !parts.length) {
+                errorText.style.display = 'block';
+                errorText.textContent = '请先输入有效的贷款金额和期限。';
+                renderEmpty();
+                return;
+            }
+
+            if (parts.some(part => part.principal <= 0 || part.monthlyRate < 0)) {
+                errorText.style.display = 'block';
+                errorText.textContent = '贷款金额需大于 0，利率不能为负数。';
+                renderEmpty();
+                return;
+            }
+
+            errorText.style.display = 'none';
+
+            const calculators = state.repaymentMethod === 'equal-payment'
+                ? parts.map(part => calculatePartEqualPayment(part.principal, part.monthlyRate, months))
+                : parts.map(part => calculatePartEqualPrincipal(part.principal, part.monthlyRate, months));
+
+            const principalTotal = parts.reduce((sum, part) => sum + part.principal, 0);
+            const schedule = mergeSchedules(calculators);
+            const totalInterest = calculators.reduce((sum, item) => sum + item.totalInterest, 0);
+            const totalPayment = calculators.reduce((sum, item) => sum + item.totalPayment, 0);
+            const firstPayment = schedule[0]?.payment || 0;
+            const lastPayment = schedule[schedule.length - 1]?.payment || 0;
+            const monthlyDecrease = schedule.length > 1 ? schedule[0].payment - schedule[1].payment : 0;
+            const stablePayment = state.repaymentMethod === 'equal-payment'
+                ? calculators.reduce((sum, item) => sum + item.monthlyPayment, 0)
+                : firstPayment;
+
+            document.getElementById('payment-label').textContent = state.repaymentMethod === 'equal-payment' ? '参考月供' : '首月月供';
+            document.getElementById('payment-value').textContent = formatMoney(stablePayment);
+            document.getElementById('payment-sub').textContent = state.repaymentMethod === 'equal-payment'
+                ? `每月基本固定，共 ${months} 期`
+                : `之后每月约减少 ${formatMoney(monthlyDecrease)}`;
+            document.getElementById('interest-value').textContent = formatMoney(totalInterest);
+            document.getElementById('interest-sub').textContent = `总还款 ${formatMoney(totalPayment)}`;
+            document.getElementById('principal-value').textContent = formatMoney(principalTotal);
+            document.getElementById('principal-note').textContent = `${state.years} 年贷款期限`;
+            document.getElementById('secondary-label').textContent = state.repaymentMethod === 'equal-payment' ? '固定月供' : '首月压力';
+            document.getElementById('secondary-note').textContent = state.repaymentMethod === 'equal-payment' ? '便于估算长期现金流' : '后续会逐月下降';
+            document.getElementById('secondary-value').textContent = formatMoney(firstPayment);
+            document.getElementById('last-payment-value').textContent = formatMoney(lastPayment);
+            document.getElementById('decrease-value').textContent = state.repaymentMethod === 'equal-payment' ? '¥0.00' : formatMoney(monthlyDecrease);
+            document.getElementById('summary-tip').textContent = state.loanType === 'combo'
+                ? '组合贷结果为商业贷与公积金两部分合并'
+                : '按当前输入参数实时更新';
+
+            renderSchedule(schedule);
+        }
+
+        function renderSchedule(schedule) {
+            const body = document.getElementById('schedule-body');
+            const preview = schedule.slice(0, 12);
+            body.innerHTML = preview.map(row => `
+                <tr>
+                    <td>第 ${row.month} 期</td>
+                    <td>${formatMoney(row.payment)}</td>
+                    <td>${formatMoney(row.principalPaid)}</td>
+                    <td>${formatMoney(row.interestPaid)}</td>
+                    <td>${formatMoney(row.remaining)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderEmpty() {
+            document.getElementById('payment-value').textContent = '¥0';
+            document.getElementById('payment-sub').textContent = '输入参数后自动计算';
+            document.getElementById('interest-value').textContent = '¥0';
+            document.getElementById('interest-sub').textContent = '总还款 ¥0';
+            document.getElementById('principal-value').textContent = '¥0';
+            document.getElementById('secondary-value').textContent = '¥0';
+            document.getElementById('last-payment-value').textContent = '¥0';
+            document.getElementById('decrease-value').textContent = '¥0';
+            document.getElementById('schedule-body').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b;">输入参数后显示还款明细</td></tr>';
+        }
+
+        function bindSegments() {
+            document.querySelectorAll('#loan-type-segment .segment').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.loanType = btn.dataset.type;
+                    document.querySelectorAll('#loan-type-segment .segment').forEach(el => el.classList.toggle('active', el === btn));
+                    saveState();
+                    renderFields();
+                    calculate();
+                });
+            });
+
+            document.querySelectorAll('#repayment-type-segment .segment').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.repaymentMethod = btn.dataset.method;
+                    document.querySelectorAll('#repayment-type-segment .segment').forEach(el => el.classList.toggle('active', el === btn));
+                    saveState();
+                    calculate();
+                });
+            });
+        }
+
+        function bindPresets() {
+            document.querySelectorAll('.preset').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (btn.dataset.years) {
+                        state.years = Number(btn.dataset.years);
+                    }
+                    if (btn.dataset.rate) {
+                        if (state.loanType === 'commercial') state.commercialRate = Number(btn.dataset.rate);
+                        if (state.loanType === 'fund') state.fundRate = Number(btn.dataset.rate);
+                        if (state.loanType === 'combo') {
+                            state.commercialRate = Number(btn.dataset.rate);
+                        }
+                    }
+                    saveState();
+                    renderFields();
+                    calculate();
+                });
+            });
+        }
+
+        function syncSegmentState() {
+            document.querySelectorAll('#loan-type-segment .segment').forEach(el => {
+                el.classList.toggle('active', el.dataset.type === state.loanType);
+            });
+            document.querySelectorAll('#repayment-type-segment .segment').forEach(el => {
+                el.classList.toggle('active', el.dataset.method === state.repaymentMethod);
+            });
+        }
+
+        syncSegmentState();
+        bindSegments();
+        bindPresets();
+        renderFields();
+        calculate();
+    </script>
+</body>
+</html>

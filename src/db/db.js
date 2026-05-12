@@ -170,13 +170,14 @@ async function getPositionByCode(code, isFund) {
 async function createPosition(position) {
   const {
     id, code, name, shares = 0, cost = 0, isFund = false,
-    isOverseas = false, planBuy = 0, alert = null, targetPrice = null
+    isOverseas = false, planBuy = 0, alert = null, targetPrice = null,
+    categoryId = null
   } = position;
 
   await query(
-    `INSERT INTO positions (id, code, name, shares, cost, is_fund, is_overseas, plan_buy, alert, target_price)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-    [id, code, name, shares, cost, isFund, isOverseas, planBuy, alert, targetPrice]
+    `INSERT INTO positions (id, code, name, shares, cost, is_fund, is_overseas, plan_buy, alert, target_price, category_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [id, code, name, shares, cost, isFund, isOverseas, planBuy, alert, targetPrice, categoryId]
   );
   return position;
 }
@@ -230,13 +231,13 @@ async function getPendingTradesByRowId(rowId) {
 
 async function createPendingTrade(trade) {
   const {
-    id, rowId, code, name, amount, isBefore15 = true, createdAt
+    id, rowId, code, name, type = 'add', amount, shares = null, isBefore15 = true, createdAt
   } = trade;
 
   await query(
-    `INSERT INTO pending_trades (id, row_id, code, name, amount, is_before_15, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [id, rowId, code, name, amount, isBefore15, createdAt]
+    `INSERT INTO pending_trades (id, row_id, code, name, type, amount, shares, is_before_15, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [id, rowId, code, name, type, amount, shares, isBefore15, createdAt]
   );
   return trade;
 }
@@ -353,6 +354,140 @@ async function deleteDailyProfit(date) {
   await query('DELETE FROM daily_profits WHERE date = $1', [date]);
 }
 
+// ==================== 股票涨跌幅提醒规则表操作 ====================
+async function getAlertRules() {
+  const res = await query('SELECT * FROM alert_rules ORDER BY created_at ASC');
+  return res.rows.map(row => snakeToCamel(row));
+}
+
+async function getAlertRulesByPositionId(positionId) {
+  const res = await query('SELECT * FROM alert_rules WHERE position_id = $1 ORDER BY created_at ASC', [positionId]);
+  return res.rows.map(row => snakeToCamel(row));
+}
+
+async function getAlertRule(id) {
+  const res = await query('SELECT * FROM alert_rules WHERE id = $1', [id]);
+  return res.rows[0] ? snakeToCamel(res.rows[0]) : null;
+}
+
+async function createAlertRule(rule) {
+  const { id, positionId, direction, threshold, enabled = true } = rule;
+  await query(
+    `INSERT INTO alert_rules (id, position_id, direction, threshold, enabled)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, positionId, direction, threshold, enabled]
+  );
+  return rule;
+}
+
+async function updateAlertRule(id, updates) {
+  const fields = [];
+  const values = [];
+  let paramCount = 1;
+
+  for (const [key, value] of Object.entries(updates)) {
+    const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    fields.push(`${dbKey} = $${paramCount}`);
+    values.push(value);
+    paramCount++;
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(id);
+
+  const queryText = `UPDATE alert_rules SET ${fields.join(', ')} WHERE id = $${paramCount}`;
+  await query(queryText, values);
+}
+
+async function deleteAlertRule(id) {
+  await query('DELETE FROM alert_rules WHERE id = $1', [id]);
+}
+
+async function deleteAlertRulesByPositionId(positionId) {
+  await query('DELETE FROM alert_rules WHERE position_id = $1', [positionId]);
+}
+
+async function resetAlertRulesDaily() {
+  await query('UPDATE alert_rules SET triggered_today = false, trigger_time = NULL');
+}
+
+async function getEnabledAlertRules() {
+  const res = await query('SELECT * FROM alert_rules WHERE enabled = true ORDER BY created_at ASC');
+  return res.rows.map(row => snakeToCamel(row));
+}
+
+// ==================== 资产记录表操作 ====================
+async function getAssetRecords() {
+  const res = await query('SELECT * FROM asset_records ORDER BY recorded_at DESC');
+  return res.rows.map(row => {
+    const converted = snakeToCamel(row);
+    if (converted.recordedAt) {
+      const d = new Date(converted.recordedAt);
+      converted.recordedAt = d.getFullYear() + '/' +
+        (d.getMonth() + 1).toString().padStart(2, '0') + '/' +
+        d.getDate().toString().padStart(2, '0') + ' ' +
+        d.getHours().toString().padStart(2, '0') + ':' +
+        d.getMinutes().toString().padStart(2, '0');
+      converted.day = (d.getMonth() + 1) + '-' + d.getDate();
+    }
+    return converted;
+  });
+}
+
+async function createAssetRecord(record) {
+  const { recordedAt, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt } = record;
+  const res = await query(
+    `INSERT INTO asset_records (recorded_at, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id`,
+    [recordedAt, total, alipay || 0, wechat || 0, ths || 0, crypto || 0, cmb || 0, provident || 0, receivable || 0, debt || 0]
+  );
+  return res.rows[0].id;
+}
+
+async function deleteAssetRecord(id) {
+  await query('DELETE FROM asset_records WHERE id = $1', [id]);
+}
+
+async function deleteAllAssetRecords() {
+  await query('DELETE FROM asset_records');
+}
+
+async function getCategories() {
+  const res = await query('SELECT id, name, sort_order FROM categories ORDER BY sort_order');
+  return res.rows.map(row => snakeToCamel(row));
+}
+
+async function createCategory(category) {
+  const { id, name, sortOrder = 0 } = category;
+  await query(
+    'INSERT INTO categories (id, name, sort_order) VALUES ($1, $2, $3) ON CONFLICT (id) DO UPDATE SET name = $2, sort_order = $3',
+    [id, name, sortOrder]
+  );
+}
+
+async function updateCategory(id, updates) {
+  const fields = [];
+  const values = [];
+  let paramCount = 1;
+  for (const [key, value] of Object.entries(updates)) {
+    const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    fields.push(`${dbKey} = $${paramCount}`);
+    values.push(value);
+    paramCount++;
+  }
+  if (fields.length === 0) return;
+  values.push(id);
+  await query(`UPDATE categories SET ${fields.join(', ')} WHERE id = $${paramCount}`, values);
+}
+
+async function deleteCategory(id) {
+  await query('UPDATE positions SET category_id = NULL WHERE category_id = $1', [id]);
+  await query('DELETE FROM categories WHERE id = $1', [id]);
+}
+
 module.exports = {
   // Database connection
   pool,
@@ -392,4 +527,25 @@ module.exports = {
   getDailyProfitByDate,
   createDailyProfit,
   deleteDailyProfit,
+
+  // Alert rules operations
+  getAlertRules,
+  getAlertRulesByPositionId,
+  getAlertRule,
+  createAlertRule,
+  updateAlertRule,
+  deleteAlertRule,
+  deleteAlertRulesByPositionId,
+  resetAlertRulesDaily,
+  getEnabledAlertRules,
+
+  // Asset records operations
+  getAssetRecords,
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  createAssetRecord,
+  deleteAssetRecord,
+  deleteAllAssetRecords,
 };

@@ -1,6 +1,6 @@
 window.APP_CONFIG = {
-    localApiBaseUrl: 'http://localhost:3000',
-    productionApiBaseUrl: 'https://finance-app-production-3a22.up.railway.app',
+    localApiBaseUrl: 'http://localhost:4000',
+    productionApiBaseUrl: 'https://finance-app-kanh.onrender.com',
     githubPagesHosts: ['ligexiao2009.github.io'],
 };
 
@@ -11,15 +11,13 @@ function resolveApiBaseUrl() {
         return window.APP_CONFIG.localApiBaseUrl;
     }
 
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return origin;
-    }
-
+    // GitHub Pages 静态部署，API 走生产服务器
     if (window.APP_CONFIG.githubPagesHosts.includes(hostname)) {
         return window.APP_CONFIG.productionApiBaseUrl;
     }
 
-    return window.APP_CONFIG.productionApiBaseUrl;
+    // 其他情况（localhost / 局域网IP / 容器）直接用当前地址
+    return origin;
 }
 
 window.API_BASE_URL = resolveApiBaseUrl();

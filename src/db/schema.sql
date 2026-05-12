@@ -103,7 +103,8 @@ FROM daily_profits
 ORDER BY date DESC;
 
 -- 查看持仓市值估算视图
-CREATE OR REPLACE VIEW positions_summary AS
+DROP VIEW IF EXISTS positions_summary;
+CREATE VIEW positions_summary AS
 SELECT
     p.*,
     (p.shares * p.cost) as estimated_value

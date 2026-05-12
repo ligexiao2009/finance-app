@@ -1,51 +1,26 @@
-name: Deploy GitHub Pages
+name: Deploy
 
 on:
   push:
     branches:
       - dev
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          node-version: 20
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build CSS
-        run: npm run build:css
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          host: ${{ secrets.HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            export PATH=$PATH:/root/.nvm/versions/node/v22.22.2/bin
+            cd /root/product/finance-app
+            git fetch origin 
+            git checkout dev 
+            git pull origin dev
+            npm install 
+            pm2 restart stock || pm2 start ./start.sh --interpreter bash --name stock

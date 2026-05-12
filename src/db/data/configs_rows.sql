@@ -1,1 +1,0 @@
-INSERT INTO "public"."configs" ("key", "value", "created_at", "updated_at") VALUES ('alertTime', '0 31 23 * * *', '2026-03-26 12:34:50.13386', '2026-03-26 12:46:20.864506'), ('editUnlockPassword', '8957', '2026-03-28 17:23:54.886524', '2026-03-28 17:23:54.886524'), ('serverchanKey', 'SCT327273TZVWI3LyXNGJ1t5BRVVvm8oPR', '2026-03-26 12:34:50.051109', '2026-03-26 12:46:20.775633');

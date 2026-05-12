@@ -369,7 +369,7 @@ async function startServer() {
       console.log('  3. 每日收益定时任务: 周一到周五 23:00 自动计算并保存');
       console.log('  4. 自动确认交易定时任务: 每天 09:00 自动确认昨天15点前的交易');
       console.log('  5. 配置存储在 PostgreSQL configs 表中');
-      console.log('');
+      console.log('测试自动部署');
     });
   } catch (error) {
     console.error('服务器启动失败:', error);

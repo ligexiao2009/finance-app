@@ -3,7 +3,7 @@ name: Deploy
 on:
   push:
     branches:
-      - main
+      - dev
 
 jobs:
   deploy:
@@ -18,6 +18,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /root/product/finance-app
-            git pull origin main
+            git fetch origin 
+            git checkout dev 
+            git pull origin dev
             npm install
             pm2 start ./start.sh --interpreter bash --name stock

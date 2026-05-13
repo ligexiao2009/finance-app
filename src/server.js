@@ -1934,7 +1934,7 @@ const server = http.createServer(async (req, res) => {
       await sendCachedJson(req, res, cacheKey, async () => {
         const detail = await getFundDetail(fundCode, positionData);
         return { ...detail, updatedAt: Date.now() };
-      }, { ttlMs: 10 * 60 * 1000 });
+      }, { ttlMs: 2 * 60 * 1000 });
     } catch (e) {
       console.error('获取基金详情失败:', e.message);
       res.writeHead(500, { 'Content-Type': 'application/json' });

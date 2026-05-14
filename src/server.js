@@ -1227,6 +1227,20 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify(configs));
     return;
   }
+  if (isAdmin && req.method === 'POST' && req.url === '/api/admin/categories/sort') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      const { ids } = JSON.parse(body);
+      for (let i = 0; i < ids.length; i++) {
+        await db.query('UPDATE categories SET sort_order = $1 WHERE id = $2', [i, ids[i]]);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    });
+    return;
+  }
+
   if (isAdmin && req.method === 'POST' && req.url === '/api/admin/config') {
     let body = '';
     req.on('data', c => body += c);

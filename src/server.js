@@ -24,8 +24,8 @@ function getMailer() {
       port: parseInt(process.env.SMTP_PORT || '465'),
       secure: process.env.SMTP_SECURE !== 'false',
       auth: {
-        user: process.env.SMTP_USER || process.env.EMAIL_SENDER,
-        pass: process.env.SMTP_PASS || process.env.EMAIL_PASSWORD,
+        user:  process.env.EMAIL_SENDER,
+        pass:  process.env.EMAIL_PASSWORD,
       },
     });
   }
@@ -77,6 +77,11 @@ function invalidateCacheByPrefix(prefix) {
 }
 
 // 格式化金额，添加千位分隔符
+function beijingTime() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+}
+
 function formatMoney(amount) {
   if (typeof amount !== 'number') return '0.00';
   // 保留两位小数，添加千位分隔符
@@ -734,40 +739,11 @@ async function checkFundsAndAlert() {
 // ==================== 计算并保存每日收益 ====================
 async function calculateAndSaveDailyProfit() {
   console.log('\n========== 开始计算每日收益 ==========');
-  const rows = await db.getPositions();
+  const allRows = await db.getPositions();
   const now = new Date();
   const dateStr = now.getFullYear().toString() + '-' +
     (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
     now.getDate().toString().padStart(2, '0');
-
-  // 检查今天是否已经有数据
-  const existingRecord = await db.getDailyProfitByDate(dateStr);
-  if (existingRecord) {
-    console.log(`今日(${dateStr})收益数据已存在，跳过计算`);
-    console.log('========== 计算完成 ==========\n');
-    return;
-  }
-
-  let stockToday = 0, fundToday = 0;
-  const stocks = rows.filter(r => !r.isFund && r.code);
-  const funds = rows.filter(r => r.isFund && r.code);
-
-  console.log(`处理 ${stocks.length} 只股票，${funds.length} 只基金`);
-
-  // 计算股票收益
-  for (const stock of stocks) {
-    console.log(`获取股票: ${stock.name || stock.code}`);
-    const stockData = await fetchStockPrice(stock.code);
-    if (stockData && stockData.price > 0 && stock.shares > 0) {
-      const mkt = stock.shares * stockData.price;
-      const prevMkt = (1 + stockData.change / 100) !== 0 ? mkt / (1 + stockData.change / 100) : mkt;
-      const today = prevMkt * (stockData.change / 100);
-      stockToday += today;
-      console.log(`  ${stock.name || stock.code}: 市值 ¥${mkt.toFixed(2)}, 涨跌 ${stockData.change}%, 今日收益 ¥${today.toFixed(2)}`);
-    }
-  }
-
-  // 计算基金收益
   const todayStr = now.getFullYear().toString() +
     (now.getMonth() + 1).toString().padStart(2, '0') +
     now.getDate().toString().padStart(2, '0');
@@ -780,66 +756,85 @@ async function calculateAndSaveDailyProfit() {
   const minute = now.getMinutes();
   const isTradingMorning = (hour > 9 || (hour === 9 && minute >= 30)) && hour < 15;
 
-  for (const fund of funds) {
-    console.log(`获取基金: ${fund.name || fund.code}`);
-    const fundData = await fetchFundNetValue(fund.code);
-    if (fundData && fundData.netValue > 0 && fund.shares > 0) {
-      // 处理基金净值日期
-      let adjustedPriceDate = fundData.priceDate;
-
-      // QDII 境外基金特殊处理：日期 +1 天
-      if (fund.isOverseas && adjustedPriceDate && adjustedPriceDate.length === 8) {
-        const year = parseInt(adjustedPriceDate.substr(0, 4));
-        const month = parseInt(adjustedPriceDate.substr(4, 2)) - 1;
-        const day = parseInt(adjustedPriceDate.substr(6, 2));
-        const date = new Date(year, month, day);
-        date.setDate(date.getDate() + 1);
-        const y = date.getFullYear();
-        const m = (date.getMonth() + 1).toString().padStart(2, '0');
-        const d = date.getDate().toString().padStart(2, '0');
-        adjustedPriceDate = `${y}${m}${d}`;
-        console.log(`  境外基金，净值日期从 ${fundData.priceDate} 调整为 ${adjustedPriceDate}`);
-      }
-
-      // 判断净值是否已更新
-      let isTodayUpdated = false;
-      if (adjustedPriceDate === todayStr) {
-        isTodayUpdated = true;
-      } else if (adjustedPriceDate === yesterdayStr) {
-        if (isTradingMorning) {
-          isTodayUpdated = false;
-        } else {
-          isTodayUpdated = hour < 15;
-        }
-      }
-
-      if (isTodayUpdated) {
-        const mkt = fund.shares * fundData.netValue;
-        const prevMkt = (1 + fundData.change / 100) !== 0 ? mkt / (1 + fundData.change / 100) : mkt;
-        const today = prevMkt * (fundData.change / 100);
-        fundToday += today;
-        console.log(`  ${fund.name || fund.code}: 市值 ¥${mkt.toFixed(2)}, 涨跌 ${fundData.change}%, 今日收益 ¥${today.toFixed(2)}`);
-      } else {
-        console.log(`  ${fund.name || fund.code}: 净值未更新，跳过`);
-      }
-    }
+  // 按用户分组
+  const userMap = {};
+  for (const row of allRows) {
+    const uid = row.user_id || row.userId || 'default';
+    if (!userMap[uid]) userMap[uid] = [];
+    userMap[uid].push(row);
   }
 
-  // 保存收益数据
-  const profitRecord = {
-    date: dateStr,
-    stockToday: Math.round(stockToday),
-    fundToday: Math.round(fundToday),
-    totalToday: Math.round(stockToday + fundToday)
-  };
+  for (const [userId, rows] of Object.entries(userMap)) {
+    // 检查该用户今天是否已有数据
+    const existingRecord = await db.getDailyProfitByDateAndUser(dateStr, userId);
+    if (existingRecord) {
+      console.log(`用户 ${userId} 今日(${dateStr})收益数据已存在，跳过`);
+      continue;
+    }
 
-  await db.createDailyProfit(profitRecord);
+    let stockToday = 0, fundToday = 0;
+    const details = [];
+    const stocks = rows.filter(r => !r.isFund && r.code);
+    const funds = rows.filter(r => r.isFund && r.code);
 
-  console.log(`\n收益计算完成！`);
-  console.log(`股票今日收益: ¥${profitRecord.stockToday.toLocaleString()}`);
-  console.log(`基金今日收益: ¥${profitRecord.fundToday.toLocaleString()}`);
-  console.log(`总今日收益: ¥${profitRecord.totalToday.toLocaleString()}`);
-  console.log('========== 计算完成 ==========\n');
+    console.log(`\n用户 ${userId}: 处理 ${stocks.length} 只股票，${funds.length} 只基金`);
+
+    // 汇率
+    const hkdRate = parseFloat(await db.getConfig('hkd_cny_rate')) || 0.92;
+    const usdRate = parseFloat(await db.getConfig('crypto_fx')) || 7.2;
+
+    for (const stock of stocks) {
+      const stockData = await fetchStockPrice(stock.code);
+      if (stockData && stockData.price > 0 && stock.shares > 0) {
+        let price = stockData.price;
+        if (stock.code.length === 5) price *= hkdRate; // 港股转CNY
+        const mkt = stock.shares * price;
+        const prevMkt = (1 + stockData.change / 100) !== 0 ? mkt / (1 + stockData.change / 100) : mkt;
+        const today = prevMkt * (stockData.change / 100);
+        stockToday += today;
+        details.push({ code: stock.code, name: stock.name || stock.code, type: 'stock', change: stockData.change, profit: Math.round(today) });
+      }
+    }
+
+    for (const fund of funds) {
+      const fundData = await fetchFundNetValue(fund.code);
+      if (fundData && fundData.netValue > 0 && fund.shares > 0) {
+        let adjustedPriceDate = fundData.priceDate;
+        if (fund.isOverseas && adjustedPriceDate && adjustedPriceDate.length === 8) {
+          const year = parseInt(adjustedPriceDate.substr(0, 4));
+          const month = parseInt(adjustedPriceDate.substr(4, 2)) - 1;
+          const day = parseInt(adjustedPriceDate.substr(6, 2));
+          const date = new Date(year, month, day);
+          date.setDate(date.getDate() + 1);
+          adjustedPriceDate = `${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`;
+        }
+        let isTodayUpdated = false;
+        if (adjustedPriceDate === todayStr) isTodayUpdated = true;
+        else if (adjustedPriceDate === yesterdayStr) isTodayUpdated = !isTradingMorning && hour < 15;
+        if (isTodayUpdated) {
+          const mkt = fund.shares * fundData.netValue;
+          const prevMkt = (1 + fundData.change / 100) !== 0 ? mkt / (1 + fundData.change / 100) : mkt;
+          const today = prevMkt * (fundData.change / 100);
+          fundToday += today;
+          details.push({ code: fund.code, name: fund.name || fund.code, type: 'fund', change: fundData.change, profit: Math.round(today) });
+        }
+      }
+    }
+
+    const profitRecord = {
+      date: dateStr,
+      stockToday: Math.round(stockToday),
+      fundToday: Math.round(fundToday),
+      totalToday: Math.round(stockToday + fundToday),
+      details: JSON.stringify(details),
+      userId,
+    };
+
+    await db.createDailyProfit(profitRecord);
+    console.log(`用户 ${userId}: 股票 ¥${profitRecord.stockToday}, 基金 ¥${profitRecord.fundToday}, 合计 ¥${profitRecord.totalToday}`);
+  }
+
+  console.log('========== 收益计算完成 ==========\n');
 }
 
 // ==================== 自动确认待确认交易 ====================
@@ -1049,7 +1044,7 @@ async function setupCronJob() {
   });
 
   // 自动确认待确认交易定时任务 - 每天早上9点执行
-  global.confirmCronJob = cron.schedule('0 0 9 * * *', () => {
+  global.confirmCronJob = cron.schedule('0 3 0 * * *', () => {
     autoConfirmPendingTrades();
   }, {
     timezone: 'Asia/Shanghai'
@@ -1221,7 +1216,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ========== 以下接口需要登录 ==========
-  const auth = req.url.startsWith('/api/') && !req.url.startsWith('/api/register') && !req.url.startsWith('/api/login')
+  const auth = req.url.startsWith('/api/') && !req.url.startsWith('/api/register') && !req.url.startsWith('/api/login') && !req.url.startsWith('/api/trigger-') && !req.url.startsWith('/api/resend-code')
     ? authRequired()
     : true;
   if (!auth) return;
@@ -1913,7 +1908,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const record = JSON.parse(body);
         const id = await db.createAssetRecord({
-          recordedAt: new Date().toISOString(),
+          recordedAt: beijingTime(),
           total: record.total,
           alipay: record.alipay,
           wechat: record.wechat,

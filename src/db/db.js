@@ -21,7 +21,7 @@ if (process.env.DATABASE_URL) {
     database: process.env.DB_NAME || 'yangyang',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
-    max: 20, // maximum number of clients in the pool
+    max: 20,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 10000,
   };
@@ -29,9 +29,9 @@ if (process.env.DATABASE_URL) {
 
 const pool = new Pool(poolConfig);
 
-// Test connection on startup
-pool.on('connect', () => {
-  console.log('PostgreSQL connected');
+// 所有连接设为北京时间
+pool.on('connect', async (client) => {
+  await client.query("SET timezone = 'Asia/Shanghai'");
 });
 
 pool.on('error', (err) => {
@@ -311,7 +311,14 @@ async function getTradeHistoryByRowId(rowId) {
     WHERE row_id = $1
     ORDER BY created_at DESC
   `, [rowId]);
-  return res.rows.map(row => fixNumericFields(snakeToCamel(row)));
+  return res.rows.map(row => {
+    const r = fixNumericFields(snakeToCamel(row));
+    if (r.localDate) {
+      const d = new Date(r.localDate);
+      r.localDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    return r;
+  });
 }
 
 async function createTradeRecord(record) {
@@ -373,24 +380,30 @@ async function getDailyProfits(userId = null) {
   });
 }
 
+async function getDailyProfitByDateAndUser(date, userId) {
+  const res = await query('SELECT * FROM daily_profits WHERE date = $1 AND user_id = $2', [date, userId]);
+  return res.rows[0] || null;
+}
+
 async function getDailyProfitByDate(date) {
   const res = await query('SELECT * FROM daily_profits WHERE date = $1', [date]);
   return res.rows[0] || null;
 }
 
 async function createDailyProfit(record) {
-  const { date, stockToday, fundToday, totalToday } = record;
+  const { date, stockToday, fundToday, totalToday, details } = record;
   const userId = record.userId || (record.user_id || 'default');
 
   await query(
-    `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (date) DO UPDATE SET
+    `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id, details)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (date, user_id) DO UPDATE SET
        stock_today = EXCLUDED.stock_today,
        fund_today = EXCLUDED.fund_today,
        total_today = EXCLUDED.total_today,
+       details = EXCLUDED.details,
        created_at = CURRENT_TIMESTAMP`,
-    [date, stockToday, fundToday, totalToday, userId]
+    [date, stockToday, fundToday, totalToday, userId, details || '[]']
   );
   return record;
 }
@@ -583,6 +596,7 @@ module.exports = {
   // Daily profits operations
   getDailyProfits,
   getDailyProfitByDate,
+  getDailyProfitByDateAndUser,
   createDailyProfit,
   deleteDailyProfit,
 

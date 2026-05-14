@@ -15,3 +15,10 @@ ALTER TABLE trade_history ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) DEFAULT '
 ALTER TABLE daily_profits ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) DEFAULT 'default';
 ALTER TABLE asset_records ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) DEFAULT 'default';
 ALTER TABLE alert_rules ADD COLUMN IF NOT EXISTS user_id VARCHAR(50) DEFAULT 'default';
+
+-- 每日收益加明细
+ALTER TABLE daily_profits ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '[]';
+
+-- 每日收益按用户去重
+ALTER TABLE daily_profits DROP CONSTRAINT IF EXISTS daily_profits_date_key;
+ALTER TABLE daily_profits ADD CONSTRAINT daily_profits_date_user_unique UNIQUE (date, user_id);

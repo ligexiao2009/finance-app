@@ -12,6 +12,7 @@ const { handleFundScreenshotRoutes, loadCodeFixMap } = require('./routes/fund-sc
 const { servePublicFile } = require('./utils/static-files');
 const { analyzeFund, analyzeMultipleFunds } = require('./utils/fund-drawdown');
 const { getFundDetail } = require('./utils/fund-detail');
+const { getStockDetail } = require('./utils/stock-detail');
 
 const PORT = 4000;
 const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
@@ -716,7 +717,8 @@ async function calculateAndSaveDailyProfit() {
     const stockData = await fetchStockPrice(stock.code);
     if (stockData && stockData.price > 0 && stock.shares > 0) {
       const mkt = stock.shares * stockData.price;
-      const today = mkt * (stockData.change / 100);
+      const prevMkt = (1 + stockData.change / 100) !== 0 ? mkt / (1 + stockData.change / 100) : mkt;
+      const today = prevMkt * (stockData.change / 100);
       stockToday += today;
       console.log(`  ${stock.name || stock.code}: 市值 ¥${mkt.toFixed(2)}, 涨跌 ${stockData.change}%, 今日收益 ¥${today.toFixed(2)}`);
     }
@@ -770,7 +772,8 @@ async function calculateAndSaveDailyProfit() {
 
       if (isTodayUpdated) {
         const mkt = fund.shares * fundData.netValue;
-        const today = mkt * (fundData.change / 100);
+        const prevMkt = (1 + fundData.change / 100) !== 0 ? mkt / (1 + fundData.change / 100) : mkt;
+        const today = prevMkt * (fundData.change / 100);
         fundToday += today;
         console.log(`  ${fund.name || fund.code}: 市值 ¥${mkt.toFixed(2)}, 涨跌 ${fundData.change}%, 今日收益 ¥${today.toFixed(2)}`);
       } else {
@@ -1927,6 +1930,22 @@ const server = http.createServer(async (req, res) => {
       console.error('获取K线数据失败:', error.message);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: false, error: error.message }));
+    }
+    return;
+  }
+
+  // ========== 股票/ETF 详情 API ==========
+  if (req.method === 'GET' && req.url.startsWith('/api/stock-detail/')) {
+    try {
+      const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+      const code = parsedUrl.pathname.split('/api/stock-detail/')[1].replace(/\/$/, '');
+      const detail = await getStockDetail(code);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(detail));
+    } catch (e) {
+      console.error('获取股票详情失败:', e.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: e.message }));
     }
     return;
   }

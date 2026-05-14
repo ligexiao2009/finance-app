@@ -393,18 +393,30 @@ async function getDailyProfitByDate(date) {
 async function createDailyProfit(record) {
   const { date, stockToday, fundToday, totalToday, details } = record;
   const userId = record.userId || (record.user_id || 'default');
+  const hasDetails = details != null;
 
-  await query(
-    `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id, details)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (date, user_id) DO UPDATE SET
-       stock_today = EXCLUDED.stock_today,
-       fund_today = EXCLUDED.fund_today,
-       total_today = EXCLUDED.total_today,
-       details = EXCLUDED.details,
-       created_at = CURRENT_TIMESTAMP`,
-    [date, stockToday, fundToday, totalToday, userId, details || '[]']
-  );
+  const sql = hasDetails
+    ? `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id, details)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (date, user_id) DO UPDATE SET
+         stock_today = EXCLUDED.stock_today,
+         fund_today = EXCLUDED.fund_today,
+         total_today = EXCLUDED.total_today,
+         details = EXCLUDED.details,
+         created_at = CURRENT_TIMESTAMP`
+    : `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (date, user_id) DO UPDATE SET
+         stock_today = EXCLUDED.stock_today,
+         fund_today = EXCLUDED.fund_today,
+         total_today = EXCLUDED.total_today,
+         created_at = CURRENT_TIMESTAMP`;
+
+  const params = hasDetails
+    ? [date, stockToday, fundToday, totalToday, userId, details]
+    : [date, stockToday, fundToday, totalToday, userId];
+
+  await query(sql, params);
   return record;
 }
 

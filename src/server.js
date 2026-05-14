@@ -766,11 +766,7 @@ async function calculateAndSaveDailyProfit() {
 
   for (const [userId, rows] of Object.entries(userMap)) {
     // 检查该用户今天是否已有数据
-    const existingRecord = await db.getDailyProfitByDateAndUser(dateStr, userId);
-    if (existingRecord) {
-      console.log(`用户 ${userId} 今日(${dateStr})收益数据已存在，跳过`);
-      continue;
-    }
+    console.log(`用户 ${userId}: ${dateStr} 计算中...`);
 
     let stockToday = 0, fundToday = 0;
     const details = [];

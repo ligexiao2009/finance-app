@@ -21,7 +21,7 @@ if (process.env.DATABASE_URL) {
     database: process.env.DB_NAME || 'yangyang',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
-    max: 20, // maximum number of clients in the pool
+    max: 20,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 10000,
   };
@@ -29,9 +29,9 @@ if (process.env.DATABASE_URL) {
 
 const pool = new Pool(poolConfig);
 
-// Test connection on startup
-pool.on('connect', () => {
-  console.log('PostgreSQL connected');
+// 所有连接设为北京时间
+pool.on('connect', async (client) => {
+  await client.query("SET timezone = 'Asia/Shanghai'");
 });
 
 pool.on('error', (err) => {
@@ -52,6 +52,18 @@ async function query(text, params) {
   }
 }
 
+// 修复 DECIMAL 字段：PG 返回字符串，转数字
+const NUMERIC_FIELDS = new Set(['amount', 'shares', 'netValue', 'net_value', 'price', 'change', 'cost', 'stockToday', 'stock_today', 'fundToday', 'fund_today', 'totalToday', 'total_today', 'marketValue', 'profitLoss']);
+function fixNumericFields(row) {
+  const r = { ...row };
+  for (const k of Object.keys(r)) {
+    if (NUMERIC_FIELDS.has(k) && typeof r[k] === 'string') {
+      r[k] = parseFloat(r[k]) || 0;
+    }
+  }
+  return r;
+}
+
 // Convert snake_case to camelCase for database rows
 function snakeToCamel(obj) {
   if (!obj) return obj;
@@ -61,8 +73,9 @@ function snakeToCamel(obj) {
     // Convert snake_case to camelCase
     const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 
-    // Convert numeric strings to numbers, EXCEPT for code fields (keep leading zeros)
-    if (camelKey !== 'code' && typeof value === 'string' && !isNaN(value) && value !== '') {
+    // Convert numeric strings to numbers, EXCEPT for id/code/categoryId fields
+    const isIdField = ['code', 'id', 'categoryId'].includes(camelKey);
+    if (!isIdField && typeof value === 'string' && !isNaN(value) && value !== '') {
       result[camelKey] = parseFloat(value);
     } else {
       result[camelKey] = value;
@@ -148,7 +161,11 @@ async function getAllConfigs() {
 }
 
 // ==================== 持仓表操作 ====================
-async function getPositions() {
+async function getPositions(userId = null) {
+  if (userId) {
+    const res = await query('SELECT * FROM positions WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+    return res.rows.map(row => snakeToCamel(row));
+  }
   const res = await query('SELECT * FROM positions ORDER BY created_at DESC');
   // Convert snake_case database fields to camelCase for frontend
   return res.rows.map(row => snakeToCamel(row));
@@ -174,10 +191,11 @@ async function createPosition(position) {
     categoryId = null
   } = position;
 
+  const userId = position.userId || 'default';
   await query(
-    `INSERT INTO positions (id, code, name, shares, cost, is_fund, is_overseas, plan_buy, alert, target_price, category_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [id, code, name, shares, cost, isFund, isOverseas, planBuy, alert, targetPrice, categoryId]
+    `INSERT INTO positions (id, code, name, shares, cost, is_fund, is_overseas, plan_buy, alert, target_price, category_id, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [id, code, name, shares, cost, isFund, isOverseas, planBuy, alert, targetPrice, categoryId, userId]
   );
   return position;
 }
@@ -214,7 +232,11 @@ async function deletePositionByCode(code, isFund) {
 }
 
 // ==================== 待确认交易表操作 ====================
-async function getPendingTrades() {
+async function getPendingTrades(userId = null) {
+  if (userId) {
+    const res = await query('SELECT * FROM pending_trades WHERE user_id = $1 ORDER BY created_at DESC', [userId]);
+    return res.rows.map(r => fixNumericFields(snakeToCamel(r)));
+  }
   const res = await query('SELECT * FROM pending_trades ORDER BY created_at DESC');
   return res.rows.map(row => snakeToCamel(row));
 }
@@ -233,11 +255,12 @@ async function createPendingTrade(trade) {
   const {
     id, rowId, code, name, type = 'add', amount, shares = null, isBefore15 = true, createdAt
   } = trade;
+  const userId = trade.user_id || 'default';
 
   await query(
-    `INSERT INTO pending_trades (id, row_id, code, name, type, amount, shares, is_before_15, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [id, rowId, code, name, type, amount, shares, isBefore15, createdAt]
+    `INSERT INTO pending_trades (id, row_id, code, name, type, amount, shares, is_before_15, created_at, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [id, rowId, code, name, type, amount, shares, isBefore15, createdAt, userId]
   );
   return trade;
 }
@@ -246,12 +269,18 @@ async function deletePendingTrade(id) {
   await query('DELETE FROM pending_trades WHERE id = $1', [id]);
 }
 
-async function deleteAllPendingTrades() {
-  await query('DELETE FROM pending_trades');
+async function deleteAllPendingTrades(userId = null) {
+  if (userId) {
+    await query('DELETE FROM pending_trades WHERE user_id = $1', [userId]);
+  } else {
+    await query('DELETE FROM pending_trades');
+  }
 }
 
 // ==================== 交易历史表操作 ====================
-async function getTradeHistory() {
+async function getTradeHistory(userId = null) {
+  const filter = userId ? 'WHERE user_id = $1' : '';
+  const params = userId ? [userId] : [];
   const res = await query(`
     SELECT row_id, json_agg(
       json_build_object(
@@ -266,8 +295,9 @@ async function getTradeHistory() {
       ) ORDER BY created_at DESC
     ) as records
     FROM trade_history
+    ${filter}
     GROUP BY row_id
-  `);
+  `, params);
 
   const history = {};
   res.rows.forEach(row => {
@@ -282,18 +312,26 @@ async function getTradeHistoryByRowId(rowId) {
     WHERE row_id = $1
     ORDER BY created_at DESC
   `, [rowId]);
-  return res.rows.map(row => snakeToCamel(row));
+  return res.rows.map(row => {
+    const r = fixNumericFields(snakeToCamel(row));
+    if (r.localDate) {
+      const d = new Date(r.localDate);
+      r.localDate = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    return r;
+  });
 }
 
 async function createTradeRecord(record) {
   const {
     id, rowId, type, amount, shares, netValue, isBefore15 = true, createdAt, localDate
   } = record;
+  const userId = record.user_id || record.userId || 'default';
 
   await query(
-    `INSERT INTO trade_history (id, row_id, type, amount, shares, net_value, is_before_15, created_at, local_date)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [id, rowId, type, amount, shares, netValue, isBefore15, createdAt, localDate]
+    `INSERT INTO trade_history (id, row_id, type, amount, shares, net_value, is_before_15, created_at, local_date, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [id, rowId, type, amount, shares, netValue, isBefore15, createdAt, localDate, userId]
   );
   return record;
 }
@@ -303,7 +341,21 @@ async function deleteTradeRecord(id) {
 }
 
 // ==================== 每日收益表操作 ====================
-async function getDailyProfits() {
+async function getDailyProfits(userId = null) {
+  if (userId) {
+    const res = await query('SELECT * FROM daily_profits WHERE user_id = $1 ORDER BY date DESC', [userId]);
+    return res.rows.map(row => {
+      const converted = snakeToCamel(row);
+      converted.stockToday = parseFloat(converted.stockToday) || 0;
+      converted.fundToday = parseFloat(converted.fundToday) || 0;
+      converted.totalToday = parseFloat(converted.totalToday) || 0;
+      if (converted.date) {
+  const d = new Date(converted.date);
+  converted.date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+      return converted;
+    });
+  }
   const res = await query('SELECT * FROM daily_profits ORDER BY date DESC');
   // Convert snake_case database fields to camelCase for frontend
   return res.rows.map(row => {
@@ -329,24 +381,43 @@ async function getDailyProfits() {
   });
 }
 
+async function getDailyProfitByDateAndUser(date, userId) {
+  const res = await query('SELECT * FROM daily_profits WHERE date = $1 AND user_id = $2', [date, userId]);
+  return res.rows[0] || null;
+}
+
 async function getDailyProfitByDate(date) {
   const res = await query('SELECT * FROM daily_profits WHERE date = $1', [date]);
   return res.rows[0] || null;
 }
 
 async function createDailyProfit(record) {
-  const { date, stockToday, fundToday, totalToday } = record;
+  const { date, stockToday, fundToday, totalToday, details } = record;
+  const userId = record.userId || (record.user_id || 'default');
+  const hasDetails = details != null;
 
-  await query(
-    `INSERT INTO daily_profits (date, stock_today, fund_today, total_today)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (date) DO UPDATE SET
-       stock_today = EXCLUDED.stock_today,
-       fund_today = EXCLUDED.fund_today,
-       total_today = EXCLUDED.total_today,
-       created_at = CURRENT_TIMESTAMP`,
-    [date, stockToday, fundToday, totalToday]
-  );
+  const sql = hasDetails
+    ? `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id, details)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (date, user_id) DO UPDATE SET
+         stock_today = EXCLUDED.stock_today,
+         fund_today = EXCLUDED.fund_today,
+         total_today = EXCLUDED.total_today,
+         details = EXCLUDED.details,
+         created_at = CURRENT_TIMESTAMP`
+    : `INSERT INTO daily_profits (date, stock_today, fund_today, total_today, user_id)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (date, user_id) DO UPDATE SET
+         stock_today = EXCLUDED.stock_today,
+         fund_today = EXCLUDED.fund_today,
+         total_today = EXCLUDED.total_today,
+         created_at = CURRENT_TIMESTAMP`;
+
+  const params = hasDetails
+    ? [date, stockToday, fundToday, totalToday, userId, details]
+    : [date, stockToday, fundToday, totalToday, userId];
+
+  await query(sql, params);
   return record;
 }
 
@@ -419,7 +490,19 @@ async function getEnabledAlertRules() {
 }
 
 // ==================== 资产记录表操作 ====================
-async function getAssetRecords() {
+async function getAssetRecords(userId = null) {
+  if (userId) {
+    const res = await query('SELECT * FROM asset_records WHERE user_id = $1 ORDER BY recorded_at DESC', [userId]);
+    return res.rows.map(row => {
+      const converted = snakeToCamel(row);
+      if (converted.recordedAt) {
+        const d = new Date(converted.recordedAt);
+        const offset = d.getTimezoneOffset();
+        converted.recordedAt = new Date(d.getTime() - offset * 60000).toISOString();
+      }
+      return converted;
+    });
+  }
   const res = await query('SELECT * FROM asset_records ORDER BY recorded_at DESC');
   return res.rows.map(row => {
     const converted = snakeToCamel(row);
@@ -438,11 +521,12 @@ async function getAssetRecords() {
 
 async function createAssetRecord(record) {
   const { recordedAt, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt } = record;
+  const userId = record.user_id || record.userId || 'default';
   const res = await query(
-    `INSERT INTO asset_records (recorded_at, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO asset_records (recorded_at, total, alipay, wechat, ths, crypto, cmb, provident, receivable, debt, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING id`,
-    [recordedAt, total, alipay || 0, wechat || 0, ths || 0, crypto || 0, cmb || 0, provident || 0, receivable || 0, debt || 0]
+    [recordedAt, total, alipay || 0, wechat || 0, ths || 0, crypto || 0, cmb || 0, provident || 0, receivable || 0, debt || 0, userId]
   );
   return res.rows[0].id;
 }
@@ -525,6 +609,7 @@ module.exports = {
   // Daily profits operations
   getDailyProfits,
   getDailyProfitByDate,
+  getDailyProfitByDateAndUser,
   createDailyProfit,
   deleteDailyProfit,
 
@@ -548,4 +633,16 @@ module.exports = {
   createAssetRecord,
   deleteAssetRecord,
   deleteAllAssetRecords,
+
+  // 迁移
+  async runMigration() {
+    const fs = require('fs');
+    const path = require('path');
+    const sql = fs.readFileSync(path.join(__dirname, 'migration-users.sql'), 'utf-8');
+    const statements = sql.split(';').filter(s => s.trim());
+    for (const stmt of statements) {
+      try { await query(stmt); } catch (e) { if (!e.message.includes('already exists') && !e.message.includes('duplicate')) console.log('Migration skip:', e.message.split('\n')[0]); }
+    }
+    console.log('✅ 用户系统迁移完成');
+  },
 };

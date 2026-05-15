@@ -22,10 +22,11 @@ function readJsonBody(req) {
   });
 }
 
-async function handleDailyProfitRoutes(req, res) {
+async function handleDailyProfitRoutes(req, res, userId) {
   if (req.method === 'POST' && req.url === '/api/save-daily-profit') {
     try {
       const profitData = await readJsonBody(req);
+      profitData.userId = userId;
       await db.createDailyProfit(profitData);
       sendJson(res, 200, { success: true, message: '保存成功' });
     } catch (error) {
@@ -37,7 +38,7 @@ async function handleDailyProfitRoutes(req, res) {
 
   if (req.method === 'GET' && req.url === '/api/daily-profit') {
     try {
-      const records = await db.getDailyProfits();
+      const records = await db.getDailyProfits(userId);
       sendJson(res, 200, { records });
     } catch (error) {
       console.error('Error getting daily profits:', error);

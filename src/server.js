@@ -1217,8 +1217,8 @@ const server = http.createServer(async (req, res) => {
     : true;
   if (!auth) return;
   const userId = auth?.uid || 'default';
-  const adminEmail = process.env.ADMIN_EMAIL || (await db.getConfig('admin_email'));
-  const isAdmin = !!(auth?.email && adminEmail && auth.email === adminEmail);
+  if (!global._adminEmail) { global._adminEmail = process.env.ADMIN_EMAIL || (await db.getConfig('admin_email')) || ''; }
+  const isAdmin = !!(auth?.email && global._adminEmail && auth.email === global._adminEmail);
 
   // ========== 管理员 API ==========
   if (isAdmin && req.method === 'GET' && req.url === '/api/admin/configs') {
@@ -1247,6 +1247,7 @@ const server = http.createServer(async (req, res) => {
     req.on('end', async () => {
       const { key, value } = JSON.parse(body);
       await db.setConfig(key, value);
+      global._adminEmail = undefined; global._cachedRates = undefined;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
     });
@@ -1255,11 +1256,15 @@ const server = http.createServer(async (req, res) => {
 
   // 公开汇率接口
   if (req.method === 'GET' && req.url === '/api/config') {
-    const hkd = await db.getConfig('hkd_cny_rate') || '0.93';
-    const usd = await db.getConfig('crypto_fx') || '7.25';
-    const adminEmail = await db.getConfig('admin_email') || '';
+    if (!global._cachedRates) {
+      global._cachedRates = {
+        hkd: await db.getConfig('hkd_cny_rate') || '0.93',
+        usd: await db.getConfig('crypto_fx') || '7.25',
+        admin: await db.getConfig('admin_email') || '',
+      };
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ hkd_cny_rate: hkd, crypto_fx: usd, admin_email: adminEmail }));
+    res.end(JSON.stringify({ hkd_cny_rate: global._cachedRates.hkd, crypto_fx: global._cachedRates.usd, admin_email: global._cachedRates.admin }));
     return;
   }
 

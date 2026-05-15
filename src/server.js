@@ -1,53 +1,21 @@
-// 加载环境变量
+/**
+ * 投资助手 - 后端服务主入口
+ * 端口 4000，提供持仓管理、行情查询、基金分析等 API
+ */
 require('dotenv').config();
 
 const http = require('http');
 const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cron = require('node-cron');
-const fetch = require('node-fetch');
+const nodemailer = require('nodemailer');
 const db = require('./db/db');
 
-const nodemailer = require('nodemailer');
+// 中间件
+const { signToken, authRequired } = require('./middleware/auth');
+const { parseBody, sendJson, ok, badRequest, serverError } = require('./middleware/common');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'stock-app-secret-key-change-in-production';
-const JWT_EXPIRES = '30d';
-
-// 邮件配置
-let mailer = null;
-function getMailer() {
-  if (mailer) return mailer;
-  if (process.env.SMTP_HOST) {
-    mailer = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '465'),
-      secure: process.env.SMTP_SECURE !== 'false',
-      auth: {
-        user:  process.env.EMAIL_SENDER,
-        pass:  process.env.EMAIL_PASSWORD,
-      },
-    });
-  }
-  return mailer;
-}
-
-async function sendVerifyCode(email, code) {
-  const transport = getMailer();
-  if (!transport) return false;
-  try {
-    await transport.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER || process.env.EMAIL_SENDER,
-      to: email,
-      subject: '投资助手 - 邮箱验证码',
-      text: `您的验证码是：${code}，10分钟内有效。`,
-    });
-    return true;
-  } catch (e) {
-    console.error('发送邮件失败:', e.message);
-    return false;
-  }
-}
+// 路由模块
 const { handleDailyProfitRoutes } = require('./routes/daily-profit');
 const { handleAlertRulesRoutes, checkPriceAlerts, invalidateAlertCache } = require('./routes/alert-rules');
 const { handleFundScreenshotRoutes, loadCodeFixMap } = require('./routes/fund-screenshot');
@@ -57,62 +25,53 @@ const { getFundDetail } = require('./utils/fund-detail');
 const { getStockDetail } = require('./utils/stock-detail');
 
 const PORT = 4000;
-const DATA_CACHE_TTL_MS = Number(process.env.DATA_CACHE_TTL_MS || 30 * 60 * 1000);
-const QUOTES_CACHE_TTL_MS = Number(process.env.QUOTES_CACHE_TTL_MS || 30 * 1000);
 const QUOTES_BATCH_SIZE = Number(process.env.QUOTES_BATCH_SIZE || 60);
-const KLINE_CACHE_TTL_MS = Number(process.env.KLINE_CACHE_TTL_MS || 5 * 60 * 1000);
-const responseCache = new Map();
 let EDIT_UNLOCK_PASSWORD_CACHE = undefined;
 
-function invalidateCache(...keys) {
-  keys.forEach(key => responseCache.delete(key));
-}
-
-function invalidateCacheByPrefix(prefix) {
-  for (const key of responseCache.keys()) {
-    if (key.startsWith(prefix)) {
-      responseCache.delete(key);
-    }
+// ========== 邮件服务 ==========
+let mailer = null;
+function getMailer() {
+  if (mailer) return mailer;
+  if (process.env.SMTP_HOST) {
+    mailer = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: process.env.SMTP_SECURE !== 'false',
+      auth: { user: process.env.EMAIL_SENDER, pass: process.env.EMAIL_PASSWORD },
+    });
   }
+  return mailer;
 }
 
-// 格式化金额，添加千位分隔符
+/** 发送邮件验证码 */
+async function sendVerifyCode(email, code) {
+  const transport = getMailer();
+  if (!transport) return false;
+  try {
+    await transport.sendMail({
+      from: process.env.SMTP_FROM || process.env.EMAIL_SENDER,
+      to: email, subject: '投资助手 - 邮箱验证码',
+      text: `您的验证码是：${code}，10分钟内有效。`,
+    });
+    return true;
+  } catch (e) { console.error('发送邮件失败:', e.message); return false; }
+}
+
+// ========== 工具函数 ==========
+/** 获取北京时间字符串 YYYY-MM-DD HH:mm:ss */
 function beijingTime() {
   const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+    + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
 }
 
+/** 格式化金额，添加千位分隔符 */
 function formatMoney(amount) {
   if (typeof amount !== 'number') return '0.00';
-  // 保留两位小数，添加千位分隔符
   return amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-async function getCachedJsonResponse(cacheKey, producer, options = {}) {
-  const data = await producer();
-  const payload = JSON.stringify(data);
-  const etag = `"${crypto.createHash('sha1').update(payload).digest('hex')}"`;
-  return { etag, payload };
-}
-
-async function sendCachedJson(req, res, cacheKey, producer, options = {}) {
-  const cached = await getCachedJsonResponse(cacheKey, producer, options);
-  if (req.headers['if-none-match'] === cached.etag) {
-    res.writeHead(304, {
-      'Cache-Control': 'private, max-age=0, must-revalidate',
-      'ETag': cached.etag,
-    });
-    res.end();
-    return;
-  }
-
-  res.writeHead(200, {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'private, max-age=0, must-revalidate',
-    'ETag': cached.etag,
-  });
-  res.end(cached.payload);
-}
+// ========== 行情数据解析 ==========
 
 function buildQuoteSymbol(code, isFund) {
   const normalizedCode = String(code || '').trim();

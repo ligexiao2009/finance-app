@@ -1212,7 +1212,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ========== 以下接口需要登录 ==========
-  const auth = req.url.startsWith('/api/') && req.url !== '/api/config' && !req.url.startsWith('/api/register') && !req.url.startsWith('/api/login') && !req.url.startsWith('/api/trigger-') && !req.url.startsWith('/api/resend-code')
+  const auth = req.url.startsWith('/api/') && req.url !== '/api/config' && !req.url.startsWith('/api/register') && !req.url.startsWith('/api/login') && !req.url.startsWith('/api/trigger-') && !req.url.startsWith('/api/resend-code') && !req.url.startsWith('/api/indices')
     ? authRequired()
     : true;
   if (!auth) return;
@@ -1627,7 +1627,7 @@ const server = http.createServer(async (req, res) => {
 
         // 格式化数值：shares保留2位小数，cost保留4位小数
         if (typeof rowData.shares === 'number') {
-          rowData.shares = parseFloat(rowData.shares.toFixed(2));
+          rowData.shares = parseFloat(rowData.shares.toFixed(4));
         }
         if (typeof rowData.cost === 'number') {
           rowData.cost = parseFloat(rowData.cost.toFixed(4));

@@ -71,7 +71,6 @@ async function handlePositionRoutes(req, res, { userId, sendCachedJson, invalida
 
       invalidateCache('data');
       invalidateCacheByPrefix('quotes:');
-      if (rowData.isFund) await loadCodeFixMap();
 
       sendJson(res, 200, { success: true, message: '保存成功' });
     } catch (e) {
@@ -97,7 +96,6 @@ async function handlePositionRoutes(req, res, { userId, sendCachedJson, invalida
       if (deleted) {
         invalidateCache('data');
         invalidateCacheByPrefix('quotes:');
-        if (isFund) await loadCodeFixMap();
       }
 
       sendJson(res, 200, { success: true, deleted });
